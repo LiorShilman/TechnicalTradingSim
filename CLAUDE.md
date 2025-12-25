@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a **technical trading simulation game** for learning pattern recognition and realistic trading practice. Built as a monorepo with React (Vite + TypeScript) frontend and Express (TypeScript) backend.
 
-**Key Concept**: The game generates 100 candles with embedded technical patterns (Breakout, Retest, Bull Flag). Players progress manually through candles, make trades, and receive feedback on pattern recognition quality and trade timing.
+**Key Concept**: The game generates 500 candles with embedded technical patterns (Breakout, Retest, Bull Flag). Players progress manually or automatically through candles, make LONG/SHORT trades, and receive feedback on pattern recognition quality and trade timing.
 
 ## Development Commands
 
@@ -53,9 +53,9 @@ Test server health: `curl http://localhost:5000/api/health`
 - API calls are made from store actions, not components
 
 #### Data Flow
-1. **Game Init**: Client → `POST /api/game/new` → Server generates 100 candles + patterns → Returns initial state
-2. **Next Candle**: Client → `POST /api/game/:id/next` → Server reveals next candle, updates positions PnL → Returns updated state + feedback
-3. **Trade**: Client → `POST /api/game/:id/trade` → Server opens/closes position → Returns position + account + feedback
+1. **Game Init**: Client → `POST /api/game/new` → Server generates 500 candles + 8 patterns → Returns initial state
+2. **Next Candle**: Client → `POST /api/game/:id/next` → Server reveals next candle, updates positions PnL (LONG/SHORT) → Returns updated state + feedback
+3. **Trade**: Client → `POST /api/game/:id/trade` → Server opens/closes LONG or SHORT position → Returns position + account + feedback
 
 #### Server Architecture
 - **In-memory storage**: Games stored in `Map()` in `gameController.ts` (no database currently)
@@ -114,8 +114,9 @@ Test server health: `curl http://localhost:5000/api/health`
 - Types: 'breakout' | 'retest' | 'flag'
 
 **Position**: Trading position (open or closed)
+- Type: 'long' | 'short'
 - Tracks: entry/exit price, time, index, quantity
-- PnL calculated: currentPnL, currentPnLPercent (live), exitPnL (realized)
+- PnL calculated: currentPnL, currentPnLPercent (live, inverted for SHORT), exitPnL (realized)
 - Pattern entry tracking: patternType, entryQuality (0-100)
 
 **GameState**: Complete game state
@@ -130,12 +131,12 @@ Test server health: `curl http://localhost:5000/api/health`
 ## Game Logic
 
 ### Pattern Generation
-Patterns are embedded in the 100-candle sequence:
-1. **Breakout**: Consolidation (10-15 candles) → Large breakout candle → Continuation (3-5 candles)
-2. **Retest**: Breakout → Pullback to broken level → Bounce continuation
-3. **Bull Flag**: Strong upward pole → Downward consolidation flag → Breakout continuation
+Patterns are embedded in the 500-candle sequence (8 patterns total):
+1. **Breakout**: Consolidation (10-15 candles) → Breakout candle (1.5-2.5% move) → Continuation (0.5-1.3% per candle)
+2. **Retest**: Breakout (0.8-1.6% per candle) → Pullback to broken level → Bounce continuation (1-1.8% per candle)
+3. **Bull Flag**: Strong upward pole (1.2-2.2% per candle) → Downward consolidation flag → Breakout continuation (1.2-2.2% per candle)
 
-Pattern metadata includes expected entry/exit prices for quality scoring.
+Pattern metadata includes expected entry/exit prices for quality scoring. Price movements are realistic (0.5-2.5% per candle).
 
 ### Feedback System
 Server evaluates trades and generates feedback:
@@ -146,15 +147,18 @@ Server evaluates trades and generates feedback:
 
 ### PnL Calculation
 - **Unrealized PnL**: Updated every candle based on current close price vs entry
+  - LONG: profit when price goes up (`priceDiff * quantity`)
+  - SHORT: profit when price goes down (`-priceDiff * quantity`)
 - **Realized PnL**: Calculated on position close, added to account balance
-- **Equity**: balance + unrealized PnL of all open positions
+- **Equity**: balance + unrealized PnL of all open positions (displayed prominently in real-time)
 
 ### Game Progression
-- Player sees first 20 candles initially
-- Clicks "Next" to reveal next candle (server increments currentIndex)
-- Opens positions with Buy button (creates Position)
-- Closes positions with Sell button (calculates realized PnL)
-- Game ends at candle 100, shows GameStats
+- Player sees first 50 candles initially (starts at index 49)
+- Clicks "Next" to reveal next candle OR uses Auto-Play with configurable speed
+- Opens LONG positions with "Buy Long" button
+- Opens SHORT positions with "Sell Short" button
+- Closes positions with "Close" button (professional design with XCircle icon)
+- Game ends at candle 500, shows GameStats
 
 ## Configuration
 
@@ -162,9 +166,11 @@ Server evaluates trades and generates feedback:
 - Asset: BTC/USD
 - Timeframe: 1H (hourly candles)
 - Initial balance: $10,000
-- Total candles: 100
-- Visible candles: 50 (window size)
-- Initial visible index: 19 (first 20 candles shown)
+- Total candles: 500
+- Visible candles: 100 (window size)
+- Initial visible index: 49 (first 50 candles shown)
+- Total patterns: 8 (distributed throughout the game)
+- Auto-play speeds: 0.5s, 1s, 2s, 3s (configurable)
 
 ### Environment Variables
 Server uses `.env` file (copy from `.env.example`):

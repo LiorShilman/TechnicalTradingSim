@@ -4,7 +4,7 @@ import { useGameStore } from '@/stores/gameStore'
 export default function AccountInfo() {
   const { gameState } = useGameStore()
 
-  if (!gameState) return null
+  if (!gameState || !gameState.account) return null
 
   const { account } = gameState
   const totalPnL = account.realizedPnL + account.unrealizedPnL
@@ -18,35 +18,44 @@ export default function AccountInfo() {
         <h3 className="font-semibold">חשבון</h3>
       </div>
 
-      {/* Equity */}
-      <div className="bg-dark-bg rounded-lg p-4 mb-3">
-        <div className="text-xs text-text-secondary mb-1">סך הכל</div>
-        <div className="text-3xl font-mono font-bold">
+      {/* Total Balance - הסכום הכולל */}
+      <div className="bg-gradient-to-br from-green-900/30 to-blue-900/30 rounded-lg p-4 mb-3 border-2 border-green-500/40">
+        <div className="text-xs text-text-secondary mb-1 flex justify-between items-center">
+          <span className="font-bold">💰 סה"כ ערך חשבון (כולל פוזיציות)</span>
+          <span className="text-xs bg-green-500/30 px-2 py-0.5 rounded font-semibold animate-pulse">LIVE</span>
+        </div>
+        <div className="text-4xl font-mono font-bold transition-all duration-300 text-green-400">
           ${account.equity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </div>
-        <div className={`flex items-center gap-1 mt-1 ${isProfitable ? 'text-profit' : 'text-loss'}`}>
-          {isProfitable ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
-          <span className="text-sm font-medium">
-            {isProfitable ? '+' : ''}${totalPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-          </span>
-          <span className="text-xs">
-            ({isProfitable ? '+' : ''}{totalPnLPercent.toFixed(2)}%)
-          </span>
+        <div className="mt-2 pt-2 border-t border-green-500/20">
+          <div className="text-xs text-text-secondary mb-1">רווח/הפסד כולל מתחילת המשחק:</div>
+          <div className={`flex items-center gap-1 ${isProfitable ? 'text-profit' : 'text-loss'}`}>
+            {isProfitable ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+            <span className="text-lg font-bold">
+              {isProfitable ? '+' : ''}${totalPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </span>
+            <span className="text-sm">
+              ({isProfitable ? '+' : ''}{totalPnLPercent.toFixed(2)}%)
+            </span>
+          </div>
         </div>
       </div>
 
       {/* Details */}
       <div className="grid grid-cols-2 gap-3 text-sm">
         <div className="bg-dark-bg rounded-lg p-3">
-          <div className="text-xs text-text-secondary mb-1">יתרה חופשית</div>
-          <div className="font-mono font-semibold">
+          <div className="text-xs text-text-secondary mb-1">יתרה חופשית (Balance)</div>
+          <div className="font-mono font-semibold transition-all duration-300">
             ${account.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
         </div>
-        
-        <div className="bg-dark-bg rounded-lg p-3">
-          <div className="text-xs text-text-secondary mb-1">רווח/הפסד לא ממומש</div>
-          <div className={`font-mono font-semibold ${account.unrealizedPnL >= 0 ? 'text-profit' : 'text-loss'}`}>
+
+        <div className="bg-dark-bg rounded-lg p-3 border-l-2 border-l-blue-500">
+          <div className="text-xs text-text-secondary mb-1 flex items-center gap-1">
+            <span>רווח/הפסד פתוח</span>
+            <span className="text-[10px] bg-blue-500/20 px-1 rounded">Live</span>
+          </div>
+          <div className={`font-mono font-semibold transition-all duration-300 ${account.unrealizedPnL >= 0 ? 'text-profit' : 'text-loss'}`}>
             {account.unrealizedPnL >= 0 ? '+' : ''}${account.unrealizedPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>

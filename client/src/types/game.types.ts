@@ -156,6 +156,7 @@ export interface TradeRequest {
   type: 'buy' | 'sell';
   quantity: number;           // כמות ליחידת נכס
   positionId?: string;        // לסגירת פוזיציה ספציפית (sell)
+  positionType?: 'long' | 'short';  // סוג פוזיציה לפתיחה (buy)
 }
 
 /**

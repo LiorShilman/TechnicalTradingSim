@@ -10,9 +10,15 @@ export default function OrderPanel() {
   const quantityNum = parseFloat(quantity) || 0
   const totalValue = currentPrice * quantityNum
 
-  const handleBuy = async () => {
+  const handleBuyLong = async () => {
     if (quantityNum > 0) {
-      await executeTrade('buy', quantityNum)
+      await executeTrade('buy', quantityNum, undefined, 'long')
+    }
+  }
+
+  const handleSellShort = async () => {
+    if (quantityNum > 0) {
+      await executeTrade('buy', quantityNum, undefined, 'short')
     }
   }
 
@@ -50,23 +56,23 @@ export default function OrderPanel() {
       </div>
 
       {/* Trade buttons */}
-      <div className="grid grid-cols-2 gap-3">
+      <div className="space-y-3">
         <button
-          onClick={handleBuy}
+          onClick={handleBuyLong}
           disabled={!canTrade || quantityNum <= 0}
-          className="px-4 py-3 bg-profit hover:bg-green-600 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+          className="w-full px-4 py-3 bg-profit hover:bg-green-600 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
         >
           <TrendingUp size={20} />
-          קנה
+          Buy Long
         </button>
-        
+
         <button
-          disabled={true}
-          className="px-4 py-3 bg-dark-border cursor-not-allowed rounded-lg font-semibold flex items-center justify-center gap-2 opacity-50"
-          title="סגור פוזיציות דרך רשימת הפוזיציות"
+          onClick={handleSellShort}
+          disabled={!canTrade || quantityNum <= 0}
+          className="w-full px-4 py-3 bg-loss hover:bg-red-600 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
         >
           <TrendingDown size={20} />
-          מכור
+          Sell Short
         </button>
       </div>
     </div>

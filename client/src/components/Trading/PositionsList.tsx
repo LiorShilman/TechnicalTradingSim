@@ -1,10 +1,10 @@
-import { X } from 'lucide-react'
+import { XCircle } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
 
 export default function PositionsList() {
   const { gameState, executeTrade, isLoading } = useGameStore()
 
-  if (!gameState) return null
+  if (!gameState || !gameState.positions) return null
 
   const { positions } = gameState
 
@@ -46,10 +46,11 @@ export default function PositionsList() {
                   <button
                     onClick={() => handleClose(position.id)}
                     disabled={isLoading}
-                    className="p-1 hover:bg-dark-panel rounded transition-colors"
+                    className="px-3 py-1 bg-loss hover:bg-red-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5"
                     title="סגור פוזיציה"
                   >
-                    <X size={16} />
+                    <XCircle size={14} />
+                    Close
                   </button>
                 </div>
 
@@ -66,7 +67,7 @@ export default function PositionsList() {
 
                 <div className={`text-sm font-semibold ${isProfitable ? 'text-profit' : 'text-loss'}`}>
                   {isProfitable ? '+' : ''}${position.currentPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  <span className="text-xs mr-1">
+                  <span className="text-xs ml-1">
                     ({isProfitable ? '+' : ''}{position.currentPnLPercent.toFixed(2)}%)
                   </span>
                 </div>

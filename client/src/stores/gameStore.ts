@@ -6,13 +6,17 @@ interface GameStore {
   gameState: GameState | null
   isLoading: boolean
   error: string | null
-  
+  isAutoPlaying: boolean
+  autoPlaySpeed: number // מילישניות בין נרות
+
   // Actions
   initializeGame: () => Promise<void>
   nextCandle: () => Promise<void>
-  executeTrade: (type: 'buy' | 'sell', quantity: number, positionId?: string) => Promise<void>
+  executeTrade: (type: 'buy' | 'sell', quantity: number, positionId?: string, positionType?: 'long' | 'short') => Promise<void>
   resetGame: () => Promise<void>
-  
+  toggleAutoPlay: () => void
+  setAutoPlaySpeed: (speed: number) => void
+
   // Helper
   clearError: () => void
 }
@@ -21,16 +25,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
   gameState: null,
   isLoading: false,
   error: null,
+  isAutoPlaying: false,
+  autoPlaySpeed: 1000, // 1 שנייה ברירת מחדל
 
   initializeGame: async () => {
+    console.log('initializeGame: Starting...')
     set({ isLoading: true, error: null })
     try {
       const response = await api.createGame()
+      console.log('initializeGame: Got response', {
+        hasGame: !!response.game,
+        candleCount: response.game?.candles?.length,
+        currentIndex: response.game?.currentIndex
+      })
       set({ gameState: response.game, isLoading: false })
     } catch (error) {
-      set({ 
+      console.error('initializeGame: Error', error)
+      set({
         error: error instanceof Error ? error.message : 'Failed to create game',
-        isLoading: false 
+        isLoading: false
       })
     }
   },
@@ -42,36 +55,27 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ isLoading: true, error: null })
     try {
       const response = await api.nextCandle(gameState.id)
-      
-      set({ 
-        gameState: {
-          ...gameState,
-          candles: [...gameState.candles, response.candle],
-          currentIndex: response.currentIndex,
-          positions: response.positions,
-          account: response.account,
-          isComplete: response.isComplete,
-          feedbackHistory: response.feedback 
-            ? [...gameState.feedbackHistory, response.feedback]
-            : gameState.feedbackHistory,
-        },
-        isLoading: false 
+
+      // Server returns { game: GameState }, not individual fields
+      set({
+        gameState: (response as any).game || response,
+        isLoading: false
       })
     } catch (error) {
-      set({ 
+      set({
         error: error instanceof Error ? error.message : 'Failed to get next candle',
-        isLoading: false 
+        isLoading: false
       })
     }
   },
 
-  executeTrade: async (type, quantity, positionId) => {
+  executeTrade: async (type, quantity, positionId, positionType) => {
     const { gameState } = get()
     if (!gameState) return
 
     set({ isLoading: true, error: null })
     try {
-      const response = await api.trade(gameState.id, { type, quantity, positionId })
+      const response = await api.trade(gameState.id, { type, quantity, positionId, positionType })
       
       const updatedPositions = type === 'buy'
         ? [...gameState.positions, response.position!]
@@ -102,8 +106,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resetGame: async () => {
-    set({ gameState: null, isLoading: false, error: null })
+    set({ gameState: null, isLoading: false, error: null, isAutoPlaying: false })
     await get().initializeGame()
+  },
+
+  toggleAutoPlay: () => {
+    set({ isAutoPlaying: !get().isAutoPlaying })
+  },
+
+  setAutoPlaySpeed: (speed: number) => {
+    set({ autoPlaySpeed: speed })
   },
 
   clearError: () => set({ error: null }),

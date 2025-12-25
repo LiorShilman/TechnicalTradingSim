@@ -51,8 +51,8 @@ function App() {
     )
   }
 
-  // מסך טעינה
-  if (isLoading) {
+  // מסך טעינה - רק אם אין משחק בכלל
+  if (!gameState) {
     return (
       <div className="h-screen flex items-center justify-center bg-dark-bg">
         <div className="text-center">
@@ -102,7 +102,7 @@ function App() {
         </div>
 
         {/* Right sidebar */}
-        <div className="w-96 bg-dark-panel border-l border-dark-border flex flex-col">
+        <div className="w-96 bg-dark-panel border-r border-dark-border flex flex-col">
           <AccountInfo />
           <OrderPanel />
           <PositionsList />
