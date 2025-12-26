@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useRef, useEffect } from 'react'
 import { TrendingUp, TrendingDown, Settings } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
 
@@ -13,25 +13,48 @@ export default function OrderPanel() {
   const [useRiskManagement, setUseRiskManagement] = useState(false)
   const [riskPercentPerTrade, setRiskPercentPerTrade] = useState('2') // אחוז סיכון לעסקה
 
+  // ✅ FIXED: שמירת ערכים קבועים - לא משתנים עם המחיר!
+  const frozenStopLossPriceRef = useRef<number | undefined>()
+  const frozenTakeProfitPriceRef = useRef<number | undefined>()
+  const frozenRiskRewardRef = useRef<number>(0)
+
   const currentPrice = gameState?.candles[gameState.currentIndex]?.close ?? 0
   const quantityNum = parseFloat(quantity) || 0
-  const totalValue = currentPrice * quantityNum
-  const accountBalance = gameState?.account.balance ?? 0
+  const totalValue = currentPrice * quantityNum  // ✅ זה משתנה - נכון!
   const accountEquity = gameState?.account.equity ?? 0
 
-  // חישוב מחירי SL/TP
-  const stopLossPrice = useStopLoss && currentPrice
-    ? currentPrice * (1 - parseFloat(stopLossPercent || '0') / 100)
-    : undefined
+  // ✅ עדכון ערכים קבועים רק כשהמשתמש משנה הגדרות - לא כשהמחיר משתנה!
+  useEffect(() => {
+    // לוכדים את המחיר הנוכחי ברגע ההפעלה/שינוי הגדרות בלבד
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    const priceAtSettingChange = gameState?.candles[gameState.currentIndex]?.close ?? 0
 
-  const takeProfitPrice = useTakeProfit && currentPrice
-    ? currentPrice * (1 + parseFloat(takeProfitPercent || '0') / 100)
-    : undefined
+    // חישוב SL/TP עם המחיר שנלכד
+    const newSL = useStopLoss && priceAtSettingChange
+      ? priceAtSettingChange * (1 - parseFloat(stopLossPercent || '0') / 100)
+      : undefined
 
-  // חישוב Risk-Reward Ratio
-  const riskRewardRatio = useStopLoss && useTakeProfit
-    ? parseFloat(takeProfitPercent) / parseFloat(stopLossPercent)
-    : 0
+    const newTP = useTakeProfit && priceAtSettingChange
+      ? priceAtSettingChange * (1 + parseFloat(takeProfitPercent || '0') / 100)
+      : undefined
+
+    frozenStopLossPriceRef.current = newSL
+    frozenTakeProfitPriceRef.current = newTP
+
+    // חישוב R:R קבוע
+    if (useStopLoss && useTakeProfit) {
+      frozenRiskRewardRef.current = parseFloat(takeProfitPercent) / parseFloat(stopLossPercent)
+    } else {
+      frozenRiskRewardRef.current = 0
+    }
+    // ⚠️ מכוון לא כוללים gameState/currentIndex - רוצים שהערכים יקפאו!
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useStopLoss, useTakeProfit, stopLossPercent, takeProfitPercent])
+
+  // ✅ משתמש בערכים הקבועים
+  const stopLossPrice = frozenStopLossPriceRef.current
+  const takeProfitPrice = frozenTakeProfitPriceRef.current
+  const riskRewardRatio = frozenRiskRewardRef.current
 
   // חישוב סיכון בדולרים לעסקה
   const riskAmountDollar = useStopLoss && useRiskManagement
@@ -104,13 +127,27 @@ export default function OrderPanel() {
           type="number"
           value={quantity}
           onChange={(e) => setQuantity(e.target.value)}
-          step="0.01"
-          min="0"
+          step="0.001"
+          min="0.001"
           className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-2 font-mono focus:outline-none focus:border-blue-500"
           disabled={!canTrade}
+          placeholder="0.001"
         />
-        <div className="text-xs text-text-secondary mt-1" dir="ltr">
-          סה"כ: ${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        <div className="text-xs text-text-secondary mt-1 space-y-0.5">
+          <div className="flex justify-between items-center">
+            <span>סה"כ:</span>
+            <span className="font-mono font-semibold" dir="ltr">
+              ${totalValue.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+            </span>
+          </div>
+          {accountEquity > 0 && totalValue > 0 && (
+            <div className="flex justify-between items-center">
+              <span>אחוז מהתיק:</span>
+              <span className="font-mono font-semibold" dir="ltr">
+                {((totalValue / accountEquity) * 100).toFixed(2)}%
+              </span>
+            </div>
+          )}
         </div>
       </div>
 
@@ -142,9 +179,13 @@ export default function OrderPanel() {
                   className="w-full bg-dark-panel border border-dark-border rounded px-3 py-1 text-sm font-mono focus:outline-none focus:border-red-500"
                   placeholder="אחוז"
                 />
-                <div className="text-xs text-text-secondary mt-1" dir="ltr">
-                  מחיר: ${stopLossPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  <span className="text-loss mr-2">(-{stopLossPercent}%)</span>
+                <div className="text-xs mt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-text-secondary">מחיר:</span>
+                    <span className="font-mono text-loss" dir="ltr">
+                      ${stopLossPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 })} (-{stopLossPercent}%)
+                    </span>
+                  </div>
                 </div>
               </div>
             )}
@@ -173,9 +214,13 @@ export default function OrderPanel() {
                   className="w-full bg-dark-panel border border-dark-border rounded px-3 py-1 text-sm font-mono focus:outline-none focus:border-green-500"
                   placeholder="אחוז"
                 />
-                <div className="text-xs text-text-secondary mt-1" dir="ltr">
-                  מחיר: ${takeProfitPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-                  <span className="text-profit mr-2">(+{takeProfitPercent}%)</span>
+                <div className="text-xs mt-1">
+                  <div className="flex items-center gap-2">
+                    <span className="text-text-secondary">מחיר:</span>
+                    <span className="font-mono text-profit" dir="ltr">
+                      ${takeProfitPrice?.toLocaleString(undefined, { maximumFractionDigits: 2 })} (+{takeProfitPercent}%)
+                    </span>
+                  </div>
                 </div>
               </div>
             )}

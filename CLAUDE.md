@@ -8,6 +8,16 @@ This is a **technical trading simulation game** for learning pattern recognition
 
 **Key Concept**: The game generates 500 candles with embedded technical patterns (Breakout, Retest, Bull Flag). Players progress manually or automatically through candles, make LONG/SHORT trades, and receive feedback on pattern recognition quality and trade timing.
 
+**NEW: CSV Upload Feature**: The system now supports **uploading CSV files directly from the UI**! Users can export data from TradingView (with all technical indicators) and upload it through the start screen. The system automatically:
+- Parses TradingView CSV format (extracts OHLCV, ignores indicators like POC, VAH, Delta, etc.)
+- **Auto-detects asset name and timeframe** from TradingView export filenames (e.g., "SP_SPX, 1D_07c94.csv" → SP/SPX, 1D)
+- **Detects real patterns** (Breakout, Retest, Bull Flag) in the uploaded data using intelligent algorithms
+- Creates a game with detected patterns for realistic training
+- **Pattern visualization**: Displays detected patterns on charts with colored boxes and markers
+See `CSV_UPLOAD_GUIDE.md` for detailed user instructions.
+
+**LEGACY: File-based Real Data Support**: Still supports loading from `server/data/btc_1h.csv`. See `HOW_TO_USE_REAL_DATA.md`.
+
 ## Development Commands
 
 ### Client (React + Vite)
@@ -74,12 +84,14 @@ Test server health: `curl http://localhost:5000/api/health`
 - `server/src/types/index.ts` - Shared TypeScript types
 
 **Client:**
-- `client/src/stores/gameStore.ts` - Zustand state management
+- `client/src/stores/gameStore.ts` - Zustand state management with localStorage persistence
 - `client/src/services/api.ts` - Axios API client with interceptors
 - `client/src/types/game.types.ts` - Shared TypeScript types (duplicate of server types)
-- `client/src/components/Chart/TradingChart.tsx` - Lightweight Charts integration
-- `client/src/components/Trading/OrderPanel.tsx` - Buy/Sell interface
+- `client/src/components/Chart/TradingChart.tsx` - Lightweight Charts integration with pattern visualization
+- `client/src/components/Trading/OrderPanel.tsx` - Buy/Sell interface with advanced SL/TP and risk management
+- `client/src/components/Trading/AccountInfo.tsx` - Real-time account balance and P&L display
 - `client/src/components/Stats/GameStats.tsx` - End-game statistics display
+- `client/src/App.tsx` - Main app with CSV upload, filename parsing, and balance persistence
 
 ### Technology Stack
 
@@ -160,17 +172,44 @@ Server evaluates trades and generates feedback:
 - Closes positions with "Close" button (professional design with XCircle icon)
 - Game ends at candle 500, shows GameStats
 
+### Advanced Trading Features (OrderPanel)
+The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
+
+**Basic Trading:**
+- Quantity input with 0.001 BTC precision (supports fractional crypto trading)
+- Real-time total value calculation and portfolio percentage display
+- Current price display with live updates
+
+**Advanced Settings (Expandable):**
+- **Stop Loss**: Percentage-based SL with live price calculation
+- **Take Profit**: Percentage-based TP with live price calculation
+- **Risk-Reward Ratio Display**: Automatically calculates and displays R:R ratio (1:X format)
+  - Color coded: Green (≥2:1 excellent), Yellow (≥1:1 acceptable), Red (<1:1 poor)
+
+**Risk Management:**
+- Maximum risk per trade (% of account equity)
+- Real-time risk calculation in dollars and percentage
+- Recommended position size calculator based on risk parameters
+- Risk warning when position size exceeds configured risk tolerance
+- Auto-calculate button to use recommended quantity
+
+**Technical Implementation:**
+- Uses `useRef` to freeze SL/TP/RR values during price changes (prevents UI flicker)
+- Values only recalculate when user changes settings, not on every candle
+- For SHORT positions: SL/TP prices are inverted automatically
+
 ## Configuration
 
 ### Default Game Settings
-- Asset: BTC/USD
-- Timeframe: 1H (hourly candles)
-- Initial balance: $10,000
+- Asset: BTC/USD (auto-detected from CSV filename if uploaded)
+- Timeframe: 1H (auto-detected from CSV filename if uploaded)
+- Initial balance: $10,000 (adjustable in start screen, persists via localStorage)
 - Total candles: 500
 - Visible candles: 100 (window size)
 - Initial visible index: 49 (first 50 candles shown)
 - Total patterns: 8 (distributed throughout the game)
 - Auto-play speeds: 0.5s, 1s, 2s, 3s (configurable)
+- Quantity precision: 0.001 BTC minimum (supports fractional crypto trading)
 
 ### Environment Variables
 Server uses `.env` file (copy from `.env.example`):
@@ -210,6 +249,30 @@ Lightweight Charts (TradingView) integration:
 - Chart instance managed in TradingChart component
 - Data format: `{ time: number, open, high, low, close }` (seconds-based timestamps)
 - Volume displayed as histogram series
+- **Pattern visualization**: Displays detected patterns with colored boxes (green for Breakout, blue for Retest, purple for Bull Flag) and markers
+
+### Balance Persistence with localStorage
+The app persists account balance across sessions using localStorage:
+- Balance saved automatically after every trade execution
+- Balance saved when SL/TP triggers during candle progression
+- Saved balance carried over to new games
+- Reset button available to clear balance and restart with default $10,000
+- Implementation in `gameStore.ts`: saves `account.equity` to `localStorage.carryOverBalance`
+
+### TradingView Filename Parsing
+When uploading CSV files from TradingView, the system auto-detects asset and timeframe:
+- Filename format: `ASSET_TIMEFRAME_XXXXX.csv` (e.g., "SP_SPX_1D_07c94.csv", "BTCUSD_1H_abc123.csv")
+- Handles commas and spaces in filenames: "SP_SPX, 1D_07c94.csv" → SP/SPX, 1D
+- Timeframe patterns: 1m, 5m, 15m, 30m, 1H, 4H, 1D, 1W
+- Asset formatting: Converts underscores to slashes (SP_SPX → SP/SPX)
+- Implementation in `App.tsx`: cleans filename with `.replace(/,\s*/g, '_')` before parsing
+
+### RTL (Right-to-Left) Layout Support
+The UI supports Hebrew text with proper RTL layout:
+- Hebrew labels aligned right, numeric values aligned left using `dir="ltr"`
+- Flexbox alignment: `justify-between` for label-value pairs, `justify-end` for right-aligned numbers
+- Used throughout: OrderPanel, AccountInfo, GameStats components
+- Number formatting: `toLocaleString()` with `maximumFractionDigits` for consistent decimal display
 
 ## Development Workflow
 

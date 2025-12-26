@@ -20,28 +20,32 @@ export default function AccountInfo() {
       </div>
 
       {/* Total Balance - הסכום הכולל */}
-      <div className="bg-gradient-to-br from-green-900/30 to-blue-900/30 rounded-lg p-4 mb-3 border-2 border-green-500/40">
-        <div className="text-xs text-text-secondary mb-1 flex justify-between items-center">
+      <div className="bg-gradient-to-br from-green-900/30 to-blue-900/30 rounded-lg px-2 py-3 mb-3 border-2 border-green-500/40">
+        <div className="text-xs text-text-secondary mb-1 flex justify-between items-center px-2">
           <span className="font-bold">💰 סה"כ ערך חשבון (כולל פוזיציות)</span>
           <span className="text-xs bg-green-500/30 px-2 py-0.5 rounded font-semibold animate-pulse">LIVE</span>
         </div>
-        <div className="text-4xl font-mono font-bold transition-all duration-300 text-green-400" dir="ltr">
-          ${account.equity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+        <div className="w-full overflow-x-auto px-2">
+          <div className="text-2xl font-mono font-bold transition-all duration-300 text-green-400 text-right whitespace-nowrap" dir="ltr">
+            ${account.equity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+          </div>
         </div>
-        <div className="mt-2 pt-2 border-t border-green-500/20 space-y-1">
+        <div className="mt-2 pt-2 border-t border-green-500/20 space-y-1 px-2">
           <div className="flex justify-between items-center text-xs">
             <span className="text-text-secondary">יתרה התחלתית:</span>
             <span className="font-mono text-gray-400" dir="ltr">${account.initialBalance.toLocaleString()}</span>
           </div>
-          <div className="text-xs text-text-secondary mb-1">רווח/הפסד כולל:</div>
-          <div className={`flex items-center gap-1 ${isProfitable ? 'text-profit' : 'text-loss'}`}>
-            {isProfitable ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
-            <span className="text-lg font-bold" dir="ltr">
-              {isProfitable ? '+' : ''}${totalPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
-            </span>
-            <span className="text-sm" dir="ltr">
-              ({isProfitable ? '+' : ''}{totalPnLPercent.toFixed(2)}%)
-            </span>
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-text-secondary">רווח/הפסד כולל:</span>
+            <div className={`flex items-center gap-1 ${isProfitable ? 'text-profit' : 'text-loss'}`}>
+              {isProfitable ? <TrendingUp size={16} /> : <TrendingDown size={16} />}
+              <span className="text-base font-bold font-mono" dir="ltr">
+                {isProfitable ? '+' : ''}${totalPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
+              </span>
+              <span className="text-xs font-mono" dir="ltr">
+                ({isProfitable ? '+' : ''}{totalPnLPercent.toFixed(2)}%)
+              </span>
+            </div>
           </div>
         </div>
       </div>

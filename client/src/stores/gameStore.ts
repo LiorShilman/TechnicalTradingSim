@@ -9,9 +9,12 @@ interface GameStore {
   error: string | null
   isAutoPlaying: boolean
   autoPlaySpeed: number // מילישניות בין נרות
+  chartFitContent: (() => void) | null
+  chartResetZoom: (() => void) | null
 
   // Actions
-  initializeGame: () => Promise<void>
+  initializeGame: (config?: { initialBalance?: number }) => Promise<void>
+  initializeGameWithCSV: (file: File, assetName?: string, timeframe?: string, initialBalance?: number, dateRange?: { start: string; end: string } | null) => Promise<void>
   nextCandle: () => Promise<void>
   executeTrade: (
     type: 'buy' | 'sell',
@@ -24,6 +27,7 @@ interface GameStore {
   resetGame: () => Promise<void>
   toggleAutoPlay: () => void
   setAutoPlaySpeed: (speed: number) => void
+  setChartControls: (fitContent: () => void, resetZoom: () => void) => void
 
   // Helper
   clearError: () => void
@@ -35,12 +39,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
   error: null,
   isAutoPlaying: false,
   autoPlaySpeed: 1000, // 1 שנייה ברירת מחדל
+  chartFitContent: null,
+  chartResetZoom: null,
 
-  initializeGame: async () => {
-    console.log('initializeGame: Starting...')
+  initializeGame: async (config) => {
+    console.log('initializeGame: Starting...', config)
     set({ isLoading: true, error: null })
     try {
-      const response = await api.createGame()
+      const response = await api.createGame(config)
       console.log('initializeGame: Got response', {
         hasGame: !!response.game,
         candleCount: response.game?.candles?.length,
@@ -51,6 +57,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
       console.error('initializeGame: Error', error)
       set({
         error: error instanceof Error ? error.message : 'Failed to create game',
+        isLoading: false
+      })
+    }
+  },
+
+  initializeGameWithCSV: async (file: File, assetName?: string, timeframe?: string, initialBalance?: number, dateRange?: { start: string; end: string } | null) => {
+    console.log('initializeGameWithCSV: Starting with file', file.name, { assetName, timeframe, initialBalance, dateRange })
+    set({ isLoading: true, error: null })
+    try {
+      toast.loading(`מעלה קובץ ${file.name}...`, { id: 'upload' })
+      const response = await api.createGameWithCSV(file, assetName, timeframe, initialBalance, dateRange)
+      toast.success(`✅ קובץ נטען בהצלחה! ${response.game.candles.length} נרות`, { id: 'upload' })
+      console.log('initializeGameWithCSV: Got response', {
+        hasGame: !!response.game,
+        candleCount: response.game?.candles?.length,
+        currentIndex: response.game?.currentIndex,
+        patternsDetected: response.game?.patterns?.length,
+        asset: response.game?.asset,
+        timeframe: response.game?.timeframe
+      })
+      set({ gameState: response.game, isLoading: false })
+    } catch (error) {
+      console.error('initializeGameWithCSV: Error', error)
+      const errorMessage = error instanceof Error ? error.message : 'Failed to upload CSV'
+      toast.error(`❌ שגיאה: ${errorMessage}`, { id: 'upload' })
+      set({
+        error: errorMessage,
         isLoading: false
       })
     }
@@ -87,6 +120,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
             })
           }
         }
+      }
+
+      // ✅ שמירת הסכום המעודכן ל-localStorage
+      if (newGame.account.equity) {
+        localStorage.setItem('carryOverBalance', newGame.account.equity.toString())
       }
 
       // Server returns { game: GameState }, not individual fields
@@ -138,6 +176,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }
 
+      // ✅ שמירת הסכום המעודכן ל-localStorage אחרי כל עסקה
+      if (response.account.equity) {
+        localStorage.setItem('carryOverBalance', response.account.equity.toString())
+        console.log('executeTrade: Updated carry-over balance:', response.account.equity)
+      }
+
       set({
         gameState: {
           ...gameState,
@@ -163,8 +207,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   resetGame: async () => {
+    const { gameState } = get()
+
+    // שמירת הסכום הסופי ל-localStorage
+    if (gameState?.account.equity) {
+      localStorage.setItem('carryOverBalance', gameState.account.equity.toString())
+      console.log('resetGame: Saved carry-over balance:', gameState.account.equity)
+    }
+
+    // איפוס מצב המשחק בלבד - לא יוצר משחק חדש
     set({ gameState: null, isLoading: false, error: null, isAutoPlaying: false })
-    await get().initializeGame()
   },
 
   toggleAutoPlay: () => {
@@ -173,6 +225,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setAutoPlaySpeed: (speed: number) => {
     set({ autoPlaySpeed: speed })
+  },
+
+  setChartControls: (fitContent: () => void, resetZoom: () => void) => {
+    set({ chartFitContent: fitContent, chartResetZoom: resetZoom })
   },
 
   clearError: () => set({ error: null }),
