@@ -37,11 +37,14 @@ export interface Position {
   quantity: number
   currentPnL: number
   currentPnLPercent: number
+  stopLoss?: number        // מחיר Stop Loss
+  takeProfit?: number      // מחיר Take Profit
   exitPrice?: number
   exitTime?: number
   exitIndex?: number
   exitPnL?: number
   exitPnLPercent?: number
+  exitReason?: 'manual' | 'stop_loss' | 'take_profit'  // סיבת סגירה
   patternEntry?: {
     patternType: PatternType
     entryQuality: number
@@ -69,6 +72,9 @@ export interface GameStats {
   sharpeRatio?: number
   patternRecognitionScore: number
   averageEntryQuality: number
+  currentStreak: number  // רצף נוכחי (חיובי = נצחונות, שלילי = הפסדים)
+  maxWinStreak: number   // רצף נצחונות מקסימלי
+  maxLossStreak: number  // רצף הפסדים מקסימלי
   bestTrade?: {
     pnl: number
     pnlPercent: number

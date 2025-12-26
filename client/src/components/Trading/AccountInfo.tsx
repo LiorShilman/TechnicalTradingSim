@@ -7,8 +7,9 @@ export default function AccountInfo() {
   if (!gameState || !gameState.account) return null
 
   const { account } = gameState
-  const totalPnL = account.realizedPnL + account.unrealizedPnL
-  const totalPnLPercent = ((account.equity - account.initialBalance) / account.initialBalance) * 100
+  // הרווח הכולל = Equity - יתרה התחלתית (כולל פוזיציות פתוחות)
+  const totalPnL = account.equity - account.initialBalance
+  const totalPnLPercent = (totalPnL / account.initialBalance) * 100
   const isProfitable = totalPnL >= 0
 
   return (
@@ -24,17 +25,21 @@ export default function AccountInfo() {
           <span className="font-bold">💰 סה"כ ערך חשבון (כולל פוזיציות)</span>
           <span className="text-xs bg-green-500/30 px-2 py-0.5 rounded font-semibold animate-pulse">LIVE</span>
         </div>
-        <div className="text-4xl font-mono font-bold transition-all duration-300 text-green-400">
+        <div className="text-4xl font-mono font-bold transition-all duration-300 text-green-400" dir="ltr">
           ${account.equity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
         </div>
-        <div className="mt-2 pt-2 border-t border-green-500/20">
-          <div className="text-xs text-text-secondary mb-1">רווח/הפסד כולל מתחילת המשחק:</div>
+        <div className="mt-2 pt-2 border-t border-green-500/20 space-y-1">
+          <div className="flex justify-between items-center text-xs">
+            <span className="text-text-secondary">יתרה התחלתית:</span>
+            <span className="font-mono text-gray-400" dir="ltr">${account.initialBalance.toLocaleString()}</span>
+          </div>
+          <div className="text-xs text-text-secondary mb-1">רווח/הפסד כולל:</div>
           <div className={`flex items-center gap-1 ${isProfitable ? 'text-profit' : 'text-loss'}`}>
             {isProfitable ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
-            <span className="text-lg font-bold">
+            <span className="text-lg font-bold" dir="ltr">
               {isProfitable ? '+' : ''}${totalPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
             </span>
-            <span className="text-sm">
+            <span className="text-sm" dir="ltr">
               ({isProfitable ? '+' : ''}{totalPnLPercent.toFixed(2)}%)
             </span>
           </div>
@@ -42,10 +47,10 @@ export default function AccountInfo() {
       </div>
 
       {/* Details */}
-      <div className="grid grid-cols-2 gap-3 text-sm">
+      <div className="grid grid-cols-2 gap-3 text-sm mb-3">
         <div className="bg-dark-bg rounded-lg p-3">
           <div className="text-xs text-text-secondary mb-1">יתרה חופשית (Balance)</div>
-          <div className="font-mono font-semibold transition-all duration-300">
+          <div className="font-mono font-semibold transition-all duration-300" dir="ltr">
             ${account.balance.toLocaleString(undefined, { maximumFractionDigits: 0 })}
           </div>
         </div>
@@ -55,11 +60,44 @@ export default function AccountInfo() {
             <span>רווח/הפסד פתוח</span>
             <span className="text-[10px] bg-blue-500/20 px-1 rounded">Live</span>
           </div>
-          <div className={`font-mono font-semibold transition-all duration-300 ${account.unrealizedPnL >= 0 ? 'text-profit' : 'text-loss'}`}>
+          <div className={`font-mono font-semibold transition-all duration-300 ${account.unrealizedPnL >= 0 ? 'text-profit' : 'text-loss'}`} dir="ltr">
             {account.unrealizedPnL >= 0 ? '+' : ''}${account.unrealizedPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
       </div>
+
+      {/* Drawdown Warning */}
+      {gameState.stats && gameState.stats.maxDrawdownPercent > 0 && (
+        <div className={`rounded-lg p-3 text-xs ${
+          gameState.stats.maxDrawdownPercent >= 20
+            ? 'bg-loss/20 border border-loss/40'
+            : gameState.stats.maxDrawdownPercent >= 10
+            ? 'bg-yellow-500/20 border border-yellow-500/40'
+            : 'bg-dark-bg border border-dark-border'
+        }`}>
+          <div className="flex justify-between items-center mb-1">
+            <span className="text-text-secondary">📉 Drawdown מקסימלי:</span>
+            <span className={`font-mono font-bold ${
+              gameState.stats.maxDrawdownPercent >= 20
+                ? 'text-loss'
+                : gameState.stats.maxDrawdownPercent >= 10
+                ? 'text-yellow-400'
+                : 'text-text-primary'
+            }`} dir="ltr">
+              {gameState.stats.maxDrawdownPercent.toFixed(2)}%
+            </span>
+          </div>
+          <div className="text-[10px] text-text-secondary" dir="ltr">
+            (${gameState.stats.maxDrawdown.toLocaleString(undefined, { maximumFractionDigits: 2 })})
+          </div>
+          {gameState.stats.maxDrawdownPercent >= 20 && (
+            <div className="mt-1 text-loss flex items-center gap-1">
+              <span>⚠️</span>
+              <span>Drawdown גבוה! שקול ניהול סיכון</span>
+            </div>
+          )}
+        </div>
+      )}
     </div>
   )
 }

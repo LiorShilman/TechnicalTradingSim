@@ -57,7 +57,7 @@ export default function PositionsList() {
                 <div className="grid grid-cols-2 gap-2 text-xs mb-2">
                   <div>
                     <span className="text-text-secondary">כניסה: </span>
-                    <span className="font-mono">${position.entryPrice.toLocaleString()}</span>
+                    <span className="font-mono" dir="ltr">${position.entryPrice.toLocaleString()}</span>
                   </div>
                   <div>
                     <span className="text-text-secondary">נר: </span>
@@ -65,12 +65,30 @@ export default function PositionsList() {
                   </div>
                 </div>
 
-                <div className={`text-sm font-semibold ${isProfitable ? 'text-profit' : 'text-loss'}`}>
+                <div className={`text-sm font-semibold ${isProfitable ? 'text-profit' : 'text-loss'}`} dir="ltr">
                   {isProfitable ? '+' : ''}${position.currentPnL.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                   <span className="text-xs ml-1">
                     ({isProfitable ? '+' : ''}{position.currentPnLPercent.toFixed(2)}%)
                   </span>
                 </div>
+
+                {/* Stop Loss / Take Profit */}
+                {(position.stopLoss || position.takeProfit) && (
+                  <div className="mt-2 pt-2 border-t border-dark-border grid grid-cols-2 gap-2 text-xs">
+                    {position.stopLoss && (
+                      <div>
+                        <span className="text-red-400">🛑 SL: </span>
+                        <span className="font-mono" dir="ltr">${position.stopLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      </div>
+                    )}
+                    {position.takeProfit && (
+                      <div>
+                        <span className="text-green-400">🎯 TP: </span>
+                        <span className="font-mono" dir="ltr">${position.takeProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {position.patternEntry && (
                   <div className="mt-2 pt-2 border-t border-dark-border">

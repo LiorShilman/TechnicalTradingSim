@@ -53,11 +53,14 @@ export interface Position {
   quantity: number;           // כמות (למשל 0.5 BTC)
   currentPnL: number;         // Profit/Loss נוכחי
   currentPnLPercent: number;  // אחוזי רווח/הפסד
+  stopLoss?: number;          // מחיר Stop Loss
+  takeProfit?: number;        // מחיר Take Profit
   exitPrice?: number;
   exitTime?: number;
   exitIndex?: number;
   exitPnL?: number;
   exitPnLPercent?: number;
+  exitReason?: 'manual' | 'stop_loss' | 'take_profit';  // סיבת סגירה
   patternEntry?: {            // מידע על התבנית שנכנס בה
     patternType: PatternType;
     entryQuality: number;     // 0-100 איכות הכניסה
@@ -91,6 +94,9 @@ export interface GameStats {
   sharpeRatio?: number;       // אופציונלי - יחס sharpe
   patternRecognitionScore: number;  // 0-100 ציון זיהוי תבניות
   averageEntryQuality: number;      // 0-100 ממוצע איכות כניסות
+  currentStreak: number;      // רצף נוכחי (חיובי = נצחונות, שלילי = הפסדים)
+  maxWinStreak: number;       // רצף נצחונות מקסימלי
+  maxLossStreak: number;      // רצף הפסדים מקסימלי
   bestTrade?: {
     pnl: number;
     pnlPercent: number;
@@ -157,6 +163,8 @@ export interface TradeRequest {
   quantity: number;           // כמות ליחידת נכס
   positionId?: string;        // לסגירת פוזיציה ספציפית (sell)
   positionType?: 'long' | 'short';  // סוג פוזיציה לפתיחה (buy)
+  stopLoss?: number;          // מחיר Stop Loss (buy)
+  takeProfit?: number;        // מחיר Take Profit (buy)
 }
 
 /**

@@ -35,28 +35,107 @@ export function generateCandles(
 }
 
 /**
- * יצירת נר בודד
+ * יצירת נר בודד עם התנהגות המון מציאותית
+ *
+ * עקרונות התנהגות המון:
+ * 1. Mean Reversion - נטייה לחזור למחיר הממוצע
+ * 2. Momentum - המשך מגמה קיימת
+ * 3. Volatility Clustering - תנודתיות גבוהה נוטה להימשך
+ * 4. Volume-Price Relationship - תנועות גדולות עם volume גבוה
  */
+
+// משתנים גלובליים לשמירת מצב בין נרות
+let previousMomentum = 0
+let recentVolatility = 0.003 // אתחול תנודתיות
+let volumeTrend = 1500
+
 function generateSingleCandle(basePrice: number, time: number): Candle {
-  // תנועה אקראית של -0.5% עד +0.5% (ריאליסטי יותר)
-  const change = (Math.random() - 0.5) * 0.01
+  // 1. חישוב Momentum (המשך כיוון)
+  // אם היו כמה נרות עולים, יש סיכוי גבוה יותר לעלייה נוספת
+  const momentumInfluence = previousMomentum * 0.4 // 40% השפעה מהכיוון הקודם
+
+  // 2. Mean Reversion - נטייה חזרה למחיר הממוצע
+  // אם המחיר רחק מדי, יש "משיכה" חזרה
+  const deviation = (basePrice - 50000) / 50000 // סטייה מהמחיר הבסיסי
+  const meanReversionForce = -deviation * 0.1 // כוח משיכה של 10%
+
+  // 3. רעש אקראי (התנהגות לא צפויה של השוק)
+  const randomNoise = (Math.random() - 0.5) * 0.008 // ±0.4%
+
+  // 4. שינוי מחיר משולב
+  let priceChange = momentumInfluence + meanReversionForce + randomNoise
+
+  // 5. Volatility Clustering - תקופות של תנודתיות גבוהה
+  // תנודתיות גבוהה נוטה להימשך
+  const volatilityChange = (Math.random() - 0.5) * 0.0005
+  recentVolatility = Math.max(0.001, Math.min(0.01, recentVolatility + volatilityChange))
+
+  // 6. אירועים נדירים - "spike" - קורים ב-~3% מהנרות
+  if (Math.random() < 0.03) {
+    const spikeDirection = Math.random() > 0.5 ? 1 : -1
+    priceChange += spikeDirection * (0.01 + Math.random() * 0.01) // spike של 1-2%
+    recentVolatility *= 1.5 // תנודתיות עולה אחרי spike
+  }
+
+  // 7. הגבלת שינוי מקסימלי (למנוע קפיצות לא הגיוניות)
+  priceChange = Math.max(-0.025, Math.min(0.025, priceChange)) // מקסימום ±2.5% בנר
+
   const open = basePrice
-  const close = basePrice * (1 + change)
+  const close = basePrice * (1 + priceChange)
 
-  // High/Low עם נדידה קטנה
-  const high = Math.max(open, close) * (1 + Math.random() * 0.003)
-  const low = Math.min(open, close) * (1 - Math.random() * 0.003)
+  // 8. High/Low מציאותי - "wicks" (פתיחות)
+  // נרות עם תנועה חזקה נוטים לקבל wicks גדולים יותר
+  const wickSize = recentVolatility * (1 + Math.random())
+  const upperWick = Math.max(open, close) * (1 + wickSize * Math.random())
+  const lowerWick = Math.min(open, close) * (1 - wickSize * Math.random())
 
-  // Volume אקראי
-  const volume = 1000 + Math.random() * 2000
+  // 9. לפעמים יש "rejection" - wick ארוך בכיוון אחד
+  if (Math.random() < 0.15) { // 15% מהנרות
+    if (Math.random() > 0.5) {
+      // Upper rejection - המחיר ניסה לעלות ונדחה
+      const rejectionSize = recentVolatility * (2 + Math.random() * 2)
+      const high = Math.max(open, close) * (1 + rejectionSize)
+      const low = lowerWick
+
+      // Volume גבוה יותר בrejection
+      const volume = volumeTrend * (1.3 + Math.random() * 0.7)
+
+      // עדכון momentum
+      previousMomentum = priceChange * 0.7 // חלש יותר אחרי rejection
+
+      return { time, open, high, low, close, volume }
+    } else {
+      // Lower rejection - המחיר ניסה לרדת ונדחה
+      const rejectionSize = recentVolatility * (2 + Math.random() * 2)
+      const high = upperWick
+      const low = Math.min(open, close) * (1 - rejectionSize)
+
+      const volume = volumeTrend * (1.3 + Math.random() * 0.7)
+      previousMomentum = priceChange * 0.7
+
+      return { time, open, high, low: Math.max(low, close * 0.9), close, volume }
+    }
+  }
+
+  // 10. Volume מציאותי
+  // Volume גבוה יותר בתנועות חזקות
+  const priceChangeAbs = Math.abs(priceChange)
+  const volumeMultiplier = 1 + (priceChangeAbs * 20) // תנועה של 1% = +20% volume
+
+  // Volume trend - volume נוטה להיות דומה לנרות הקודמים
+  volumeTrend = volumeTrend * 0.95 + (1000 + Math.random() * 2000) * 0.05
+  const volume = volumeTrend * volumeMultiplier * (0.8 + Math.random() * 0.4)
+
+  // 11. עדכון momentum לנר הבא
+  previousMomentum = priceChange
 
   return {
     time,
     open,
-    high,
-    low,
+    high: upperWick,
+    low: lowerWick,
     close,
-    volume,
+    volume: Math.max(100, volume), // מינימום volume
   }
 }
 

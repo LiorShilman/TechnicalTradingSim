@@ -19,10 +19,10 @@ export default function GameStats() {
           <h2 className="text-3xl font-bold mb-2">
             {isWinner ? '🎉 משחק מצוין!' : '📊 סיום משחק'}
           </h2>
-          <div className={`text-4xl font-mono font-bold ${isWinner ? 'text-profit' : 'text-loss'}`}>
+          <div className={`text-4xl font-mono font-bold ${isWinner ? 'text-profit' : 'text-loss'}`} dir="ltr">
             {isWinner ? '+' : ''}{totalReturn.toFixed(2)}%
           </div>
-          <div className="text-text-secondary mt-1">
+          <div className="text-text-secondary mt-1" dir="ltr">
             ${account.equity.toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
@@ -85,8 +85,34 @@ export default function GameStats() {
                 value={`${stats.maxDrawdownPercent.toFixed(1)}%`}
                 color="loss"
               />
+              <StatCard
+                label="רצף נצחונות מקס׳"
+                value={`🔥 ${stats.maxWinStreak}`}
+                color={stats.maxWinStreak >= 3 ? 'profit' : undefined}
+              />
+              <StatCard
+                label="רצף הפסדים מקס׳"
+                value={`❄️ ${stats.maxLossStreak}`}
+                color={stats.maxLossStreak >= 3 ? 'loss' : undefined}
+              />
             </div>
           </div>
+
+          {/* Current Streak */}
+          {stats.currentStreak !== 0 && (
+            <div className={`rounded-lg p-4 border-2 ${
+              stats.currentStreak > 0
+                ? 'bg-profit/10 border-profit/40'
+                : 'bg-loss/10 border-loss/40'
+            }`}>
+              <div className="text-center">
+                <div className="text-xs text-text-secondary mb-1">רצף נוכחי</div>
+                <div className={`text-3xl font-bold ${stats.currentStreak > 0 ? 'text-profit' : 'text-loss'}`}>
+                  {stats.currentStreak > 0 ? '🔥' : '❄️'} {Math.abs(stats.currentStreak)} {stats.currentStreak > 0 ? 'נצחונות' : 'הפסדים'} ברצף!
+                </div>
+              </div>
+            </div>
+          )}
 
           {/* Pattern Recognition */}
           <div>
@@ -113,10 +139,10 @@ export default function GameStats() {
             <div>
               <h3 className="font-semibold mb-3">עסקה הטובה ביותר</h3>
               <div className="bg-dark-bg rounded-lg p-4 border-r-4 border-profit">
-                <div className="text-profit text-2xl font-mono font-bold">
+                <div className="text-profit text-2xl font-mono font-bold" dir="ltr">
                   +${stats.bestTrade.pnl.toLocaleString(undefined, { maximumFractionDigits: 2 })}
                 </div>
-                <div className="text-sm text-text-secondary mt-1">
+                <div className="text-sm text-text-secondary mt-1" dir="ltr">
                   {stats.bestTrade.patternType} | +{stats.bestTrade.pnlPercent.toFixed(2)}%
                 </div>
               </div>
@@ -144,7 +170,7 @@ function StatCard({ label, value, color }: { label: string; value: string | numb
       <div className="text-xs text-text-secondary mb-1">{label}</div>
       <div className={`text-xl font-mono font-bold ${
         color === 'profit' ? 'text-profit' : color === 'loss' ? 'text-loss' : 'text-text-primary'
-      }`}>
+      }`} dir="ltr">
         {value}
       </div>
     </div>

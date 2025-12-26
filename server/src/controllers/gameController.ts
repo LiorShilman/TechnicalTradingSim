@@ -49,6 +49,9 @@ export const createGame = async (req: Request, res: Response) => {
         maxDrawdownPercent: 0,
         patternRecognitionScore: 0,
         averageEntryQuality: 0,
+        currentStreak: 0,
+        maxWinStreak: 0,
+        maxLossStreak: 0,
       },
       feedbackHistory: [],
       isComplete: false,
@@ -135,8 +138,136 @@ export const nextCandle = async (req: Request, res: Response) => {
     game.currentIndex = newIndex
     const currentCandle = game.candles[newIndex]
 
-    // 2. עדכון PnL של פוזיציות פתוחות
+    // 2. בדיקת Stop Loss / Take Profit והסרת פוזיציות שנפגעו
+    const positionsToClose: Array<{ position: any; reason: 'stop_loss' | 'take_profit' }> = []
+
+    for (const position of game.positions) {
+      const currentPrice = currentCandle.close
+      let shouldClose = false
+      let closeReason: 'stop_loss' | 'take_profit' | undefined
+
+      // בדיקת Stop Loss / Take Profit
+      if (position.type === 'long') {
+        // LONG: SL למטה, TP למעלה
+        if (position.stopLoss && currentPrice <= position.stopLoss) {
+          shouldClose = true
+          closeReason = 'stop_loss'
+        } else if (position.takeProfit && currentPrice >= position.takeProfit) {
+          shouldClose = true
+          closeReason = 'take_profit'
+        }
+      } else {
+        // SHORT: SL למעלה, TP למטה
+        if (position.stopLoss && currentPrice >= position.stopLoss) {
+          shouldClose = true
+          closeReason = 'stop_loss'
+        } else if (position.takeProfit && currentPrice <= position.takeProfit) {
+          shouldClose = true
+          closeReason = 'take_profit'
+        }
+      }
+
+      if (shouldClose && closeReason) {
+        positionsToClose.push({ position, reason: closeReason })
+      }
+    }
+
+    // סגירת הפוזיציות שנפגעו
+    for (const { position, reason } of positionsToClose) {
+      const exitPrice = currentCandle.close
+      const priceDiff = exitPrice - position.entryPrice
+
+      let exitPnL: number
+      let exitPnLPercent: number
+
+      if (position.type === 'long') {
+        exitPnL = priceDiff * position.quantity
+        exitPnLPercent = (priceDiff / position.entryPrice) * 100
+      } else {
+        exitPnL = -priceDiff * position.quantity
+        exitPnLPercent = (-priceDiff / position.entryPrice) * 100
+      }
+
+      const closedPosition = {
+        ...position,
+        exitPrice,
+        exitTime: currentCandle.time,
+        exitIndex: game.currentIndex,
+        exitPnL,
+        exitPnLPercent,
+        exitReason: reason,
+      }
+
+      // עדכון חשבון
+      const returnAmount = position.entryPrice * position.quantity + exitPnL
+      game.account.balance += returnAmount
+      game.account.realizedPnL += exitPnL
+
+      // הסרת הפוזיציה מהרשימה
+      const posIndex = game.positions.findIndex(p => p.id === position.id)
+      if (posIndex !== -1) {
+        game.positions.splice(posIndex, 1)
+      }
+
+      // הוספה לפוזיציות סגורות
+      game.closedPositions.push(closedPosition)
+
+      // עדכון סטטיסטיקות
+      const isWin = exitPnL > 0
+
+      if (isWin) {
+        game.stats.winningTrades++
+        game.stats.averageWin =
+          (game.stats.averageWin * (game.stats.winningTrades - 1) + exitPnL) / game.stats.winningTrades
+
+        // עדכון Win Streak
+        if (game.stats.currentStreak >= 0) {
+          game.stats.currentStreak++
+        } else {
+          game.stats.currentStreak = 1
+        }
+
+        // עדכון Max Win Streak
+        if (game.stats.currentStreak > game.stats.maxWinStreak) {
+          game.stats.maxWinStreak = game.stats.currentStreak
+        }
+      } else {
+        game.stats.losingTrades++
+        game.stats.averageLoss =
+          (game.stats.averageLoss * (game.stats.losingTrades - 1) + Math.abs(exitPnL)) / game.stats.losingTrades
+
+        // עדכון Loss Streak
+        if (game.stats.currentStreak <= 0) {
+          game.stats.currentStreak--
+        } else {
+          game.stats.currentStreak = -1
+        }
+
+        // עדכון Max Loss Streak
+        if (Math.abs(game.stats.currentStreak) > game.stats.maxLossStreak) {
+          game.stats.maxLossStreak = Math.abs(game.stats.currentStreak)
+        }
+      }
+
+      game.stats.winRate = (game.stats.winningTrades / game.stats.totalTrades) * 100
+
+      if (game.stats.averageLoss > 0) {
+        game.stats.profitFactor = game.stats.averageWin / game.stats.averageLoss
+      }
+
+      // יצירת feedback
+      const reasonText = reason === 'stop_loss' ? 'Stop Loss' : 'Take Profit'
+      const feedbackType = exitPnL >= 0 ? 'success' : 'warning'
+      game.feedbackHistory.push({
+        type: feedbackType as 'success' | 'warning',
+        message: `${reasonText} הופעל! ${exitPnL >= 0 ? 'רווח' : 'הפסד'}: $${Math.abs(exitPnL).toLocaleString(undefined, { maximumFractionDigits: 2 })} (${exitPnLPercent.toFixed(2)}%)`,
+        timestamp: Date.now(),
+      })
+    }
+
+    // 3. עדכון PnL של פוזיציות פתוחות שנשארו
     let totalUnrealizedPnL = 0
+    let totalPositionValue = 0 // סכום מושקע בפוזיציות
 
     for (const position of game.positions) {
       const currentPrice = currentCandle.close
@@ -153,13 +284,16 @@ export const nextCandle = async (req: Request, res: Response) => {
       }
 
       totalUnrealizedPnL += position.currentPnL
+      // הוספת ערך הפוזיציה (הסכום המקורי שהושקע)
+      totalPositionValue += position.entryPrice * position.quantity
     }
 
-    // 3. עדכון חשבון
+    // 4. עדכון חשבון
     game.account.unrealizedPnL = totalUnrealizedPnL
-    game.account.equity = game.account.balance + totalUnrealizedPnL
+    // Equity = כסף חופשי + ערך הפוזיציות + רווח/הפסד לא ממומש
+    game.account.equity = game.account.balance + totalPositionValue + totalUnrealizedPnL
 
-    // 4. בדיקה אם יש תבנית באזור
+    // 5. בדיקה אם יש תבנית באזור
     const feedback = []
     for (const pattern of game.patterns) {
       // אם אנחנו קרובים להתחלת תבנית (5 נרות לפני)
@@ -200,7 +334,7 @@ export const nextCandle = async (req: Request, res: Response) => {
 export const executeTrade = async (req: Request, res: Response) => {
   try {
     const { gameId } = req.params
-    const { type, quantity, positionId, positionType } = req.body
+    const { type, quantity, positionId, positionType, stopLoss, takeProfit } = req.body
     const game = games.get(gameId)
 
     if (!game) {
@@ -235,6 +369,8 @@ export const executeTrade = async (req: Request, res: Response) => {
         quantity,
         currentPnL: 0,
         currentPnLPercent: 0,
+        stopLoss: stopLoss,
+        takeProfit: takeProfit,
       }
 
       // 3. בדיקה אם נכנסו בתבנית
@@ -344,23 +480,64 @@ export const executeTrade = async (req: Request, res: Response) => {
         exitIndex: game.currentIndex,
         exitPnL,
         exitPnLPercent,
+        exitReason: 'manual' as const,
       }
 
       // 4. עדכון חשבון
       const returnAmount = position.entryPrice * position.quantity + exitPnL
       game.account.balance += returnAmount
       game.account.realizedPnL += exitPnL
-      game.account.equity = game.account.balance // עדכון equity
+
+      // חישוב Equity מחדש (כולל פוזיציות פתוחות שנשארו)
+      // קודם נסיר את הפוזיציה הנוכחית מהרשימה
+      game.positions.splice(positionIndex, 1)
+
+      // עכשיו נחשב את סך הפוזיציות שנשארו
+      let totalUnrealizedPnL = 0
+      let totalPositionValue = 0
+      for (const pos of game.positions) {
+        totalPositionValue += pos.entryPrice * pos.quantity
+        totalUnrealizedPnL += pos.currentPnL
+      }
+
+      game.account.unrealizedPnL = totalUnrealizedPnL
+      game.account.equity = game.account.balance + totalPositionValue + totalUnrealizedPnL
 
       // 5. עדכון סטטיסטיקות
-      if (exitPnL > 0) {
+      const isWin = exitPnL > 0
+
+      if (isWin) {
         game.stats.winningTrades++
         game.stats.averageWin =
           (game.stats.averageWin * (game.stats.winningTrades - 1) + exitPnL) / game.stats.winningTrades
+
+        // עדכון Win Streak
+        if (game.stats.currentStreak >= 0) {
+          game.stats.currentStreak++
+        } else {
+          game.stats.currentStreak = 1
+        }
+
+        // עדכון Max Win Streak
+        if (game.stats.currentStreak > game.stats.maxWinStreak) {
+          game.stats.maxWinStreak = game.stats.currentStreak
+        }
       } else {
         game.stats.losingTrades++
         game.stats.averageLoss =
           (game.stats.averageLoss * (game.stats.losingTrades - 1) + Math.abs(exitPnL)) / game.stats.losingTrades
+
+        // עדכון Loss Streak
+        if (game.stats.currentStreak <= 0) {
+          game.stats.currentStreak--
+        } else {
+          game.stats.currentStreak = -1
+        }
+
+        // עדכון Max Loss Streak
+        if (Math.abs(game.stats.currentStreak) > game.stats.maxLossStreak) {
+          game.stats.maxLossStreak = Math.abs(game.stats.currentStreak)
+        }
       }
 
       game.stats.winRate = (game.stats.winningTrades / game.stats.totalTrades) * 100
@@ -378,8 +555,7 @@ export const executeTrade = async (req: Request, res: Response) => {
         game.stats.maxDrawdownPercent = (drawdown / initialBalance) * 100
       }
 
-      // 6. הסרת פוזיציה מהרשימה והוספה לפוזיציות סגורות
-      game.positions.splice(positionIndex, 1)
+      // 6. הוספה לפוזיציות סגורות (הפוזיציה כבר הוסרה למעלה)
       game.closedPositions.push(closedPosition)
 
       // 7. יצירת feedback
