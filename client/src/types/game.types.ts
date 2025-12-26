@@ -91,7 +91,9 @@ export interface GameStats {
   profitFactor: number;       // סך רווחים / סך הפסדים
   maxDrawdown: number;        // הירידה המקסימלית
   maxDrawdownPercent: number;
-  sharpeRatio?: number;       // אופציונלי - יחס sharpe
+  sharpeRatio: number;        // יחס Sharpe - תשואה מתואמת סיכון
+  sortinoRatio: number;       // יחס Sortino - תשואה מתואמת תנודתיות שלילית
+  calmarRatio: number;        // יחס Calmar - תשואה חלקי Drawdown מקסימלי
   patternRecognitionScore: number;  // 0-100 ציון זיהוי תבניות
   averageEntryQuality: number;      // 0-100 ממוצע איכות כניסות
   currentStreak: number;      // רצף נוכחי (חיובי = נצחונות, שלילי = הפסדים)
@@ -142,6 +144,7 @@ export interface GameState {
   asset: string;              // למשל 'BTC/USD'
   timeframe: string;          // למשל '1H'
   totalCandles: number;       // סך הכל נרות במשחק
+  priceStep?: number;         // רזולוציית מחיר (למשל 0.01 = 2 decimal places)
 }
 
 /**

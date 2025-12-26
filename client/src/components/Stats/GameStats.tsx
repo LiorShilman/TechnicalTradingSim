@@ -98,6 +98,34 @@ export default function GameStats() {
             </div>
           </div>
 
+          {/* Advanced Statistics */}
+          <div>
+            <div className="flex items-center gap-2 mb-3">
+              <Award size={20} className="text-green-400" />
+              <h3 className="font-semibold">מדדים מתקדמים</h3>
+            </div>
+            <div className="grid grid-cols-3 gap-4">
+              <StatCard
+                label="Sharpe Ratio"
+                value={stats.sharpeRatio.toFixed(2)}
+                color={stats.sharpeRatio > 1 ? 'profit' : stats.sharpeRatio > 0 ? undefined : 'loss'}
+              />
+              <StatCard
+                label="Sortino Ratio"
+                value={stats.sortinoRatio.toFixed(2)}
+                color={stats.sortinoRatio > 1 ? 'profit' : stats.sortinoRatio > 0 ? undefined : 'loss'}
+              />
+              <StatCard
+                label="Calmar Ratio"
+                value={stats.calmarRatio.toFixed(2)}
+                color={stats.calmarRatio > 0 ? 'profit' : 'loss'}
+              />
+            </div>
+            <div className="mt-2 text-xs text-text-secondary bg-dark-bg rounded p-2">
+              📊 Sharpe & Sortino: {'>'}1 = טוב, {'>'}2 = מצוין | Calmar: ככל שגבוה יותר = טוב יותר
+            </div>
+          </div>
+
           {/* Current Streak */}
           {stats.currentStreak !== 0 && (
             <div className={`rounded-lg p-4 border-2 ${

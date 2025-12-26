@@ -37,6 +37,34 @@ export const api = {
   },
 
   /**
+   * יצירת משחק חדש מקובץ CSV
+   */
+  createGameWithCSV: async (file: File, assetName?: string, timeframe?: string, initialBalance?: number, dateRange?: { start: string; end: string } | null): Promise<NewGameResponse> => {
+    const formData = new FormData()
+    formData.append('csvFile', file)
+    if (assetName) {
+      formData.append('assetName', assetName)
+    }
+    if (timeframe) {
+      formData.append('timeframe', timeframe)
+    }
+    if (initialBalance !== undefined) {
+      formData.append('initialBalance', initialBalance.toString())
+    }
+    if (dateRange) {
+      formData.append('startDate', dateRange.start)
+      formData.append('endDate', dateRange.end)
+    }
+
+    const response = await apiClient.post<NewGameResponse>('/game/upload-csv', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    })
+    return response.data
+  },
+
+  /**
    * קבלת נר הבא
    */
   nextCandle: async (gameId: string): Promise<NextCandleResponse> => {

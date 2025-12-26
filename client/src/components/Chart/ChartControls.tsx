@@ -2,16 +2,14 @@ import { ChevronRight, RotateCcw, Play, Pause } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
 import { useEffect } from 'react'
 
-export default function ChartControls() {
+export function CandleCounter() {
   const {
     gameState,
-    nextCandle,
-    resetGame,
     isLoading,
     isAutoPlaying,
     autoPlaySpeed,
-    toggleAutoPlay,
-    setAutoPlaySpeed
+    nextCandle,
+    toggleAutoPlay
   } = useGameStore()
 
   const canProgress = gameState && !gameState.isComplete
@@ -35,10 +33,32 @@ export default function ChartControls() {
   }, [gameState?.isComplete, isAutoPlaying, toggleAutoPlay])
 
   return (
-    <div className="flex items-center gap-3">
-      <div className="text-sm text-text-secondary">
+    <div className="text-sm text-text-secondary">
         נר {gameState?.currentIndex ?? 0} מתוך {gameState?.totalCandles ?? 0}
       </div>
+  )
+}
+
+export default function ChartControls() {
+  const {
+    gameState,
+    isAutoPlaying,
+    isLoading,
+    autoPlaySpeed,
+    nextCandle,
+    resetGame,
+    toggleAutoPlay,
+    setAutoPlaySpeed,
+    chartFitContent,
+    chartResetZoom,
+    executeTrade
+  } = useGameStore()
+
+  const canProgress = gameState && !gameState.isComplete
+
+  return (
+    <div className="flex items-center gap-3">
+      <CandleCounter/>
 
       {/* כפתור Play/Pause */}
       <button
@@ -84,6 +104,48 @@ export default function ChartControls() {
         title="התחל משחק חדש"
       >
         <RotateCcw size={20} />
+      </button>
+
+      {/* מפריד */}
+      <div className="h-8 w-px bg-dark-border mx-1"></div>
+
+      {/* כפתורי בקרת גרף */}
+      <button
+        onClick={chartFitContent || undefined}
+        disabled={!chartFitContent}
+        className="px-3 py-2 bg-blue-600/90 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors"
+        title="התאם גרף לתוכן"
+      >
+        📏 התאם
+      </button>
+      <button
+        onClick={chartResetZoom || undefined}
+        disabled={!chartResetZoom}
+        className="px-3 py-2 bg-purple-600/90 hover:bg-purple-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors"
+        title="איפוס זום"
+      >
+        🔍 איפוס
+      </button>
+
+      {/* מפריד */}
+      <div className="h-8 w-px bg-dark-border mx-1"></div>
+
+      {/* כפתורי BUY/SELL מהירים */}
+      <button
+        onClick={() => executeTrade('buy', 0.01, undefined, 'long')}
+        disabled={!gameState || isLoading}
+        className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold text-sm transition-all"
+        title="קנייה מהירה LONG (0.01 BTC)"
+      >
+        BUY LONG
+      </button>
+      <button
+        onClick={() => executeTrade('buy', 0.01, undefined, 'short')}
+        disabled={!gameState || isLoading}
+        className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold text-sm transition-all"
+        title="מכירה מהירה SHORT (0.01 BTC)"
+      >
+        SELL SHORT
       </button>
     </div>
   )

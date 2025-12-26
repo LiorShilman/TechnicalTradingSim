@@ -1,6 +1,6 @@
 /**
  * מנוע ייצור תבניות טכניות
- * 
+ *
  * קובץ זה אחראי על יצירת תבניות טכניות בתוך מערך נרות.
  * כל תבנית כוללת מטה-דאטה על נקודות כניסה/יציאה אידיאליות.
  */
@@ -8,88 +8,81 @@
 import type { Pattern, Candle } from '../types/index.js'
 
 /**
- * יצירת תבנית Breakout
+ * יצירת תבנית Breakout עדינה ומציאותית
  *
  * תהליך:
- * 1. יצירת consolidation (10-15 נרות בטווח צר)
- * 2. נר breakout (גדול עם volume)
- * 3. המשך כיוון (3-5 נרות)
+ * 1. יצירת consolidation (15-20 נרות בטווח צר)
+ * 2. נר breakout קטן (0.2-0.5% למעלה)
+ * 3. המשך כיוון (5-8 נרות קטנים)
  */
 export function generateBreakoutPattern(
   candles: Candle[],
   startIndex: number
 ): Pattern {
-  const consolidationLength = 12 + Math.floor(Math.random() * 4) // 12-15 נרות
-  const continuationLength = 3 + Math.floor(Math.random() * 3) // 3-5 נרות
+  const consolidationLength = 15 + Math.floor(Math.random() * 6) // 15-20 נרות
+  const continuationLength = 5 + Math.floor(Math.random() * 4) // 5-8 נרות
   const endIndex = startIndex + consolidationLength + 1 + continuationLength
 
-  // בדיקה שיש מספיק נרות
   if (endIndex >= candles.length) {
     throw new Error('Not enough candles for pattern generation')
   }
 
-  const basePrice = candles[startIndex].close
-  const consolidationRange = basePrice * 0.02 // 2% טווח
-  const resistanceLevel = basePrice + consolidationRange / 2
+  const startPrice = candles[startIndex].close
 
-  // שלב 1: Consolidation - נרות בטווח צר
+  // שלב 1: Consolidation - תנועה קטנה בטווח צר של ±0.3%
   for (let i = 0; i < consolidationLength; i++) {
     const idx = startIndex + i
-    const prevClose = i === 0 ? basePrice : candles[idx - 1].close
+    const prevClose = i === 0 ? startPrice : candles[idx - 1].close
 
-    // תנועה קטנה בתוך הטווח
-    const change = (Math.random() - 0.5) * 0.01 // -0.5% עד +0.5%
-    const open = prevClose
+    // תנועה זעירה ±0.1%
+    const change = (Math.random() - 0.5) * 0.002 // ±0.1%
     const close = prevClose * (1 + change)
-
-    // שמירה בטווח ההתנגדות
-    const adjustedClose = Math.min(close, resistanceLevel * 0.98)
 
     candles[idx] = {
       time: candles[idx].time,
-      open,
-      high: Math.max(open, adjustedClose) * (1 + Math.random() * 0.005),
-      low: Math.min(open, adjustedClose) * (1 - Math.random() * 0.005),
-      close: adjustedClose,
+      open: prevClose,
+      high: Math.max(prevClose, close) * 1.001,
+      low: Math.min(prevClose, close) * 0.999,
+      close,
       volume: 1000 + Math.random() * 1000,
     }
   }
 
-  // שלב 2: Breakout candle - נר שובר את ההתנגדות
+  // שלב 2: Breakout candle - עלייה קטנה של 0.2-0.5%
   const breakoutIdx = startIndex + consolidationLength
   const breakoutOpen = candles[breakoutIdx - 1].close
-  const breakoutMove = 0.015 + Math.random() * 0.01 // 1.5-2.5% תנועה למעלה (הפחתה)
+  const breakoutMove = 0.002 + Math.random() * 0.003 // 0.2-0.5%
   const breakoutClose = breakoutOpen * (1 + breakoutMove)
 
   candles[breakoutIdx] = {
     time: candles[breakoutIdx].time,
     open: breakoutOpen,
-    high: breakoutClose * 1.005,
-    low: breakoutOpen * 0.998,
+    high: breakoutClose * 1.001,
+    low: breakoutOpen * 0.999,
     close: breakoutClose,
-    volume: 2500 + Math.random() * 1500, // Volume גבוה
+    volume: 2500 + Math.random() * 1500,
   }
 
-  // שלב 3: Continuation - המשך למעלה
+  // שלב 3: Continuation - המשך עדין למעלה
   for (let i = 1; i <= continuationLength; i++) {
     const idx = breakoutIdx + i
     const prevClose = candles[idx - 1].close
-    const change = 0.005 + Math.random() * 0.008 // 0.5-1.3% למעלה (הפחתה)
+    const change = 0.0005 + Math.random() * 0.001 // 0.05-0.15% בלבד
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * (1 + change) * 1.003,
-      low: prevClose * 0.997,
+      high: prevClose * (1 + change) * 1.0005,
+      low: prevClose * 0.9995,
       close: prevClose * (1 + change),
       volume: 1500 + Math.random() * 1000,
     }
   }
 
-  // חישוב נקודות כניסה/יציאה
-  const expectedEntry = breakoutClose * 1.002 // כניסה מעט אחרי הBreakout
-  const expectedExit = breakoutClose * 1.05 // יציאה ב-5% רווח
-  const stopLoss = resistanceLevel * 0.99 // Stop מתחת להתנגדות הישנה
+  const breakoutClose_final = candles[breakoutIdx].close
+  const expectedEntry = breakoutClose_final * 1.001
+  const expectedExit = breakoutClose_final * 1.02 // יעד צנוע של 2%
+  const stopLoss = startPrice * 0.995
 
   return {
     type: 'breakout',
@@ -99,97 +92,91 @@ export function generateBreakoutPattern(
     expectedExit,
     stopLoss,
     metadata: {
-      quality: 75 + Math.floor(Math.random() * 20), // 75-95
-      description: 'שבירת התנגדות עם המשך עליה',
-      hint: 'שים לב לשבירת רמת ההתנגדות עם נפח גבוה',
+      quality: 75 + Math.floor(Math.random() * 20),
+      description: 'שבירת טווח קונסולידציה',
+      hint: 'שים לב לשבירת הטווח עם נפח גבוה',
     },
   }
 }
 
 /**
- * יצירת תבנית Retest
+ * יצירת תבנית Retest עדינה
  *
  * תהליך:
- * 1. שבירת רמה (breakout)
- * 2. חזרה לרמה (retest)
- * 3. ריבאונד והמשך
+ * 1. עלייה הדרגתית (5-8 נרות)
+ * 2. ירידה קלה (6-9 נרות)
+ * 3. המשך למעלה (6-9 נרות)
  */
 export function generateRetestPattern(
   candles: Candle[],
   startIndex: number
 ): Pattern {
-  const breakoutLength = 3 + Math.floor(Math.random() * 3) // 3-5 נרות breakout
-  const pullbackLength = 4 + Math.floor(Math.random() * 3) // 4-6 נרות pullback
-  const bounceLength = 4 + Math.floor(Math.random() * 3) // 4-6 נרות bounce
-  const endIndex = startIndex + breakoutLength + pullbackLength + bounceLength
+  const upLength = 5 + Math.floor(Math.random() * 4) // 5-8 נרות
+  const pullbackLength = 6 + Math.floor(Math.random() * 4) // 6-9 נרות
+  const bounceLength = 6 + Math.floor(Math.random() * 4) // 6-9 נרות
+  const endIndex = startIndex + upLength + pullbackLength + bounceLength
 
   if (endIndex >= candles.length) {
     throw new Error('Not enough candles for pattern generation')
   }
 
-  const basePrice = candles[startIndex].close
-  const resistanceLevel = basePrice * 1.03 // התנגדות 3% מעל
+  const startPrice = candles[startIndex].close
 
-  // שלב 1: Breakout - שבירת ההתנגדות
-  for (let i = 0; i < breakoutLength; i++) {
+  // שלב 1: עלייה הדרגתית - 0.1-0.2% בכל נר
+  for (let i = 0; i < upLength; i++) {
     const idx = startIndex + i
-    const prevClose = i === 0 ? basePrice : candles[idx - 1].close
-    const change = 0.008 + Math.random() * 0.008 // 0.8-1.6% למעלה (הפחתה)
+    const prevClose = i === 0 ? startPrice : candles[idx - 1].close
+    const change = 0.001 + Math.random() * 0.001 // 0.1-0.2%
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * (1 + change) * 1.005,
-      low: prevClose * 0.995,
+      high: prevClose * (1 + change) * 1.0005,
+      low: prevClose * 0.9995,
       close: prevClose * (1 + change),
       volume: 2000 + Math.random() * 1500,
     }
   }
 
-  const breakoutHigh = candles[startIndex + breakoutLength - 1].close
+  const topPrice = candles[startIndex + upLength - 1].close
 
-  // שלב 2: Pullback - חזרה לרמת ההתנגדות (שהפכה לתמיכה)
+  // שלב 2: Pullback קל - ירידה של 0.05-0.1% בכל נר
   for (let i = 0; i < pullbackLength; i++) {
-    const idx = startIndex + breakoutLength + i
+    const idx = startIndex + upLength + i
     const prevClose = candles[idx - 1].close
-    const change = -0.005 - Math.random() * 0.01 // -0.5% עד -1.5% למטה
-
-    const close = prevClose * (1 + change)
-    // שמירה מעל רמת התמיכה (ההתנגדות הישנה)
-    const adjustedClose = Math.max(close, resistanceLevel * 1.001)
+    const change = -0.0005 - Math.random() * 0.0005 // -0.05% עד -0.1%
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * 1.003,
-      low: Math.min(prevClose, adjustedClose) * 0.997,
-      close: adjustedClose,
+      high: prevClose * 1.001,
+      low: prevClose * (1 + change) * 0.9995,
+      close: prevClose * (1 + change),
       volume: 1200 + Math.random() * 800,
     }
   }
 
-  // נקודת ה-Retest
-  const retestPrice = candles[startIndex + breakoutLength + pullbackLength - 1].close
+  const retestPrice = candles[startIndex + upLength + pullbackLength - 1].close
 
-  // שלב 3: Bounce - ריבאונד מהרמה והמשך למעלה
+  // שלב 3: Bounce - המשך למעלה
   for (let i = 0; i < bounceLength; i++) {
-    const idx = startIndex + breakoutLength + pullbackLength + i
+    const idx = startIndex + upLength + pullbackLength + i
     const prevClose = candles[idx - 1].close
-    const change = 0.01 + Math.random() * 0.008 // 1-1.8% למעלה (הפחתה)
+    const change = 0.0005 + Math.random() * 0.001 // 0.05-0.15%
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * (1 + change) * 1.003,
-      low: prevClose * 0.998,
+      high: prevClose * (1 + change) * 1.0005,
+      low: prevClose * 0.9995,
       close: prevClose * (1 + change),
       volume: 1800 + Math.random() * 1200,
     }
   }
 
-  const expectedEntry = retestPrice * 1.005 // כניסה אחרי אישור ה-bounce
-  const expectedExit = retestPrice * 1.06 // יציאה ב-6% רווח
-  const stopLoss = resistanceLevel * 0.98 // Stop מתחת לתמיכה
+  const expectedEntry = retestPrice * 1.002
+  const expectedExit = retestPrice * 1.03 // יעד צנוע של 3%
+  const stopLoss = startPrice * 0.995
 
   return {
     type: 'retest',
@@ -199,97 +186,91 @@ export function generateRetestPattern(
     expectedExit,
     stopLoss,
     metadata: {
-      quality: 80 + Math.floor(Math.random() * 15), // 80-95
-      description: 'Retest מוצלח של התנגדות שנשברה',
-      hint: 'חפש אישור על רמת התמיכה החדשה (ההתנגדות הישנה)',
+      quality: 80 + Math.floor(Math.random() * 15),
+      description: 'Retest מוצלח של רמת תמיכה',
+      hint: 'חפש אישור על רמת התמיכה',
     },
   }
 }
 
 /**
- * יצירת תבנית Bull Flag
+ * יצירת תבנית Bull Flag עדינה
  *
  * תהליך:
- * 1. תנועה חזקה למעלה (pole)
- * 2. קונסולידציה קלה למטה (flag)
- * 3. המשך למעלה (breakout)
+ * 1. עלייה הדרגתית (pole: 6-9 נרות)
+ * 2. ירידה קלה (flag: 8-12 נרות)
+ * 3. המשך למעלה (breakout: 4-6 נרות)
  */
 export function generateBullFlagPattern(
   candles: Candle[],
   startIndex: number
 ): Pattern {
-  const poleLength = 4 + Math.floor(Math.random() * 3) // 4-6 נרות pole
-  const flagLength = 5 + Math.floor(Math.random() * 4) // 5-8 נרות flag
-  const breakoutLength = 3 + Math.floor(Math.random() * 3) // 3-5 נרות breakout
+  const poleLength = 6 + Math.floor(Math.random() * 4) // 6-9 נרות
+  const flagLength = 8 + Math.floor(Math.random() * 5) // 8-12 נרות
+  const breakoutLength = 4 + Math.floor(Math.random() * 3) // 4-6 נרות
   const endIndex = startIndex + poleLength + flagLength + breakoutLength
 
   if (endIndex >= candles.length) {
     throw new Error('Not enough candles for pattern generation')
   }
 
-  const basePrice = candles[startIndex].close
+  const startPrice = candles[startIndex].close
 
-  // שלב 1: Pole - תנועה חזקה למעלה
+  // שלב 1: Pole - עלייה הדרגתית
   for (let i = 0; i < poleLength; i++) {
     const idx = startIndex + i
-    const prevClose = i === 0 ? basePrice : candles[idx - 1].close
-    const change = 0.012 + Math.random() * 0.01 // 1.2-2.2% למעלה (הפחתה)
+    const prevClose = i === 0 ? startPrice : candles[idx - 1].close
+    const change = 0.001 + Math.random() * 0.001 // 0.1-0.2%
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * (1 + change) * 1.005,
-      low: prevClose * 0.998,
+      high: prevClose * (1 + change) * 1.0005,
+      low: prevClose * 0.9995,
       close: prevClose * (1 + change),
       volume: 2200 + Math.random() * 1500,
     }
   }
 
   const poleTop = candles[startIndex + poleLength - 1].close
-  const flagBottom = poleTop * 0.95 // Flag יורד עד 5% מהפסגה
 
-  // שלב 2: Flag - קונסולידציה יורדת קלה
+  // שלב 2: Flag - ירידה עדינה מאוד
   for (let i = 0; i < flagLength; i++) {
     const idx = startIndex + poleLength + i
     const prevClose = candles[idx - 1].close
-
-    // ירידה הדרגתית
-    const progress = i / flagLength
-    const targetPrice = poleTop - (poleTop - flagBottom) * progress
-    const change = (targetPrice - prevClose) / prevClose
-    const adjustedChange = Math.max(change, -0.015) // לא יותר מ-1.5% ירידה בנר
+    const change = -0.0003 - Math.random() * 0.0003 // -0.03% עד -0.06%
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * 1.005,
-      low: prevClose * (1 + adjustedChange) * 0.997,
-      close: prevClose * (1 + adjustedChange),
-      volume: 900 + Math.random() * 600, // Volume נמוך
+      high: prevClose * 1.001,
+      low: prevClose * (1 + change) * 0.999,
+      close: prevClose * (1 + change),
+      volume: 900 + Math.random() * 600,
     }
   }
 
   const flagEnd = candles[startIndex + poleLength + flagLength - 1].close
 
-  // שלב 3: Breakout - שבירה מהדגל והמשך למעלה
+  // שלב 3: Breakout - המשך למעלה
   for (let i = 0; i < breakoutLength; i++) {
     const idx = startIndex + poleLength + flagLength + i
     const prevClose = candles[idx - 1].close
-    const change = 0.012 + Math.random() * 0.01 // 1.2-2.2% למעלה (הפחתה)
+    const change = 0.0008 + Math.random() * 0.001 // 0.08-0.18%
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * (1 + change) * 1.005,
-      low: prevClose * 0.997,
+      high: prevClose * (1 + change) * 1.0005,
+      low: prevClose * 0.9995,
       close: prevClose * (1 + change),
       volume: 2000 + Math.random() * 1300,
     }
   }
 
-  const expectedEntry = poleTop * 1.002 // כניסה בשבירת פסגת ה-Pole
-  const expectedExit = expectedEntry * 1.08 // יציאה ב-8% רווח (תנועה בגודל ה-Pole)
-  const stopLoss = flagBottom * 0.98 // Stop מתחת לתחתית הדגל
+  const expectedEntry = poleTop * 1.001
+  const expectedExit = poleTop * 1.025 // יעד צנוע של 2.5%
+  const stopLoss = flagEnd * 0.995
 
   return {
     type: 'flag',
@@ -299,9 +280,9 @@ export function generateBullFlagPattern(
     expectedExit,
     stopLoss,
     metadata: {
-      quality: 70 + Math.floor(Math.random() * 20), // 70-90
+      quality: 70 + Math.floor(Math.random() * 20),
       description: 'דגל עולה - המשך מגמה',
-      hint: 'דגל עולה לאחר תנועה חזקה - חפש שבירה של פסגת הדגל',
+      hint: 'דגל עולה לאחר תנועה חזקה',
     },
   }
 }

@@ -37,3 +37,16 @@ Thumbs.db
 
 # TypeScript
 *.tsbuildinfo
+
+# Test data (sample CSV files)
+test-data/
+
+# Backup files
+*.backup
+
+# Claude settings
+.claude/settings.local.json
+
+# Server data (CSV files and scripts)
+server/data/
+server/scripts/

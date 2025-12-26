@@ -1,19 +1,88 @@
 import { Request, Response } from 'express'
 import { v4 as uuidv4 } from 'uuid'
 import { generateCandlesWithPatterns } from '../services/candleGenerator.js'
+import { parseCSVContent } from '../services/historyLoader.js'
+import { detectPatterns } from '../services/patternDetector.js'
 import type { GameState } from '../types/index.js'
 
 // Temporary in-memory storage (replace with DB later)
 const games = new Map<string, GameState>()
 
 /**
+ * חישוב סטיית תקן (Standard Deviation)
+ */
+function calculateStandardDeviation(values: number[]): number {
+  if (values.length === 0) return 0
+  const mean = values.reduce((sum, val) => sum + val, 0) / values.length
+  const variance = values.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
+  return Math.sqrt(variance)
+}
+
+/**
+ * חישוב Downside Deviation (רק תנודתיות שלילית)
+ */
+function calculateDownsideDeviation(values: number[]): number {
+  if (values.length === 0) return 0
+  const mean = values.reduce((sum, val) => sum + val, 0) / values.length
+  const negativeValues = values.filter(v => v < mean)
+  if (negativeValues.length === 0) return 0
+  const variance = negativeValues.reduce((sum, val) => sum + Math.pow(val - mean, 2), 0) / values.length
+  return Math.sqrt(variance)
+}
+
+/**
+ * עדכון Sharpe, Sortino, Calmar Ratios
+ */
+function updateAdvancedStats(game: GameState) {
+  const closedPositions = game.closedPositions
+
+  // צריכים לפחות 2 עסקאות לחישוב מדויק
+  if (closedPositions.length < 2) {
+    game.stats.sharpeRatio = 0
+    game.stats.sortinoRatio = 0
+    game.stats.calmarRatio = 0
+    return
+  }
+
+  // חישוב תשואות לכל עסקה (באחוזים)
+  const returns = closedPositions
+    .filter(p => p.exitPnLPercent !== undefined)
+    .map(p => p.exitPnLPercent as number)
+
+  if (returns.length === 0) {
+    game.stats.sharpeRatio = 0
+    game.stats.sortinoRatio = 0
+    game.stats.calmarRatio = 0
+    return
+  }
+
+  const averageReturn = returns.reduce((sum, r) => sum + r, 0) / returns.length
+  const riskFreeRate = 0 // בקריפטו בדרך כלל 0
+
+  // 1. Sharpe Ratio = (תשואה ממוצעת - risk-free rate) / סטיית תקן
+  const stdDev = calculateStandardDeviation(returns)
+  game.stats.sharpeRatio = stdDev > 0 ? (averageReturn - riskFreeRate) / stdDev : 0
+
+  // 2. Sortino Ratio = (תשואה ממוצעת - risk-free rate) / downside deviation
+  const downsideDev = calculateDownsideDeviation(returns)
+  game.stats.sortinoRatio = downsideDev > 0 ? (averageReturn - riskFreeRate) / downsideDev : 0
+
+  // 3. Calmar Ratio = תשואה כוללת (%) / Max Drawdown (%)
+  const totalReturnPercent = ((game.account.equity - game.account.initialBalance) / game.account.initialBalance) * 100
+  game.stats.calmarRatio = game.stats.maxDrawdownPercent > 0
+    ? totalReturnPercent / game.stats.maxDrawdownPercent
+    : 0
+}
+
+/**
  * יצירת משחק חדש
  */
 export const createGame = async (req: Request, res: Response) => {
   try {
-    console.log('Creating new game...')
+    console.log('Creating new game...', req.body)
 
     const gameId = uuidv4()
+    const initialBalance = req.body?.initialBalance || 10000
 
     // 1. יצירת נרות עם תבניות
     const totalCandles = 500 // הגדלנו ל-500 נרות
@@ -26,12 +95,12 @@ export const createGame = async (req: Request, res: Response) => {
       id: gameId,
       candles,
       patterns,
-      currentIndex: 49, // מתחילים עם 50 נרות גלויים (0-49)
+      currentIndex: 0, // מתחילים עם 50 נרות גלויים (0-49)
       visibleCandles: 100, // הגדלנו את חלון התצוגה ל-100
       account: {
-        balance: 10000,
-        equity: 10000,
-        initialBalance: 10000,
+        balance: initialBalance,
+        equity: initialBalance,
+        initialBalance: initialBalance,
         realizedPnL: 0,
         unrealizedPnL: 0,
       },
@@ -47,6 +116,9 @@ export const createGame = async (req: Request, res: Response) => {
         profitFactor: 0,
         maxDrawdown: 0,
         maxDrawdownPercent: 0,
+        sharpeRatio: 0,
+        sortinoRatio: 0,
+        calmarRatio: 0,
         patternRecognitionScore: 0,
         averageEntryQuality: 0,
         currentStreak: 0,
@@ -69,6 +141,158 @@ export const createGame = async (req: Request, res: Response) => {
     console.error('Error creating game:', error)
     res.status(500).json({
       error: 'Failed to create game',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+}
+
+/**
+ * יצירת משחק חדש מקובץ CSV
+ */
+export const createGameFromCSV = async (req: Request, res: Response) => {
+  try {
+    console.log('Creating game from uploaded CSV...')
+
+    if (!req.file) {
+      return res.status(400).json({
+        error: 'No file uploaded',
+        message: 'Please upload a CSV file',
+      })
+    }
+
+    const gameId = uuidv4()
+
+    // קבלת asset, timeframe, initialBalance ו-dateRange מה-request body (אופציונלי)
+    const assetName = req.body.assetName || 'BTC/USD (Real Data)'
+    const timeframe = req.body.timeframe || '1H'
+    const initialBalance = req.body.initialBalance ? parseFloat(req.body.initialBalance) : 10000
+    const startDate = req.body.startDate
+    const endDate = req.body.endDate
+    console.log(`Asset: ${assetName}, Timeframe: ${timeframe}, Initial Balance: ${initialBalance}`)
+    if (startDate && endDate) {
+      console.log(`Date Range: ${startDate} to ${endDate}`)
+    }
+
+    // 1. פרסור קובץ CSV
+    const csvContent = req.file.buffer.toString('utf-8')
+    console.log(`Parsing CSV file: ${req.file.originalname} (${req.file.size} bytes)`)
+
+    let candles
+    try {
+      candles = parseCSVContent(csvContent)
+    } catch (parseError) {
+      console.error('CSV parsing error:', parseError)
+      return res.status(400).json({
+        error: 'Invalid CSV format',
+        message: parseError instanceof Error ? parseError.message : 'Failed to parse CSV',
+      })
+    }
+
+    console.log(`✅ Loaded ${candles.length} candles from CSV`)
+
+    // 2. סינון לפי טווח תאריכים (אם סופק)
+    if (startDate && endDate) {
+      const startTimestamp = new Date(startDate).getTime() / 1000 // המרה לUnix seconds
+      const endTimestamp = new Date(endDate).getTime() / 1000 + 86400 // כולל יום סיום (86400 = 24 שעות)
+
+      const originalLength = candles.length
+      candles = candles.filter(candle => {
+        return candle.time >= startTimestamp && candle.time < endTimestamp
+      })
+
+      console.log(`📅 Filtered by date range: ${originalLength} → ${candles.length} candles`)
+    }
+
+    if (candles.length < 100) {
+      return res.status(400).json({
+        error: 'Insufficient data',
+        message: `CSV must contain at least 100 candles after filtering (found ${candles.length})`,
+      })
+    }
+
+    // 2. זיהוי דפוסים בדאטה הריאלי
+    const patternCount = 8
+    console.log(`🔍 Detecting patterns in real data...`)
+    const patterns = detectPatterns(candles, patternCount)
+    console.log(`✅ Detected ${patterns.length} patterns`)
+
+    // 3. חישוב רזולוציית מחיר (price step) מהדאטה
+    let priceStep = 0.01 // ברירת מחדל
+    if (candles.length > 0) {
+      // מוצאים את המחיר הקטן ביותר
+      const samplePrices = candles.slice(0, 100).flatMap(c => [c.open, c.high, c.low, c.close])
+      const minPrice = Math.min(...samplePrices)
+
+      // קובעים רזולוציה לפי גודל המחיר
+      if (minPrice < 1) {
+        priceStep = 0.0001 // 4 decimal places (crypto pairs like ETH/BTC)
+      } else if (minPrice < 100) {
+        priceStep = 0.01 // 2 decimal places (small stocks, some crypto)
+      } else if (minPrice < 1000) {
+        priceStep = 0.1 // 1 decimal place
+      } else {
+        priceStep = 1 // whole numbers (BTC, stocks like TSLA)
+      }
+
+      console.log(`💵 Auto-detected price step: ${priceStep} (min price: ${minPrice.toFixed(4)})`)
+    }
+
+    // 4. קביעת totalCandles - נשתמש בכל הדאטה או עד 500 נרות
+    const totalCandles = Math.min(candles.length, 500)
+    const usedCandles = candles.slice(0, totalCandles)
+
+    // 4. אתחול מצב משחק
+    const game: GameState = {
+      id: gameId,
+      candles: usedCandles,
+      patterns,
+      currentIndex: 0, // מתחילים עם 50 נרות גלויים
+      visibleCandles: 100,
+      account: {
+        balance: initialBalance,
+        equity: initialBalance,
+        initialBalance: initialBalance,
+        realizedPnL: 0,
+        unrealizedPnL: 0,
+      },
+      positions: [],
+      closedPositions: [],
+      stats: {
+        totalTrades: 0,
+        winningTrades: 0,
+        losingTrades: 0,
+        winRate: 0,
+        averageWin: 0,
+        averageLoss: 0,
+        profitFactor: 0,
+        maxDrawdown: 0,
+        maxDrawdownPercent: 0,
+        sharpeRatio: 0,
+        sortinoRatio: 0,
+        calmarRatio: 0,
+        patternRecognitionScore: 0,
+        averageEntryQuality: 0,
+        currentStreak: 0,
+        maxWinStreak: 0,
+        maxLossStreak: 0,
+      },
+      feedbackHistory: [],
+      isComplete: false,
+      asset: assetName,
+      timeframe: timeframe,
+      totalCandles,
+      priceStep,
+    }
+
+    // 5. שמירה במאגר
+    games.set(gameId, game)
+
+    console.log(`🎮 Game ${gameId} created from CSV with ${patterns.length} detected patterns`)
+    return res.json({ game })
+  } catch (error) {
+    console.error('Error creating game from CSV:', error)
+    return res.status(500).json({
+      error: 'Failed to create game from CSV',
       message: error instanceof Error ? error.message : 'Unknown error',
     })
   }
@@ -254,6 +478,9 @@ export const nextCandle = async (req: Request, res: Response) => {
       if (game.stats.averageLoss > 0) {
         game.stats.profitFactor = game.stats.averageWin / game.stats.averageLoss
       }
+
+      // עדכון Sharpe, Sortino, Calmar Ratios
+      updateAdvancedStats(game)
 
       // יצירת feedback
       const reasonText = reason === 'stop_loss' ? 'Stop Loss' : 'Take Profit'
@@ -557,6 +784,9 @@ export const executeTrade = async (req: Request, res: Response) => {
 
       // 6. הוספה לפוזיציות סגורות (הפוזיציה כבר הוסרה למעלה)
       game.closedPositions.push(closedPosition)
+
+      // 7. עדכון Sharpe, Sortino, Calmar Ratios
+      updateAdvancedStats(game)
 
       // 7. יצירת feedback
       const feedbackType = exitPnL >= 0 ? 'success' : 'warning'

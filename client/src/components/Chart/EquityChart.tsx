@@ -1,5 +1,5 @@
 import { useEffect, useRef } from 'react'
-import { createChart, IChartApi, ISeriesApi } from 'lightweight-charts'
+import { createChart, IChartApi, ISeriesApi, Time } from 'lightweight-charts'
 import { useGameStore } from '@/stores/gameStore'
 import { TrendingUp } from 'lucide-react'
 
@@ -75,12 +75,12 @@ export default function EquityChart() {
 
     // בניית מערך של נקודות Equity
     // כל נר = נקודת equity אחת
-    const equityData: { time: number; value: number }[] = []
+    const equityData: { time: Time; value: number }[] = []
 
     // נתחיל מהיתרה ההתחלתית
     const initialBalance = gameState.account.initialBalance
     equityData.push({
-      time: gameState.candles[0]?.time || 0,
+      time: (gameState.candles[0]?.time || 0) as Time,
       value: initialBalance,
     })
 
@@ -129,7 +129,7 @@ export default function EquityChart() {
       currentEquity = balance + totalPositionValue + unrealizedPnL
 
       equityData.push({
-        time: candle.time,
+        time: candle.time as Time,
         value: currentEquity,
       })
     }

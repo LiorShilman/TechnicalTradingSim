@@ -2,6 +2,7 @@
  * מנוע ייצור נרות
  *
  * קובץ זה אחראי על יצירת נתוני מחירים (נרות) באופן ריאליסטי.
+ * תומך גם בטעינת נתונים אמיתיים מקובץ CSV.
  */
 
 import type { Candle } from '../types/index.js'
@@ -10,6 +11,7 @@ import {
   generateRetestPattern,
   generateBullFlagPattern,
 } from './patternGenerator.js'
+import { loadDefaultHistory } from './historyLoader.js'
 
 /**
  * יצירת נרות בסיסיים עם תנועת מחיר אקראית
@@ -60,45 +62,45 @@ function generateSingleCandle(basePrice: number, time: number): Candle {
   const meanReversionForce = -deviation * 0.1 // כוח משיכה של 10%
 
   // 3. רעש אקראי (התנהגות לא צפויה של השוק)
-  const randomNoise = (Math.random() - 0.5) * 0.008 // ±0.4%
+  const randomNoise = (Math.random() - 0.5) * 0.0003 // ±0.015% בלבד (הפחתה ענקית)
 
   // 4. שינוי מחיר משולב
   let priceChange = momentumInfluence + meanReversionForce + randomNoise
 
   // 5. Volatility Clustering - תקופות של תנודתיות גבוהה
   // תנודתיות גבוהה נוטה להימשך
-  const volatilityChange = (Math.random() - 0.5) * 0.0005
-  recentVolatility = Math.max(0.001, Math.min(0.01, recentVolatility + volatilityChange))
+  const volatilityChange = (Math.random() - 0.5) * 0.00005
+  recentVolatility = Math.max(0.0001, Math.min(0.0005, recentVolatility + volatilityChange))
 
-  // 6. אירועים נדירים - "spike" - קורים ב-~3% מהנרות
-  if (Math.random() < 0.03) {
+  // 6. אירועים נדירים - "spike/gap" - קורים ב-~0.5% מהנרות בלבד (הפחתה דרסטית)
+  if (Math.random() < 0.003) { // 0.3% בלבד
     const spikeDirection = Math.random() > 0.5 ? 1 : -1
-    priceChange += spikeDirection * (0.01 + Math.random() * 0.01) // spike של 1-2%
-    recentVolatility *= 1.5 // תנודתיות עולה אחרי spike
+    priceChange += spikeDirection * (0.0003 + Math.random() * 0.0007) // spike של 0.03-0.1% בלבד
+    recentVolatility *= 1.05 // תנודתיות עולה קצת
   }
 
   // 7. הגבלת שינוי מקסימלי (למנוע קפיצות לא הגיוניות)
-  priceChange = Math.max(-0.025, Math.min(0.025, priceChange)) // מקסימום ±2.5% בנר
+  priceChange = Math.max(-0.002, Math.min(0.002, priceChange)) // מקסימום ±0.2% בנר בלבד
 
   const open = basePrice
   const close = basePrice * (1 + priceChange)
 
-  // 8. High/Low מציאותי - "wicks" (פתיחות)
-  // נרות עם תנועה חזקה נוטים לקבל wicks גדולים יותר
-  const wickSize = recentVolatility * (1 + Math.random())
-  const upperWick = Math.max(open, close) * (1 + wickSize * Math.random())
-  const lowerWick = Math.min(open, close) * (1 - wickSize * Math.random())
+  // 8. High/Low מציאותי - "wicks" (פתילות)
+  // פתילות זעירות - ממש מינימליות
+  const wickSize = recentVolatility * (0.1 + Math.random() * 0.15) // פתילות קטנות מאוד
+  const upperWick = Math.max(open, close) * (1 + wickSize * Math.random() * 0.2)
+  const lowerWick = Math.min(open, close) * (1 - wickSize * Math.random() * 0.2)
 
-  // 9. לפעמים יש "rejection" - wick ארוך בכיוון אחד
-  if (Math.random() < 0.15) { // 15% מהנרות
+  // 9. לפעמים יש "rejection" - wick ארוך בכיוון אחד (נדיר מאוד)
+  if (Math.random() < 0.02) { // 2% מהנרות בלבד
     if (Math.random() > 0.5) {
       // Upper rejection - המחיר ניסה לעלות ונדחה
-      const rejectionSize = recentVolatility * (2 + Math.random() * 2)
+      const rejectionSize = recentVolatility * (0.3 + Math.random() * 0.3) // פתילה קטנה
       const high = Math.max(open, close) * (1 + rejectionSize)
       const low = lowerWick
 
       // Volume גבוה יותר בrejection
-      const volume = volumeTrend * (1.3 + Math.random() * 0.7)
+      const volume = volumeTrend * (1.1 + Math.random() * 0.3)
 
       // עדכון momentum
       previousMomentum = priceChange * 0.7 // חלש יותר אחרי rejection
@@ -106,14 +108,14 @@ function generateSingleCandle(basePrice: number, time: number): Candle {
       return { time, open, high, low, close, volume }
     } else {
       // Lower rejection - המחיר ניסה לרדת ונדחה
-      const rejectionSize = recentVolatility * (2 + Math.random() * 2)
+      const rejectionSize = recentVolatility * (0.3 + Math.random() * 0.3) // פתילה קטנה
       const high = upperWick
       const low = Math.min(open, close) * (1 - rejectionSize)
 
-      const volume = volumeTrend * (1.3 + Math.random() * 0.7)
+      const volume = volumeTrend * (1.1 + Math.random() * 0.3)
       previousMomentum = priceChange * 0.7
 
-      return { time, open, high, low: Math.max(low, close * 0.9), close, volume }
+      return { time, open, high, low: Math.max(low, close * 0.99), close, volume }
     }
   }
 
@@ -142,20 +144,36 @@ function generateSingleCandle(basePrice: number, time: number): Candle {
 /**
  * יצירת נרות עם תבניות מוגדרות
  *
- * פונקציה זו משתמשת ב-patternGenerator כדי ליצור נרות
- * עם תבניות טכניות מוגדרות מראש.
+ * פונקציה זו מנסה לטעון נתוני היסטוריה אמיתיים מקובץ.
+ * אם לא נמצא קובץ, היא יוצרת נרות סינטטיים.
  */
 export function generateCandlesWithPatterns(
   totalCount: number = 500,
-  patternCount: number = 8
+  patternCount: number = 4 // הפחתה מ-8 ל-4 תבניות
 ): { candles: Candle[]; patterns: any[] } {
-  // 1. יצירת נרות בסיסיים
-  const candles = generateCandles(totalCount)
+  // 1. ניסיון לטעון נתונים אמיתיים מקובץ
+  let candles: Candle[] = []
+  const realData = loadDefaultHistory()
+
+  if (realData && realData.length >= totalCount) {
+    console.log(`✅ Using real historical data (${realData.length} candles available)`)
+    // קח רק את הכמות הנדרשת מהסוף (הנתונים האחרונים)
+    candles = realData.slice(-totalCount)
+  } else {
+    if (realData) {
+      console.log(`⚠️  Real data found but only ${realData.length} candles (need ${totalCount}), generating synthetic data`)
+    } else {
+      console.log(`ℹ️  No real data found, generating synthetic candles`)
+    }
+    // 1. יצירת נרות סינטטיים
+    candles = generateCandles(totalCount)
+  }
+
   const patterns: any[] = []
 
   // 2. חישוב מיקומים לתבניות - מפוזרים לאורך המשחק
   const patternTypes: Array<'breakout' | 'retest' | 'flag'> = ['breakout', 'retest', 'flag']
-  const minGap = 20 // מרווח מינימלי בין תבניות (הגדלנו)
+  const minGap = 60 // מרווח מינימלי בין תבניות (הגדלה משמעותית מ-20)
   const usedRanges: Array<{ start: number; end: number }> = []
 
   // 3. יצירת תבניות
@@ -217,6 +235,35 @@ export function generateCandlesWithPatterns(
 
   // מיון התבניות לפי startIndex
   patterns.sort((a, b) => a.startIndex - b.startIndex)
+
+  // תיקון: אחרי כל תבנית, עדכן את הנרות הבאים כדי להמשיך מהמחיר הנכון
+  for (const pattern of patterns) {
+    const patternEndIndex = pattern.endIndex
+    if (patternEndIndex < candles.length - 1) {
+      // עדכן את כל הנרות שאחרי התבנית להתחיל מהמחיר הנכון
+      for (let i = patternEndIndex + 1; i < candles.length; i++) {
+        // בדיקה אם הנר הזה לא חלק מתבנית אחרת
+        const isPartOfAnotherPattern = patterns.some(p =>
+          i >= p.startIndex && i <= p.endIndex
+        )
+
+        if (isPartOfAnotherPattern) {
+          break // עצור אם הגענו לתבנית הבאה
+        }
+
+        const prevClose = candles[i - 1].close
+        const oldOpen = candles[i].open
+        const oldClose = candles[i].close
+        const priceChange = (oldClose - oldOpen) / oldOpen
+
+        // עדכן את הנר להתחיל מהמחיר הקודם האמיתי
+        candles[i].open = prevClose
+        candles[i].close = prevClose * (1 + priceChange)
+        candles[i].high = Math.max(candles[i].open, candles[i].close) * (1 + Math.random() * 0.0002)
+        candles[i].low = Math.min(candles[i].open, candles[i].close) * (1 - Math.random() * 0.0002)
+      }
+    }
+  }
 
   return { candles, patterns }
 }

@@ -69,7 +69,9 @@ export interface GameStats {
   profitFactor: number
   maxDrawdown: number
   maxDrawdownPercent: number
-  sharpeRatio?: number
+  sharpeRatio: number        // יחס Sharpe - תשואה מתואמת סיכון
+  sortinoRatio: number       // יחס Sortino - תשואה מתואמת תנודתיות שלילית
+  calmarRatio: number        // יחס Calmar - תשואה חלקי Drawdown מקסימלי
   patternRecognitionScore: number
   averageEntryQuality: number
   currentStreak: number  // רצף נוכחי (חיובי = נצחונות, שלילי = הפסדים)
@@ -114,4 +116,5 @@ export interface GameState {
   asset: string
   timeframe: string
   totalCandles: number
+  priceStep?: number
 }

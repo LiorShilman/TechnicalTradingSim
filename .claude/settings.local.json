@@ -8,7 +8,25 @@
       "Bash(git remote add:*)",
       "Bash(git branch:*)",
       "Bash(git push:*)",
-      "Bash(powershell -Command:*)"
+      "Bash(powershell -Command:*)",
+      "Bash(git clone:*)",
+      "Bash(git mv:*)",
+      "Bash(npm install)",
+      "Bash(npm run dev:*)",
+      "Bash(netstat:*)",
+      "Bash(findstr:*)",
+      "Bash(taskkill:*)",
+      "Bash(curl:*)",
+      "Bash(node -e:*)",
+      "Bash(cat:*)",
+      "Bash(npm install:*)",
+      "Bash(npm run build:*)",
+      "Bash(npm run kill-port:*)",
+      "Bash(timeout:*)",
+      "Bash(del OrderPanel.tsx)",
+      "Bash(ls:*)",
+      "Bash(git checkout:*)",
+      "Bash(git fetch:*)"
     ]
   }
 }
