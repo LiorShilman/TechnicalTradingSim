@@ -162,13 +162,14 @@ export const createGameFromCSV = async (req: Request, res: Response) => {
 
     const gameId = uuidv4()
 
-    // קבלת asset, timeframe, initialBalance ו-dateRange מה-request body (אופציונלי)
+    // קבלת asset, timeframe, initialBalance, startIndex ו-dateRange מה-request body (אופציונלי)
     const assetName = req.body.assetName || 'BTC/USD (Real Data)'
     const timeframe = req.body.timeframe || '1H'
     const initialBalance = req.body.initialBalance ? parseFloat(req.body.initialBalance) : 10000
+    const startIndex = req.body.startIndex ? parseInt(req.body.startIndex) : 0 // אינדקס התחלתי (לטעינת משחק שמור)
     const startDate = req.body.startDate
     const endDate = req.body.endDate
-    console.log(`Asset: ${assetName}, Timeframe: ${timeframe}, Initial Balance: ${initialBalance}`)
+    console.log(`Asset: ${assetName}, Timeframe: ${timeframe}, Initial Balance: ${initialBalance}, Start Index: ${startIndex}`)
     if (startDate && endDate) {
       console.log(`Date Range: ${startDate} to ${endDate}`)
     }
@@ -237,16 +238,16 @@ export const createGameFromCSV = async (req: Request, res: Response) => {
       console.log(`💵 Auto-detected price step: ${priceStep} (min price: ${minPrice.toFixed(4)})`)
     }
 
-    // 4. קביעת totalCandles - נשתמש בכל הדאטה או עד 500 נרות
-    const totalCandles = Math.min(candles.length, 500)
-    const usedCandles = candles.slice(0, totalCandles)
+    // 4. קביעת totalCandles - נשתמש בכל הדאטה שנטענה מהקובץ (ללא הגבלה)
+    const totalCandles = candles.length
+    const usedCandles = candles
 
     // 4. אתחול מצב משחק
     const game: GameState = {
       id: gameId,
       candles: usedCandles,
       patterns,
-      currentIndex: 0, // מתחילים עם 50 נרות גלויים
+      currentIndex: startIndex, // משתמשים באינדקס שהתקבל (0 למשחק חדש, או אינדקס שמור למשחק טעון)
       visibleCandles: 100,
       account: {
         balance: initialBalance,
@@ -282,12 +283,14 @@ export const createGameFromCSV = async (req: Request, res: Response) => {
       timeframe: timeframe,
       totalCandles,
       priceStep,
+      sourceFileName: req.file.originalname, // שמירת שם הקובץ המקורי
+      sourceDateRange: startDate && endDate ? { start: startDate, end: endDate } : undefined,
     }
 
     // 5. שמירה במאגר
     games.set(gameId, game)
 
-    console.log(`🎮 Game ${gameId} created from CSV with ${patterns.length} detected patterns`)
+    console.log(`🎮 Game ${gameId} created from CSV with ${patterns.length} detected patterns, ${game.candles.length} candles, startIndex: ${startIndex}`)
     return res.json({ game })
   } catch (error) {
     console.error('Error creating game from CSV:', error)
@@ -492,6 +495,85 @@ export const nextCandle = async (req: Request, res: Response) => {
       })
     }
 
+    // 2.5. בדיקת פקודות עתידיות והפעלתן
+    if (game.pendingOrders && game.pendingOrders.length > 0) {
+      const currentPrice = currentCandle.close
+      const ordersToExecute: typeof game.pendingOrders = []
+      const ordersToKeep: typeof game.pendingOrders = []
+
+      for (const order of game.pendingOrders) {
+        let shouldExecute = false
+
+        // בדיקה אם המחיר הגיע ליעד
+        if (order.type === 'long') {
+          // LONG: מבצעים כשהמחיר מגיע או עובר את המחיר היעד מלמטה
+          shouldExecute = currentPrice >= order.targetPrice
+        } else {
+          // SHORT: מבצעים כשהמחיר מגיע או יורד מתחת למחיר היעד
+          shouldExecute = currentPrice <= order.targetPrice
+        }
+
+        if (shouldExecute) {
+          ordersToExecute.push(order)
+        } else {
+          ordersToKeep.push(order)
+        }
+      }
+
+      // ביצוע הפקודות שהגיעו ליעד
+      for (const order of ordersToExecute) {
+        // בדיקת יתרה
+        const cost = order.targetPrice * order.quantity
+        if (cost <= game.account.balance) {
+          // יצירת פוזיציה חדשה
+          const newPosition = {
+            id: uuidv4(),
+            type: order.type,
+            entryPrice: order.targetPrice,
+            entryTime: currentCandle.time,
+            entryIndex: game.currentIndex,
+            quantity: order.quantity,
+            currentPnL: 0,
+            currentPnLPercent: 0,
+            stopLoss: order.stopLoss,
+            takeProfit: order.takeProfit,
+          }
+
+          // עדכון חשבון ופוזיציות
+          game.account.balance -= cost
+          game.positions.push(newPosition)
+          game.stats.totalTrades++
+
+          // יצירת feedback
+          const positionTypeText = order.type === 'long' ? 'LONG' : 'SHORT'
+          game.feedbackHistory.push({
+            type: 'success' as const,
+            message: `פקודה עתידית ${positionTypeText} בוצעה במחיר $${order.targetPrice.toLocaleString()}! 📌`,
+            timestamp: Date.now(),
+            data: {
+              orderId: order.id,
+              targetPrice: order.targetPrice,
+              quantity: order.quantity,
+            },
+          })
+
+          console.log(`Game ${gameId}: Executed pending ${order.type} order at $${order.targetPrice}`)
+        } else {
+          // אין מספיק יתרה - שומרים את הפקודה
+          ordersToKeep.push(order)
+
+          game.feedbackHistory.push({
+            type: 'warning' as const,
+            message: `פקודה עתידית לא בוצעה - אין יתרה מספקת`,
+            timestamp: Date.now(),
+          })
+        }
+      }
+
+      // עדכון רשימת הפקודות (רק אלו שלא בוצעו)
+      game.pendingOrders = ordersToKeep
+    }
+
     // 3. עדכון PnL של פוזיציות פתוחות שנשארו
     let totalUnrealizedPnL = 0
     let totalPositionValue = 0 // סכום מושקע בפוזיציות
@@ -541,7 +623,7 @@ export const nextCandle = async (req: Request, res: Response) => {
       game.feedbackHistory.push(...feedback)
     }
 
-    console.log(`Game ${gameId}: Advanced to candle ${newIndex}`)
+    console.log(`Game ${gameId}: Advanced to candle ${newIndex}, returning ${game.candles.length} candles`)
 
     res.json({
       game,
@@ -818,6 +900,100 @@ export const executeTrade = async (req: Request, res: Response) => {
     console.error('Error executing trade:', error)
     res.status(500).json({
       error: 'Failed to execute trade',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+}
+
+/**
+ * יצירת פקודה עתידית
+ */
+export const createPendingOrder = async (req: Request, res: Response) => {
+  try {
+    const { gameId } = req.params
+    const { type, targetPrice, quantity, stopLoss, takeProfit } = req.body
+    const game = games.get(gameId)
+
+    if (!game) {
+      return res.status(404).json({
+        error: 'Game not found',
+        message: 'Invalid game ID',
+      })
+    }
+
+    // בדיקת פרמטרים
+    if (!type || !targetPrice || !quantity) {
+      return res.status(400).json({
+        error: 'Missing parameters',
+        message: 'type, targetPrice, and quantity are required',
+      })
+    }
+
+    if (type !== 'long' && type !== 'short') {
+      return res.status(400).json({
+        error: 'Invalid type',
+        message: 'type must be "long" or "short"',
+      })
+    }
+
+    if (quantity <= 0) {
+      return res.status(400).json({
+        error: 'Invalid quantity',
+        message: 'quantity must be greater than 0',
+      })
+    }
+
+    // בדיקת יתרה
+    const cost = targetPrice * quantity
+    if (cost > game.account.balance) {
+      return res.status(400).json({
+        error: 'Insufficient balance',
+        message: 'Not enough funds for pending order',
+      })
+    }
+
+    // יצירת פקודה עתידית
+    const pendingOrder = {
+      id: uuidv4(),
+      type: type as 'long' | 'short',
+      targetPrice,
+      targetCandleIndex: -1, // יעודכן כשהפקודה תתבצע
+      quantity,
+      stopLoss,
+      takeProfit,
+      createdAt: Date.now(),
+      createdAtIndex: game.currentIndex,
+    }
+
+    // הוספה לרשימת פקודות עתידיות
+    if (!game.pendingOrders) {
+      game.pendingOrders = []
+    }
+    game.pendingOrders.push(pendingOrder)
+
+    console.log(`Game ${gameId}: Created pending ${type} order at $${targetPrice}`)
+
+    const feedback = {
+      type: 'info' as const,
+      message: `פקודה עתידית ${type === 'long' ? 'LONG' : 'SHORT'} נוצרה במחיר $${targetPrice.toLocaleString()}`,
+      timestamp: Date.now(),
+      data: {
+        orderId: pendingOrder.id,
+        targetPrice,
+        quantity,
+      },
+    }
+
+    game.feedbackHistory.push(feedback)
+
+    return res.json({
+      pendingOrder,
+      feedback,
+    })
+  } catch (error) {
+    console.error('Error creating pending order:', error)
+    res.status(500).json({
+      error: 'Failed to create pending order',
       message: error instanceof Error ? error.message : 'Unknown error',
     })
   }

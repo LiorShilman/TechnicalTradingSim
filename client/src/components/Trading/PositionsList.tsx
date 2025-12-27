@@ -8,6 +8,9 @@ export default function PositionsList() {
 
   const { positions } = gameState
 
+  // שם הנכס המלא (למשל: SP/SPX, BTC/USD)
+  const assetSymbol = gameState.asset || 'BTC/USD'
+
   const handleClose = async (positionId: string) => {
     const position = positions.find(p => p.id === positionId)
     if (position) {
@@ -40,7 +43,7 @@ export default function PositionsList() {
                       {position.type === 'long' ? '📈 Long' : '📉 Short'}
                     </div>
                     <div className="font-mono font-semibold">
-                      {position.quantity} BTC
+                      {position.quantity} {assetSymbol}
                     </div>
                   </div>
                   <button

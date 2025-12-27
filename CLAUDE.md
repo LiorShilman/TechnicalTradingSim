@@ -6,7 +6,7 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 This is a **technical trading simulation game** for learning pattern recognition and realistic trading practice. Built as a monorepo with React (Vite + TypeScript) frontend and Express (TypeScript) backend.
 
-**Key Concept**: The game generates 500 candles with embedded technical patterns (Breakout, Retest, Bull Flag). Players progress manually or automatically through candles, make LONG/SHORT trades, and receive feedback on pattern recognition quality and trade timing.
+**Key Concept**: The game uses all candles loaded from the CSV file (no limit) with embedded technical patterns (Breakout, Retest, Bull Flag). Players progress manually or automatically through candles, make LONG/SHORT trades, and receive feedback on pattern recognition quality and trade timing.
 
 **NEW: CSV Upload Feature**: The system now supports **uploading CSV files directly from the UI**! Users can export data from TradingView (with all technical indicators) and upload it through the start screen. The system automatically:
 - Parses TradingView CSV format (extracts OHLCV, ignores indicators like POC, VAH, Delta, etc.)
@@ -170,7 +170,8 @@ Server evaluates trades and generates feedback:
 - Opens LONG positions with "Buy Long" button
 - Opens SHORT positions with "Sell Short" button
 - Closes positions with "Close" button (professional design with XCircle icon)
-- Game ends at candle 500, shows GameStats
+- Game ends when reaching last candle, shows GameStats
+- Can save game state at any time and resume later from same point (including open positions)
 
 ### Advanced Trading Features (OrderPanel)
 The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
@@ -204,7 +205,7 @@ The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
 - Asset: BTC/USD (auto-detected from CSV filename if uploaded)
 - Timeframe: 1H (auto-detected from CSV filename if uploaded)
 - Initial balance: $10,000 (adjustable in start screen, persists via localStorage)
-- Total candles: 500
+- Total candles: All candles from uploaded CSV (no limit)
 - Visible candles: 100 (window size)
 - Initial visible index: 49 (first 50 candles shown)
 - Total patterns: 8 (distributed throughout the game)
@@ -273,6 +274,26 @@ The UI supports Hebrew text with proper RTL layout:
 - Flexbox alignment: `justify-between` for label-value pairs, `justify-end` for right-aligned numbers
 - Used throughout: OrderPanel, AccountInfo, GameStats components
 - Number formatting: `toLocaleString()` with `maximumFractionDigits` for consistent decimal display
+
+### Save/Load Game State
+The system supports saving and resuming games:
+- **Save**: Games are saved to localStorage with full state (positions, balance, stats, candles progress)
+- **Auto-detect**: When uploading same CSV file, system detects matching saved game
+- **Resume**: Restores exact state including currentIndex, positions, and account balance
+- **Chart Loading**: Fixed to display all candles immediately on load (removed React.StrictMode double-rendering)
+- Implementation: `gameStore.ts` handles save/load, `App.tsx` checks for matching saved games
+- Saved state includes: gameId, sourceFileName, sourceDateRange, currentIndex, positions, closedPositions, stats, feedbackHistory
+
+### React Configuration
+- **React.StrictMode removed** from `main.tsx` to prevent double-rendering issues with chart
+- This was causing the TradingChart to mount → unmount → mount on game load
+- Chart now loads correctly on first render when resuming saved games
+
+### Asset Display
+- Asset names displayed as full format (e.g., "SP/SPX", "BTC/USD") throughout UI
+- Extracted from `gameState.asset` in OrderPanel, PositionsList, ChartControls
+- Supports indices (SP/SPX), crypto (BTC/USD), and any other asset format
+- Auto-detects from TradingView filenames and preserves full name
 
 ## Development Workflow
 

@@ -70,8 +70,11 @@ import { useGameStore } from '@/stores/gameStore'
 export default function OrderPanel() {
   const { gameState, executeTrade, isLoading } = useGameStore()
 
+  // שם הנכס המלא (למשל: SP/SPX, BTC/USD)
+  const assetSymbol = gameState?.asset || 'BTC/USD'
+
   // === Trading State ===
-  /** Quantity of BTC to trade (supports fractional amounts like 0.001) */
+  /** Quantity of asset to trade (supports fractional amounts like 0.001) */
   const [quantity, setQuantity] = useState('0.1')
 
   /** Controls visibility of advanced settings (SL/TP/Risk Management) */
@@ -357,7 +360,7 @@ export default function OrderPanel() {
       {/* Quantity input */}
       <div className="mb-4">
         <label className="text-sm text-text-secondary block mb-2">
-          כמות (BTC)
+          כמות ({assetSymbol})
         </label>
         <input
           type="number"
@@ -516,7 +519,7 @@ export default function OrderPanel() {
                     <div className="flex justify-between text-xs">
                       <span className="text-text-secondary">כמות מומלצת:</span>
                       <span className="font-mono text-blue-400">
-                        {recommendedQuantity.toFixed(3)} BTC
+                        {recommendedQuantity.toFixed(3)} {assetSymbol}
                       </span>
                     </div>
                   )}

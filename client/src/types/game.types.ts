@@ -123,6 +123,9 @@ export interface Feedback {
     entryQuality?: number;
     expectedEntry?: number;
     actualEntry?: number;
+    orderId?: string;
+    targetPrice?: number;
+    quantity?: number;
   };
 }
 
@@ -145,6 +148,53 @@ export interface GameState {
   timeframe: string;          // למשל '1H'
   totalCandles: number;       // סך הכל נרות במשחק
   priceStep?: number;         // רזולוציית מחיר (למשל 0.01 = 2 decimal places)
+  // שדות נוספים לזיהוי קובץ המקור
+  sourceFileName?: string;    // שם הקובץ המקורי
+  sourceDateRange?: {         // טווח התאריכים המקורי
+    start: string;
+    end: string;
+  };
+  pendingOrders?: PendingOrder[]; // פקודות עתידיות
+}
+
+/**
+ * מצב משחק שמור - נשמר ב-localStorage
+ * מכיל את כל המידע הדרוש לשחזור מדויק
+ */
+export interface SavedGameState {
+  gameId: string;
+  savedAt: number;            // תאריך השמירה (timestamp)
+  sourceFileName: string;     // שם הקובץ המקורי
+  sourceDateRange: {          // טווח התאריכים
+    start: string;
+    end: string;
+  };
+  asset: string;
+  timeframe: string;
+  currentIndex: number;       // האינדקס הנוכחי
+  account: Account;           // מצב החשבון
+  positions: Position[];      // פוזיציות פתוחות
+  closedPositions: Position[]; // פוזיציות סגורות
+  stats: GameStats;           // סטטיסטיקות
+  feedbackHistory: Feedback[]; // היסטוריית משובים
+  isComplete: boolean;
+  priceStep?: number;
+  pendingOrders?: PendingOrder[]; // פקודות עתידיות
+}
+
+/**
+ * פקודה עתידית - פקודה שתבוצע כשנגיע למחיר מסוים
+ */
+export interface PendingOrder {
+  id: string;
+  type: PositionType;         // long או short
+  targetPrice: number;        // המחיר שבו הפקודה תבוצע
+  targetCandleIndex: number;  // האינדקס של הנר שבו המחיר נמצא
+  quantity: number;
+  stopLoss?: number;
+  takeProfit?: number;
+  createdAt: number;
+  createdAtIndex: number;     // האינדקס שבו הפקודה נוצרה
 }
 
 /**

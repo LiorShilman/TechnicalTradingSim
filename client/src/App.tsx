@@ -24,15 +24,34 @@ function App() {
   const [availableDateRange, setAvailableDateRange] = useState<{ start: string; end: string } | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null)
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { gameState, isLoading, error, initializeGame, initializeGameWithCSV } = useGameStore()
+  const { gameState, isLoading, error, initializeGame, initializeGameWithCSV, loadSavedGame, getSavedGameInfo } = useGameStore()
+
+  // בדיקה אם יש משחק שמור
+  const savedGameInfo = getSavedGameInfo()
 
   const handleStartGame = async () => {
-    setIsStartScreen(false)
+    // ⭐ CRITICAL: אל תעדכן את setIsStartScreen לפני שהמשחק נטען!
+    // זה גורם ל-re-render שמאפס את הגרף
+
+    // ניסיון לטעון משחק שמור (אם יש קובץ ותואם)
+    if (uploadedFile && savedGameInfo) {
+      const loaded = await loadSavedGame(uploadedFile, selectedDateRange)
+      if (loaded) {
+        console.log('✅ Resumed from saved game')
+        setIsStartScreen(false) // ✅ רק אחרי שהמשחק נטען בהצלחה
+        return
+      }
+    }
+
+    // אחרת, יצירת משחק חדש
     if (uploadedFile) {
       await initializeGameWithCSV(uploadedFile, assetName, timeframe, initialBalance, selectedDateRange)
     } else {
       await initializeGame({ initialBalance })
     }
+
+    // ✅ עדכון מסך רק אחרי שהמשחק נטען
+    setIsStartScreen(false)
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -298,6 +317,24 @@ function App() {
           {/* העלאת קובץ CSV */}
           <div className="mb-6">
             <div className="bg-gradient-to-br from-amber-900/30 to-orange-900/20 rounded-xl p-6 border border-amber-500/30 backdrop-blur-sm">
+              {/* אינדיקציה למשחק שמור */}
+              {savedGameInfo && uploadedFile && savedGameInfo.sourceFileName === uploadedFile.name && (
+                <div className="mb-4 p-3 bg-gradient-to-r from-green-900/40 to-emerald-900/40 border border-green-500/50 rounded-lg">
+                  <div className="flex items-center gap-2 text-green-400 font-bold mb-1">
+                    <span className="text-xl">💾</span>
+                    <span>נמצא משחק שמור!</span>
+                  </div>
+                  <div className="text-xs text-gray-300 mr-7">
+                    נשמר ב-{new Date(savedGameInfo.savedAt).toLocaleString('he-IL')} •
+                    נר {savedGameInfo.currentIndex} •
+                    {savedGameInfo.positions.length} פוזיציות פתוחות
+                  </div>
+                  <div className="text-xs text-green-300 mt-1 mr-7 font-semibold">
+                    ⚡ המשחק ימשיך מהנקודה בה עצרת
+                  </div>
+                </div>
+              )}
+
               <div className="flex items-center gap-4 mb-4">
                 <div className="text-4xl">📁</div>
                 <div className="flex-1">
@@ -438,7 +475,7 @@ function App() {
             </button>
 
             <p className="mt-6 text-gray-400 text-sm">
-              ⚡ 500 נרות • {uploadedFile ? 'זיהוי דפוסים אוטומטי' : '8 תבניות טכניות'} • משוב בזמן אמת
+              ⚡ {uploadedFile ? `${availableDateRange?.start || ''} - ${availableDateRange?.end || ''}` : '500 נרות'} • {uploadedFile ? 'זיהוי דפוסים אוטומטי' : '8 תבניות טכניות'} • משוב בזמן אמת
             </p>
           </div>
         </div>

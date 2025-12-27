@@ -39,7 +39,7 @@ export const api = {
   /**
    * יצירת משחק חדש מקובץ CSV
    */
-  createGameWithCSV: async (file: File, assetName?: string, timeframe?: string, initialBalance?: number, dateRange?: { start: string; end: string } | null): Promise<NewGameResponse> => {
+  createGameWithCSV: async (file: File, assetName?: string, timeframe?: string, initialBalance?: number, dateRange?: { start: string; end: string } | null, startIndex?: number): Promise<NewGameResponse> => {
     const formData = new FormData()
     formData.append('csvFile', file)
     if (assetName) {
@@ -50,6 +50,9 @@ export const api = {
     }
     if (initialBalance !== undefined) {
       formData.append('initialBalance', initialBalance.toString())
+    }
+    if (startIndex !== undefined) {
+      formData.append('startIndex', startIndex.toString())
     }
     if (dateRange) {
       formData.append('startDate', dateRange.start)
@@ -85,6 +88,27 @@ export const api = {
    */
   getGameState: async (gameId: string): Promise<NewGameResponse> => {
     const response = await apiClient.get<NewGameResponse>(`/game/${gameId}`)
+    return response.data
+  },
+
+  /**
+   * יצירת פקודה עתידית
+   */
+  createPendingOrder: async (
+    gameId: string,
+    type: 'long' | 'short',
+    targetPrice: number,
+    quantity: number,
+    stopLoss?: number,
+    takeProfit?: number
+  ): Promise<{ pendingOrder: any; feedback: any }> => {
+    const response = await apiClient.post(`/game/${gameId}/pending-order`, {
+      type,
+      targetPrice,
+      quantity,
+      stopLoss,
+      takeProfit,
+    })
     return response.data
   },
 }

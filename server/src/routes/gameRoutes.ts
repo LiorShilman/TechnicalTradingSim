@@ -1,6 +1,6 @@
 import express from 'express'
 import multer from 'multer'
-import { createGame, createGameFromCSV, getGame, nextCandle, executeTrade } from '../controllers/gameController.js'
+import { createGame, createGameFromCSV, getGame, nextCandle, executeTrade, createPendingOrder } from '../controllers/gameController.js'
 
 const router = express.Router()
 
@@ -33,5 +33,8 @@ router.post('/:gameId/next', nextCandle)
 
 // ביצוע מסחר
 router.post('/:gameId/trade', executeTrade)
+
+// יצירת פקודה עתידית
+router.post('/:gameId/pending-order', createPendingOrder)
 
 export default router

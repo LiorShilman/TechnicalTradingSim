@@ -1,7 +1,10 @@
 import { create } from 'zustand'
-import type { GameState } from '@/types/game.types'
+import type { GameState, SavedGameState } from '@/types/game.types'
 import { api } from '@/services/api'
 import toast from 'react-hot-toast'
+
+// שם המפתח ב-localStorage
+const SAVED_GAME_KEY = 'savedGameState'
 
 interface GameStore {
   gameState: GameState | null
@@ -24,10 +27,24 @@ interface GameStore {
     stopLoss?: number,
     takeProfit?: number
   ) => Promise<void>
+  createPendingOrder: (
+    type: 'long' | 'short',
+    targetPrice: number,
+    quantity: number,
+    stopLoss?: number,
+    takeProfit?: number
+  ) => Promise<void>
   resetGame: () => Promise<void>
   toggleAutoPlay: () => void
   setAutoPlaySpeed: (speed: number) => void
   setChartControls: (fitContent: () => void, resetZoom: () => void) => void
+
+  // Save/Load game state
+  saveGameState: () => void
+  saveAndExit: () => void
+  loadSavedGame: (file: File, dateRange?: { start: string; end: string } | null) => Promise<boolean>
+  getSavedGameInfo: () => SavedGameState | null
+  clearSavedGame: () => void
 
   // Helper
   clearError: () => void
@@ -93,11 +110,70 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { gameState } = get()
     if (!gameState) return
 
+    // שמירת פוזיציות נוכחיות לפני הקריאה (למקרה של משחק טעון)
+    const currentPositions = [...gameState.positions]
+    const currentClosedPositions = [...gameState.closedPositions]
+    const currentAccount = { ...gameState.account }
+    const currentStats = { ...gameState.stats }
+
     set({ isLoading: true, error: null })
     try {
       const previousClosedCount = gameState.closedPositions.length
       const response = await api.nextCandle(gameState.id)
       const newGame = (response as any).game || response
+
+      console.log('🔍 nextCandle response debug:', {
+        currentIndex: newGame.currentIndex,
+        totalCandles: newGame.candles?.length,
+        gameId: newGame.id,
+        positions: newGame.positions?.length,
+        closedPositions: newGame.closedPositions?.length,
+        firstCandleTime: newGame.candles?.[0]?.time,
+        lastCandleTime: newGame.candles?.[newGame.candles.length - 1]?.time,
+      })
+
+      // אם יש פוזיציות שנשמרו (משחק טעון), אנחנו צריכים לעדכן את ה-currentPnL שלהן
+      // אבל לא לדרוס אותן עם פוזיציות ריקות מהשרת
+      if (currentPositions.length > 0 && newGame.positions.length === 0) {
+        console.log('⚠️ Detected loaded game - preserving positions and updating PnL')
+
+        // עדכון PnL של הפוזיציות על בסיס המחיר החדש
+        const currentCandle = newGame.candles[newGame.currentIndex]
+        const updatedPositions = currentPositions.map(pos => {
+          const currentPrice = currentCandle.close
+          const priceDiff = currentPrice - pos.entryPrice
+
+          let currentPnL: number
+          let currentPnLPercent: number
+
+          if (pos.type === 'long') {
+            currentPnL = priceDiff * pos.quantity
+            currentPnLPercent = (priceDiff / pos.entryPrice) * 100
+          } else {
+            currentPnL = -priceDiff * pos.quantity
+            currentPnLPercent = (-priceDiff / pos.entryPrice) * 100
+          }
+
+          return {
+            ...pos,
+            currentPnL,
+            currentPnLPercent,
+          }
+        })
+
+        // חישוב unrealized PnL ו-equity
+        const totalUnrealizedPnL = updatedPositions.reduce((sum, pos) => sum + pos.currentPnL, 0)
+        const totalPositionValue = updatedPositions.reduce((sum, pos) => sum + pos.entryPrice * pos.quantity, 0)
+
+        newGame.positions = updatedPositions
+        newGame.closedPositions = currentClosedPositions
+        newGame.account = {
+          ...currentAccount,
+          unrealizedPnL: totalUnrealizedPnL,
+          equity: currentAccount.balance + totalPositionValue + totalUnrealizedPnL,
+        }
+        newGame.stats = currentStats
+      }
 
       // בדיקה אם נסגרו פוזיציות ב-SL/TP
       const newClosedCount = newGame.closedPositions.length
@@ -206,6 +282,50 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
+  createPendingOrder: async (type, targetPrice, quantity, stopLoss, takeProfit) => {
+    const { gameState } = get()
+    if (!gameState) return
+
+    set({ isLoading: true, error: null })
+    try {
+      const response = await api.createPendingOrder(
+        gameState.id,
+        type,
+        targetPrice,
+        quantity,
+        stopLoss,
+        takeProfit
+      )
+
+      // עדכון state עם הפקודה החדשה
+      const updatedPendingOrders = [...(gameState.pendingOrders || []), response.pendingOrder]
+
+      set({
+        gameState: {
+          ...gameState,
+          pendingOrders: updatedPendingOrders,
+          feedbackHistory: response.feedback
+            ? [...gameState.feedbackHistory, response.feedback]
+            : gameState.feedbackHistory,
+        },
+        isLoading: false
+      })
+
+      toast.success(`פקודה עתידית ${type === 'long' ? 'LONG' : 'SHORT'} נוצרה! 📌`, {
+        icon: '✅',
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to create pending order'
+      toast.error(`שגיאה: ${errorMessage}`, {
+        icon: '❌',
+      })
+      set({
+        error: errorMessage,
+        isLoading: false
+      })
+    }
+  },
+
   resetGame: async () => {
     const { gameState } = get()
 
@@ -229,6 +349,188 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setChartControls: (fitContent: () => void, resetZoom: () => void) => {
     set({ chartFitContent: fitContent, chartResetZoom: resetZoom })
+  },
+
+  // שמירת מצב משחק נוכחי ל-localStorage
+  saveGameState: () => {
+    const { gameState } = get()
+    if (!gameState) {
+      console.warn('saveGameState: No game state to save')
+      return
+    }
+
+    const savedState: SavedGameState = {
+      gameId: gameState.id,
+      savedAt: Date.now(),
+      sourceFileName: gameState.sourceFileName || '',
+      sourceDateRange: gameState.sourceDateRange || { start: '', end: '' },
+      asset: gameState.asset,
+      timeframe: gameState.timeframe,
+      currentIndex: gameState.currentIndex,
+      account: gameState.account,
+      positions: gameState.positions,
+      closedPositions: gameState.closedPositions,
+      stats: gameState.stats,
+      feedbackHistory: gameState.feedbackHistory,
+      isComplete: gameState.isComplete,
+      priceStep: gameState.priceStep,
+      pendingOrders: gameState.pendingOrders,
+    }
+
+    localStorage.setItem(SAVED_GAME_KEY, JSON.stringify(savedState))
+    console.log('✅ Game state saved:', {
+      file: savedState.sourceFileName,
+      index: savedState.currentIndex,
+      positions: savedState.positions.length,
+    })
+
+    toast.success('משחק נשמר בהצלחה! 💾', {
+      duration: 3000,
+      icon: '✅',
+    })
+  },
+
+  // שמירה ויציאה - שומר את המשחק וחוזר למסך ההתחלה
+  saveAndExit: () => {
+    const { saveGameState, resetGame } = get()
+    saveGameState()
+
+    // המתנה קצרה כדי שה-toast יופיע לפני האיפוס
+    setTimeout(() => {
+      resetGame()
+    }, 500)
+  },
+
+  // טעינת משחק שמור (אם תואם לקובץ ולטווח)
+  loadSavedGame: async (file: File, dateRange?: { start: string; end: string } | null) => {
+    const savedStateStr = localStorage.getItem(SAVED_GAME_KEY)
+    if (!savedStateStr) {
+      console.log('loadSavedGame: No saved game found')
+      return false
+    }
+
+    try {
+      const savedState: SavedGameState = JSON.parse(savedStateStr)
+
+      // בדיקה אם הקובץ והטווח תואמים
+      const fileMatches = savedState.sourceFileName === file.name
+      const dateRangeMatches = dateRange
+        ? savedState.sourceDateRange.start === dateRange.start &&
+          savedState.sourceDateRange.end === dateRange.end
+        : true
+
+      if (!fileMatches || !dateRangeMatches) {
+        console.log('loadSavedGame: File or date range mismatch', {
+          savedFile: savedState.sourceFileName,
+          currentFile: file.name,
+          savedRange: savedState.sourceDateRange,
+          currentRange: dateRange,
+        })
+        return false
+      }
+
+      console.log('✅ Found matching saved game:', {
+        file: savedState.sourceFileName,
+        savedAt: new Date(savedState.savedAt).toLocaleString('he-IL'),
+        index: savedState.currentIndex,
+        positions: savedState.positions.length,
+      })
+
+      // יצירת משחק חדש מהקובץ עם האינדקס השמור
+      set({ isLoading: true })
+
+      const response = await api.createGameWithCSV(
+        file,
+        savedState.asset,
+        savedState.timeframe,
+        savedState.account.initialBalance,
+        dateRange,
+        savedState.currentIndex // שליחת האינדקס השמור לשרת
+      )
+
+      console.log('🔍 loadSavedGame: Server response:', {
+        totalCandles: response.game.candles?.length,
+        currentIndex: response.game.currentIndex,
+        gameId: response.game.id,
+        firstCandleTime: response.game.candles?.[0]?.time,
+        lastCandleTime: response.game.candles?.[response.game.candles.length - 1]?.time,
+      })
+
+      // שחזור המצב השמור - CRITICAL: צריך לשחזר הכל כולל initialBalance
+      // עושים את השינויים לפני ה-set כדי למנוע עדכון כפול של הגרף
+      // השרת כבר החזיר את ה-currentIndex הנכון, אז לא צריך לדרוס אותו
+      const restoredGame: GameState = {
+        ...response.game,
+        // currentIndex כבר נכון מהשרת
+        account: {
+          ...savedState.account,
+          initialBalance: savedState.account.initialBalance, // שמירת יתרה התחלתית מקורית
+        },
+        positions: [...savedState.positions], // העתקה עמוקה
+        closedPositions: [...savedState.closedPositions],
+        stats: { ...savedState.stats },
+        feedbackHistory: [...savedState.feedbackHistory],
+        isComplete: savedState.isComplete,
+        pendingOrders: savedState.pendingOrders ? [...savedState.pendingOrders] : [],
+      }
+
+      console.log('✅ Restored game state:', {
+        gameId: restoredGame.id,
+        asset: restoredGame.asset,
+        timeframe: restoredGame.timeframe,
+        currentIndex: restoredGame.currentIndex,
+        totalCandles: restoredGame.candles?.length,
+        positions: restoredGame.positions.length,
+        balance: restoredGame.account.balance,
+        equity: restoredGame.account.equity,
+      })
+
+      set({
+        gameState: restoredGame,
+        isLoading: false,
+        error: null
+      })
+
+      // קריאה ל-chartFitContent אחרי טעינה - צריך יותר זמן
+      setTimeout(() => {
+        const { chartFitContent } = get()
+        if (chartFitContent) {
+          console.log('📏 Auto-fitting chart after loading saved game')
+          chartFitContent()
+        }
+      }, 1000) // הגדלנו ל-1 שנייה
+
+      toast.success(`משחק שוחזר מ-${new Date(savedState.savedAt).toLocaleString('he-IL')} 🎮`, {
+        duration: 5000,
+        icon: '📂',
+      })
+
+      return true
+    } catch (error) {
+      console.error('loadSavedGame error:', error)
+      set({ isLoading: false })
+      return false
+    }
+  },
+
+  // קבלת מידע על משחק שמור
+  getSavedGameInfo: () => {
+    const savedStateStr = localStorage.getItem(SAVED_GAME_KEY)
+    if (!savedStateStr) return null
+
+    try {
+      return JSON.parse(savedStateStr) as SavedGameState
+    } catch (error) {
+      console.error('getSavedGameInfo error:', error)
+      return null
+    }
+  },
+
+  // מחיקת משחק שמור
+  clearSavedGame: () => {
+    localStorage.removeItem(SAVED_GAME_KEY)
+    console.log('Saved game cleared')
+    toast.success('משחק שמור נמחק', { icon: '🗑️' })
   },
 
   clearError: () => set({ error: null }),

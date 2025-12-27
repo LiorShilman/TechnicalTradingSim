@@ -1,13 +1,103 @@
 /**
- * מנוע זיהוי דפוסים טכניים בדאטה ריאלית
+ * מנוע זיהוי דפוסים טכניים בדאטה ריאלית - גרסה משופרת
  *
- * זיהוי אוטומטי של:
- * 1. Breakout - שבירת טווח קונסולידציה
- * 2. Retest - בדיקה חוזרת של רמת תמיכה
- * 3. Bull Flag - דגל עולה לאחר תנועה חזקה
+ * זיהוי אוטומטי מדויק של:
+ * 1. Breakout - שבירת התנגדות עם נפח גבוה
+ * 2. Retest - בדיקה חוזרת של רמת support/resistance שנשברה
+ * 3. Bull Flag - דגל עולה לאחר תנועה חזקה עם קונסולידציה
+ *
+ * עקרונות זיהוי משופרים:
+ * - זיהוי רמות מפתח (support/resistance) באמצעות pivot points
+ * - בדיקת נפח יחסי לאימות שבירות
+ * - אימות מבני של התבנית (לא רק תנועות מחיר)
  */
 
 import type { Candle, Pattern } from '../types/index.js'
+
+/**
+ * מציאת pivot high - נקודה שהיא הגבוהה ביותר בטווח
+ */
+function isPivotHigh(candles: Candle[], index: number, leftBars: number = 2, rightBars: number = 2): boolean {
+  if (index < leftBars || index + rightBars >= candles.length) return false
+
+  const currentHigh = candles[index].high
+
+  // בדיקה שכל הנרות משמאל נמוכים יותר
+  for (let i = index - leftBars; i < index; i++) {
+    if (candles[i].high >= currentHigh) return false
+  }
+
+  // בדיקה שכל הנרות מימין נמוכים יותר
+  for (let i = index + 1; i <= index + rightBars; i++) {
+    if (candles[i].high >= currentHigh) return false
+  }
+
+  return true
+}
+
+/**
+ * מציאת pivot low - נקודה שהיא הנמוכה ביותר בטווח
+ */
+function isPivotLow(candles: Candle[], index: number, leftBars: number = 2, rightBars: number = 2): boolean {
+  if (index < leftBars || index + rightBars >= candles.length) return false
+
+  const currentLow = candles[index].low
+
+  // בדיקה שכל הנרות משמאל גבוהים יותר
+  for (let i = index - leftBars; i < index; i++) {
+    if (candles[i].low <= currentLow) return false
+  }
+
+  // בדיקה שכל הנרות מימין גבוהים יותר
+  for (let i = index + 1; i <= index + rightBars; i++) {
+    if (candles[i].low <= currentLow) return false
+  }
+
+  return true
+}
+
+/**
+ * חישוב Average True Range (ATR) למדידת volatility
+ */
+function calculateATR(candles: Candle[], period: number = 14): number {
+  if (candles.length < period + 1) return 0
+
+  const trueRanges: number[] = []
+
+  for (let i = 1; i < candles.length && i <= period; i++) {
+    const high = candles[i].high
+    const low = candles[i].low
+    const prevClose = candles[i - 1].close
+
+    const tr = Math.max(
+      high - low,
+      Math.abs(high - prevClose),
+      Math.abs(low - prevClose)
+    )
+    trueRanges.push(tr)
+  }
+
+  return trueRanges.reduce((sum, tr) => sum + tr, 0) / trueRanges.length
+}
+
+/**
+ * חישוב נפח ממוצע
+ */
+function calculateAverageVolume(candles: Candle[], period: number = 20): number {
+  if (candles.length < period) return 0
+
+  const volumes = candles.slice(0, period).map(c => c.volume || 0)
+  return volumes.reduce((sum, vol) => sum + vol, 0) / volumes.length
+}
+
+/**
+ * בדיקה האם המחיר נמצא ליד רמה מסוימת (tolerance ב-%)
+ */
+function isPriceNearLevel(price: number, level: number, tolerancePercent: number = 0.5): boolean {
+  const diff = Math.abs(price - level)
+  const tolerance = level * (tolerancePercent / 100)
+  return diff <= tolerance
+}
 
 /**
  * זיהוי תבנית Breakout

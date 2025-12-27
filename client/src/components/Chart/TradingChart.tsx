@@ -1,6 +1,7 @@
-import { useEffect, useRef } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import { createChart, IChartApi, ISeriesApi, ISeriesApi as LineSeriesApi, Time } from 'lightweight-charts'
 import { useGameStore } from '@/stores/gameStore'
+import PendingOrderMenu from './PendingOrderMenu'
 
 export default function TradingChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -9,10 +10,19 @@ export default function TradingChart() {
   const volumeSeriesRef = useRef<ISeriesApi<'Histogram'> | null>(null)
   const volumeMASeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
   const patternLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
+  const pendingOrderLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
   const lastCandleIndexRef = useRef<number>(-1)
   const initialIndexRef = useRef<number>(-1) // האינדקס ההתחלתי של המשחק
+  const lastGameIdRef = useRef<string | null>(null) // מעקב אחרי gameId כדי לזהות משחק חדש/טעון
 
   const { gameState, setChartControls } = useGameStore()
+
+  // State for pending order menu
+  const [pendingOrderMenu, setPendingOrderMenu] = useState<{
+    price: number
+    x: number
+    y: number
+  } | null>(null)
 
   useEffect(() => {
     console.log('TradingChart: Mounting chart component')
@@ -164,10 +174,51 @@ export default function TradingChart() {
     chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleLogicalRangeChange)
     window.addEventListener('resize', handleResize)
 
+    // Right-click handler for pending orders
+    const handleContextMenu = (e: MouseEvent) => {
+      e.preventDefault()
+
+      if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
+
+      // Get the current visible candles to estimate price
+      const timeScale = chartRef.current.timeScale()
+      const visibleRange = timeScale.getVisibleLogicalRange()
+
+      if (!visibleRange) return
+
+      // Get cursor position relative to chart
+      const rect = chartContainerRef.current.getBoundingClientRect()
+      const relativeY = e.clientY - rect.top
+      const chartHeight = rect.height * 0.70 // נרות תופסים 70% מהגובה
+
+      // אם הקליק היה באזור הנרות (לא באזור Volume)
+      if (relativeY > chartHeight) return
+
+      // קירוב: המרה מפיקסל למחיר על בסיס הנרות הגלויים
+      // נשתמש במחיר הנוכחי כבסיס
+      const currentCandle = gameState?.candles[gameState.currentIndex]
+      if (!currentCandle) return
+
+      // חישוב המחיר המשוער על בסיס מיקום העכבר
+      const priceRangePercent = relativeY / chartHeight
+      const estimatedPriceOffset = (1 - priceRangePercent - 0.5) * currentCandle.close * 0.1
+      const estimatedPrice = currentCandle.close + estimatedPriceOffset
+
+      // Show context menu
+      setPendingOrderMenu({
+        price: estimatedPrice,
+        x: e.clientX,
+        y: e.clientY,
+      })
+    }
+
+    chartContainerRef.current.addEventListener('contextmenu', handleContextMenu)
+
     return () => {
       console.log('TradingChart: Unmounting chart component')
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleLogicalRangeChange)
       window.removeEventListener('resize', handleResize)
+      chartContainerRef.current?.removeEventListener('contextmenu', handleContextMenu)
       chart.remove()
     }
   }, [])
@@ -179,7 +230,11 @@ export default function TradingChart() {
 
     // הסרת סימונים ישנים (קווים)
     patternLineSeriesRef.current.forEach((series: ISeriesApi<'Line'>) => {
-      chartRef.current?.removeSeries(series)
+      try {
+        chartRef.current?.removeSeries(series)
+      } catch (e) {
+        // Series might already be removed, ignore error
+      }
     })
     patternLineSeriesRef.current = []
 
@@ -264,6 +319,47 @@ export default function TradingChart() {
     }
   }
 
+  // פונקציה ליצירת סימון פקודות עתידיות
+  const createPendingOrderLines = () => {
+    if (!chartRef.current || !gameState?.pendingOrders || !gameState?.candles) return
+
+    // הסרת קווים ישנים
+    pendingOrderLineSeriesRef.current.forEach((series: ISeriesApi<'Line'>) => {
+      try {
+        chartRef.current?.removeSeries(series)
+      } catch (e) {
+        // Series might already be removed, ignore error
+      }
+    })
+    pendingOrderLineSeriesRef.current = []
+
+    // יצירת קו אופקי לכל פקודה עתידית
+    gameState.pendingOrders.forEach((order) => {
+      const color = order.type === 'long' ? '#22c55e' : '#ef4444' // ירוק ל-LONG, אדום ל-SHORT
+
+      // יצירת קו אופקי
+      const priceLine = chartRef.current!.addLineSeries({
+        color,
+        lineWidth: 2,
+        lineStyle: 1, // dashed
+        priceLineVisible: false,
+        lastValueVisible: false,
+      })
+
+      // קו אופקי על פני כל הגרף
+      const visibleCandles = gameState.candles.slice(0, gameState.currentIndex + 1)
+      if (visibleCandles.length > 0) {
+        const lineData = [
+          { time: visibleCandles[0].time as Time, value: order.targetPrice },
+          { time: visibleCandles[visibleCandles.length - 1].time as Time, value: order.targetPrice },
+        ]
+
+        priceLine.setData(lineData)
+        pendingOrderLineSeriesRef.current.push(priceLine)
+      }
+    })
+  }
+
   // עדכון נתונים כשיש נרות חדשים
   useEffect(() => {
     if (!candlestickSeriesRef.current || !volumeSeriesRef.current || !volumeMASeriesRef.current || !gameState?.candles) {
@@ -277,14 +373,33 @@ export default function TradingChart() {
     }
 
     const currentIndex = gameState.currentIndex
-    console.log('TradingChart: Update triggered', { currentIndex, lastIndex: lastCandleIndexRef.current })
+    const currentGameId = gameState.id
+    console.log('TradingChart: Update triggered', {
+      currentIndex,
+      lastIndex: lastCandleIndexRef.current,
+      currentGameId,
+      lastGameId: lastGameIdRef.current
+    })
 
-    // אם זה משחק חדש או reset, טען את כל הנתונים הגלויים
-    if (currentIndex < lastCandleIndexRef.current || lastCandleIndexRef.current === -1) {
+    // זיהוי משחק חדש/טעון - אם ה-gameId השתנה, זה אומר שנטען משחק חדש
+    const isNewGame = currentGameId !== lastGameIdRef.current
+
+    // ⭐ CRITICAL: אם זה משחק חדש/טעון, תמיד טען את כל הנרות הגלויים, גם אם האינדקס זהה
+    // זה מבטיח שהגרף יציג את המצב הנוכחי מיד בטעינה, לפני לחיצה על "הפעל"
+    if (isNewGame) {
+      console.log('🆕 New/Loaded game detected - forcing full chart reload')
+      // אל תחזור מוקדם! המשך לקוד שטוען את כל הנרות למטה
+    }
+
+    // אם זה משחק חדש/טעון או reset, טען את כל הנתונים הגלויים
+    if (isNewGame || currentIndex < lastCandleIndexRef.current || lastCandleIndexRef.current === -1) {
       // מציג את כל הנרות מההתחלה עד האינדקס הנוכחי
       const visibleCandles = gameState.candles.slice(0, currentIndex + 1)
       console.log('TradingChart: Loading all candles', {
-        totalCandles: visibleCandles.length,
+        totalCandlesInGameState: gameState.candles.length,
+        visibleCandlesCount: visibleCandles.length,
+        currentIndex,
+        isNewGame,
         firstCandle: visibleCandles[0],
         lastCandle: visibleCandles[visibleCandles.length - 1]
       })
@@ -312,33 +427,63 @@ export default function TradingChart() {
       initialIndexRef.current = currentIndex
 
       lastCandleIndexRef.current = currentIndex
+      lastGameIdRef.current = currentGameId // שמירת gameId כדי לזהות משחק טעון
 
       // יצירת סימון תבניות
       createPatternMarkers()
 
+      // יצירת סימון פקודות עתידיות
+      createPendingOrderLines()
+
       if (chartRef.current && visibleCandles.length > 0) {
-        // חשב barSpacing כדי להציג את כל הנרות
-        const chartWidth = chartContainerRef.current?.clientWidth || 1000
-        const optimalBarSpacing = Math.max(1, chartWidth / visibleCandles.length)
+        // תמיד הצג את כל הנרות עד האינדקס הנוכחי
+        console.log(`📊 Displaying ${visibleCandles.length} candles (0 to ${currentIndex})`)
 
-        console.log(`Setting optimal bar spacing: ${optimalBarSpacing} for ${visibleCandles.length} candles`)
+        // גלילה לסוף (לנר האחרון) עם מרווח סביר
+        chartRef.current.timeScale().scrollToPosition(-3, false)
 
-        chartRef.current.timeScale().applyOptions({
-          barSpacing: optimalBarSpacing
-        })
-
-        // גלול לנר הראשון
-        chartRef.current.timeScale().setVisibleLogicalRange({
-          from: 0,
-          to: visibleCandles.length - 1
-        })
+        // התאמה אוטומטית כדי להציג את הנרות בצורה מיטבית
+        setTimeout(() => {
+          chartRef.current?.timeScale().fitContent()
+        }, 100)
       }
       return
     }
 
-    // אם האינדקס לא השתנה, אל תעשה כלום
-    if (currentIndex === lastCandleIndexRef.current) {
+    // אם האינדקס לא השתנה ולא נטען משחק חדש, אל תעשה כלום
+    if (currentIndex === lastCandleIndexRef.current && !isNewGame) {
       console.log('TradingChart: Index unchanged, skipping')
+      return
+    }
+
+    // אם זה הנר הראשון אחרי טעינת משחק שמור (initialIndex > 0),
+    // צריך לטעון מחדש את כל ההיסטוריה כי update() לא יעבוד
+    if (initialIndexRef.current > 0 && currentIndex === initialIndexRef.current + 1 && lastCandleIndexRef.current === initialIndexRef.current) {
+      console.log(`🔄 First candle after loading saved game (initialIndex: ${initialIndexRef.current}) - reloading ALL candles`)
+
+      // טען את כל הנרות מחדש מ-0 עד currentIndex
+      const allCandles = gameState.candles.slice(0, currentIndex + 1)
+
+      candlestickSeriesRef.current.setData(allCandles.map(c => ({
+        ...c,
+        time: c.time as Time
+      })))
+
+      const volumeData = allCandles.map(candle => ({
+        time: candle.time as Time,
+        value: candle.volume,
+        color: candle.close >= candle.open ? '#00c85380' : '#ff174480',
+      }))
+      volumeSeriesRef.current.setData(volumeData)
+
+      lastCandleIndexRef.current = currentIndex
+      createPatternMarkers()
+      createPendingOrderLines()
+
+      if (chartRef.current) {
+        chartRef.current.timeScale().scrollToPosition(3, true)
+      }
+
       return
     }
 
@@ -392,17 +537,30 @@ export default function TradingChart() {
           createPatternMarkers()
         }
 
+        // עדכון סימון פקודות עתידיות (צריך להתעדכן בכל נר כי הקו מתארך)
+        createPendingOrderLines()
+
         // גלילה אוטומטית חלקה לנר החדש
         if (chartRef.current) {
           chartRef.current.timeScale().scrollToPosition(3, true) // true = אנימציה
         }
       }
     }
-  }, [gameState?.currentIndex])
+  }, [gameState?.currentIndex, gameState?.id, gameState?.candles.length])
 
   return (
     <div className="w-full h-full bg-dark-panel rounded-lg overflow-hidden relative">
       <div ref={chartContainerRef} className="w-full h-full" />
+
+      {/* Pending Order Menu */}
+      {pendingOrderMenu && (
+        <PendingOrderMenu
+          price={pendingOrderMenu.price}
+          x={pendingOrderMenu.x}
+          y={pendingOrderMenu.y}
+          onClose={() => setPendingOrderMenu(null)}
+        />
+      )}
 
       {/* קו הפרדה מודגש בין גרף נרות ל-Volume */}
       <div

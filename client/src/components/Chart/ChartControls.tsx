@@ -1,4 +1,4 @@
-import { ChevronRight, RotateCcw, Play, Pause } from 'lucide-react'
+import { ChevronRight, RotateCcw, Play, Pause, Save } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
 import { useEffect } from 'react'
 
@@ -51,10 +51,15 @@ export default function ChartControls() {
     setAutoPlaySpeed,
     chartFitContent,
     chartResetZoom,
-    executeTrade
+    executeTrade,
+    saveGameState,
+    saveAndExit
   } = useGameStore()
 
   const canProgress = gameState && !gameState.isComplete
+
+  // שם הנכס המלא (למשל: SP/SPX, BTC/USD)
+  const assetSymbol = gameState?.asset || 'BTC/USD'
 
   return (
     <div className="flex items-center gap-3">
@@ -96,6 +101,28 @@ export default function ChartControls() {
         נר הבא
       </button>
 
+      {/* כפתור שמירה */}
+      <button
+        onClick={saveGameState}
+        disabled={!gameState || isLoading}
+        className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg flex items-center gap-2 transition-colors"
+        title="שמור משחק"
+      >
+        <Save size={20} />
+        שמור
+      </button>
+
+      {/* כפתור שמור וצא */}
+      <button
+        onClick={saveAndExit}
+        disabled={!gameState || isLoading}
+        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg flex items-center gap-2 transition-colors"
+        title="שמור משחק וחזור לתפריט הראשי"
+      >
+        <Save size={20} />
+        שמור וצא
+      </button>
+
       {/* כפתור איפוס */}
       <button
         onClick={resetGame}
@@ -135,7 +162,7 @@ export default function ChartControls() {
         onClick={() => executeTrade('buy', 0.01, undefined, 'long')}
         disabled={!gameState || isLoading}
         className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold text-sm transition-all"
-        title="קנייה מהירה LONG (0.01 BTC)"
+        title={`קנייה מהירה LONG (0.01 ${assetSymbol})`}
       >
         BUY LONG
       </button>
@@ -143,7 +170,7 @@ export default function ChartControls() {
         onClick={() => executeTrade('buy', 0.01, undefined, 'short')}
         disabled={!gameState || isLoading}
         className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold text-sm transition-all"
-        title="מכירה מהירה SHORT (0.01 BTC)"
+        title={`מכירה מהירה SHORT (0.01 ${assetSymbol})`}
       >
         SELL SHORT
       </button>
