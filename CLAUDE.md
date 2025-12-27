@@ -278,6 +278,15 @@ The app persists account balance across sessions using localStorage:
 - Reset button available to clear balance and restart with default $10,000
 - Implementation in `gameStore.ts`: saves `account.equity` to `localStorage.carryOverBalance`
 
+### Save/Load Game State
+Complete game state is saved to localStorage and can be resumed:
+- **What is saved**: positions, closed positions, pending orders, account balance, stats, feedback history, current candle index
+- **Pending orders**: Fully preserved with all properties (type, orderType, targetPrice, createdAtIndex, SL/TP)
+- **Save trigger**: Manual save via UI or automatic on exit
+- **Load trigger**: Automatic on game start if saved file matches uploaded CSV
+- **Validation**: Ensures saved game matches current file name and date range
+- Console logs show saved/restored state including pending order count for debugging
+
 ### TradingView Filename Parsing
 When uploading CSV files from TradingView, the system auto-detects asset and timeframe:
 - Filename format: `ASSET_TIMEFRAME_XXXXX.csv` (e.g., "SP_SPX_1D_07c94.csv", "BTCUSD_1H_abc123.csv")

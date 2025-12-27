@@ -392,6 +392,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       file: savedState.sourceFileName,
       index: savedState.currentIndex,
       positions: savedState.positions.length,
+      pendingOrders: savedState.pendingOrders?.length || 0,
+      balance: savedState.account.balance,
+      equity: savedState.account.equity,
     })
 
     toast.success('משחק נשמר בהצלחה! 💾', {
@@ -491,6 +494,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         currentIndex: restoredGame.currentIndex,
         totalCandles: restoredGame.candles?.length,
         positions: restoredGame.positions.length,
+        pendingOrders: restoredGame.pendingOrders?.length || 0,
         balance: restoredGame.account.balance,
         equity: restoredGame.account.equity,
       })
