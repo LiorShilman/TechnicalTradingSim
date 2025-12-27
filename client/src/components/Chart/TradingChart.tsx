@@ -896,9 +896,10 @@ export default function TradingChart() {
 
     const color = orderType === 'long' ? '#22c55e' : '#ef4444'
     const currentCandle = gameState.candles[gameState.currentIndex]
-    if (!currentCandle) return
+    const lastCandle = gameState.candles[gameState.candles.length - 1]
+    if (!currentCandle || !lastCandle) return
 
-    // קו המחיר היעד
+    // קו המחיר היעד - קו אופקי מהנר הנוכחי עד סוף הגרף
     const priceLine = chartRef.current.addLineSeries({
       color,
       lineWidth: 3,
@@ -908,20 +909,22 @@ export default function TradingChart() {
     })
     priceLine.setData([
       { time: currentCandle.time as Time, value: targetPrice },
+      { time: lastCandle.time as Time, value: targetPrice },
     ])
     previewLineSeriesRef.current.push(priceLine)
 
-    // קווי SL/TP אם קיימים
+    // קווי SL/TP אם קיימים - גם הם קווים אופקיים מלאים
     if (stopLoss) {
       const slLine = chartRef.current.addLineSeries({
         color: '#ef4444',
         lineWidth: 2,
-        lineStyle: 2,
+        lineStyle: 2, // dashed
         priceLineVisible: false,
         lastValueVisible: false,
       })
       slLine.setData([
         { time: currentCandle.time as Time, value: stopLoss },
+        { time: lastCandle.time as Time, value: stopLoss },
       ])
       previewLineSeriesRef.current.push(slLine)
     }
@@ -930,12 +933,13 @@ export default function TradingChart() {
       const tpLine = chartRef.current.addLineSeries({
         color: '#22c55e',
         lineWidth: 2,
-        lineStyle: 2,
+        lineStyle: 2, // dashed
         priceLineVisible: false,
         lastValueVisible: false,
       })
       tpLine.setData([
         { time: currentCandle.time as Time, value: takeProfit },
+        { time: lastCandle.time as Time, value: takeProfit },
       ])
       previewLineSeriesRef.current.push(tpLine)
     }
