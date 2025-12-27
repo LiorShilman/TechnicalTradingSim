@@ -280,8 +280,10 @@ The system supports saving and resuming games:
 - **Save**: Games are saved to localStorage with full state (positions, balance, stats, candles progress)
 - **Auto-detect**: When uploading same CSV file, system detects matching saved game
 - **Resume**: Restores exact state including currentIndex, positions, and account balance
+- **Start Fresh**: "🗑️ התחל משחק חדש" button allows clearing saved game and starting fresh
 - **Chart Loading**: Fixed to display all candles immediately on load (removed React.StrictMode double-rendering)
-- Implementation: `gameStore.ts` handles save/load, `App.tsx` checks for matching saved games
+- **Initial State**: New games start with 50 candles visible (currentIndex: 49)
+- Implementation: `gameStore.ts` handles save/load, `App.tsx` checks for matching saved games with useMemo
 - Saved state includes: gameId, sourceFileName, sourceDateRange, currentIndex, positions, closedPositions, stats, feedbackHistory
 
 ### React Configuration

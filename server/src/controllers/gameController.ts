@@ -95,7 +95,7 @@ export const createGame = async (req: Request, res: Response) => {
       id: gameId,
       candles,
       patterns,
-      currentIndex: 0, // מתחילים עם 50 נרות גלויים (0-49)
+      currentIndex: 49, // מתחילים עם 50 נרות גלויים (0-49)
       visibleCandles: 100, // הגדלנו את חלון התצוגה ל-100
       account: {
         balance: initialBalance,
@@ -247,7 +247,7 @@ export const createGameFromCSV = async (req: Request, res: Response) => {
       id: gameId,
       candles: usedCandles,
       patterns,
-      currentIndex: startIndex, // משתמשים באינדקס שהתקבל (0 למשחק חדש, או אינדקס שמור למשחק טעון)
+      currentIndex: startIndex || 49, // משתמשים באינדקס שהתקבל (49 למשחק חדש, או אינדקס שמור למשחק טעון)
       visibleCandles: 100,
       account: {
         balance: initialBalance,

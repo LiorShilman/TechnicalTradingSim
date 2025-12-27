@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef } from 'react'
+import { useEffect, useState, useRef, useMemo } from 'react'
 import TradingChart from './components/Chart/TradingChart'
 import OrderPanel from './components/Trading/OrderPanel'
 import AccountInfo from './components/Trading/AccountInfo'
@@ -23,11 +23,12 @@ function App() {
   })
   const [availableDateRange, setAvailableDateRange] = useState<{ start: string; end: string } | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null)
+  const [refreshSavedGame, setRefreshSavedGame] = useState(0) // מונה לרענון מצב משחק שמור
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { gameState, isLoading, error, initializeGame, initializeGameWithCSV, loadSavedGame, getSavedGameInfo } = useGameStore()
+  const { gameState, isLoading, error, initializeGame, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
 
-  // בדיקה אם יש משחק שמור
-  const savedGameInfo = getSavedGameInfo()
+  // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
+  const savedGameInfo = useMemo(() => getSavedGameInfo(), [refreshSavedGame, getSavedGameInfo])
 
   const handleStartGame = async () => {
     // ⭐ CRITICAL: אל תעדכן את setIsStartScreen לפני שהמשחק נטען!
@@ -320,17 +321,31 @@ function App() {
               {/* אינדיקציה למשחק שמור */}
               {savedGameInfo && uploadedFile && savedGameInfo.sourceFileName === uploadedFile.name && (
                 <div className="mb-4 p-3 bg-gradient-to-r from-green-900/40 to-emerald-900/40 border border-green-500/50 rounded-lg">
-                  <div className="flex items-center gap-2 text-green-400 font-bold mb-1">
-                    <span className="text-xl">💾</span>
-                    <span>נמצא משחק שמור!</span>
-                  </div>
-                  <div className="text-xs text-gray-300 mr-7">
-                    נשמר ב-{new Date(savedGameInfo.savedAt).toLocaleString('he-IL')} •
-                    נר {savedGameInfo.currentIndex} •
-                    {savedGameInfo.positions.length} פוזיציות פתוחות
-                  </div>
-                  <div className="text-xs text-green-300 mt-1 mr-7 font-semibold">
-                    ⚡ המשחק ימשיך מהנקודה בה עצרת
+                  <div className="flex items-center justify-between">
+                    <div className="flex-1">
+                      <div className="flex items-center gap-2 text-green-400 font-bold mb-1">
+                        <span className="text-xl">💾</span>
+                        <span>נמצא משחק שמור!</span>
+                      </div>
+                      <div className="text-xs text-gray-300 mr-7">
+                        נשמר ב-{new Date(savedGameInfo.savedAt).toLocaleString('he-IL')} •
+                        נר {savedGameInfo.currentIndex} •
+                        {savedGameInfo.positions.length} פוזיציות פתוחות
+                      </div>
+                      <div className="text-xs text-green-300 mt-1 mr-7 font-semibold">
+                        ⚡ המשחק ימשיך מהנקודה בה עצרת
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => {
+                        clearSavedGame()
+                        setRefreshSavedGame(prev => prev + 1) // כפיית re-render כדי לעדכן את savedGameInfo
+                      }}
+                      className="px-4 py-2 bg-red-600/80 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 whitespace-nowrap"
+                      title="מחק משחק שמור והתחל משחק חדש"
+                    >
+                      🗑️ התחל משחק חדש
+                    </button>
                   </div>
                 </div>
               )}
