@@ -391,6 +391,9 @@ export default function TradingChart() {
         }
 
         console.log('Creating new line:', newLine)
+        if (currentTool === 'long-position' || currentTool === 'short-position') {
+          console.log('📍 Position tool created - Entry:', price.toFixed(2), 'SL:', defaultSL?.toFixed(2), 'TP:', defaultTP?.toFixed(2))
+        }
         setDrawnLines((prev) => {
           const updated = [...prev, newLine]
           console.log('Updated drawnLines:', updated)
@@ -920,6 +923,8 @@ export default function TradingChart() {
         const sl = line.stopLoss
         const tp = line.takeProfit
 
+        console.log('🟢 Rendering LONG position - Entry:', entryPrice.toFixed(2), 'SL:', sl?.toFixed(2), 'TP:', tp?.toFixed(2))
+
         const firstCandle = gameState.candles[0]
         const lastCandle = gameState.candles[gameState.currentIndex]
         if (!firstCandle || !lastCandle) return
@@ -999,6 +1004,8 @@ export default function TradingChart() {
         const entryPrice = line.price
         const sl = line.stopLoss
         const tp = line.takeProfit
+
+        console.log('🔴 Rendering SHORT position - Entry:', entryPrice.toFixed(2), 'SL:', sl?.toFixed(2), 'TP:', tp?.toFixed(2))
 
         const firstCandle = gameState.candles[0]
         const lastCandle = gameState.candles[gameState.currentIndex]
