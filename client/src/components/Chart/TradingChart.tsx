@@ -558,12 +558,13 @@ export default function TradingChart() {
       console.log('🎯 Mousedown price:', price)
 
       // Check if we clicked near a position tool's SL or TP line
-      const tolerance = 0.005 // 0.5% price tolerance
+      const tolerance = 0.02 // 2% price tolerance (increased for easier dragging)
 
       for (const line of drawnLines) {
         if (line.type !== 'long-position' && line.type !== 'short-position') continue
 
-        console.log('🔍 Checking line:', line.id, 'SL:', line.stopLoss, 'TP:', line.takeProfit)
+        console.log('🔍 Checking line:', line.id, 'Entry:', line.price.toFixed(2), 'SL:', line.stopLoss?.toFixed(2), 'TP:', line.takeProfit?.toFixed(2))
+        console.log('   Distance from SL:', line.stopLoss ? Math.abs(price - line.stopLoss).toFixed(2) : 'N/A', '| Distance from TP:', line.takeProfit ? Math.abs(price - line.takeProfit).toFixed(2) : 'N/A')
 
         // Check SL line
         if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
@@ -612,7 +613,7 @@ export default function TradingChart() {
         }))
       } else {
         // Not dragging - check if we're hovering over a draggable line and change cursor
-        const tolerance = 0.005 // 0.5% price tolerance
+        const tolerance = 0.02 // 2% price tolerance (increased for easier dragging)
         let isOverDraggableLine = false
 
         for (const line of drawnLines) {
