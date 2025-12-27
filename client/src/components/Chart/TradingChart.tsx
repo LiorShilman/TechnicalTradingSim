@@ -840,6 +840,22 @@ export default function TradingChart() {
 
     console.log('renderDrawnLines: Processing', drawnLines.length, 'drawn lines')
 
+    // תיקון למשחקים ישנים: הוספת endIndex לכלים שאין להם
+    const fixedLines = drawnLines.map(line => {
+      if ((line.type === 'long-position' || line.type === 'short-position') && line.endIndex === undefined && line.startIndex !== undefined) {
+        const defaultEndIndex = Math.min(line.startIndex + 15, gameState.currentIndex)
+        console.log('🔧 Fixing old position tool - adding endIndex:', { lineId: line.id, startIndex: line.startIndex, endIndex: defaultEndIndex })
+        return { ...line, endIndex: defaultEndIndex }
+      }
+      return line
+    })
+
+    // עדכון drawnLines אם תוקנו
+    if (fixedLines.some((line, i) => line.endIndex !== drawnLines[i].endIndex)) {
+      setDrawnLines(fixedLines)
+      return // נצא ונרנדר מחדש עם הקווים המתוקנים
+    }
+
     // ציור כל הקווים
     drawnLines.forEach((line) => {
       const isSelected = line.id === selectedLineId
