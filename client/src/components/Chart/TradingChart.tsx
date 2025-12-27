@@ -396,16 +396,7 @@ export default function TradingChart() {
           ...(defaultTP && { takeProfit: defaultTP }),
         }
 
-        console.log('Creating new line:', newLine)
-        if (currentTool === 'long-position' || currentTool === 'short-position') {
-          console.log('📍 Position tool created - Entry:', price.toFixed(2), 'SL:', defaultSL?.toFixed(2), 'TP:', defaultTP?.toFixed(2))
-        }
-        setDrawnLines((prev) => {
-          const updated = [...prev, newLine]
-          console.log('Updated drawnLines:', updated)
-          return updated
-        })
-        console.log('🔄 Resetting activeTool to none after creating', currentTool)
+        setDrawnLines((prev) => [...prev, newLine])
         setActiveTool('none')
         activeToolRef.current = 'none' // ✅ עדכון ישיר של ref כדי למנוע race condition
         e.preventDefault() // מניעת mousedown מיד אחרי ה-click
@@ -542,16 +533,11 @@ export default function TradingChart() {
 
     // Mousedown handler for initiating drag of SL/TP lines
     const handleMouseDown = (e: MouseEvent) => {
-      console.log('🖱️ Mousedown detected, button:', e.button, 'activeTool:', activeToolRef.current)
-
       // Only handle left click
       if (e.button !== 0) return
 
       // Don't interfere with drawing tools or if we're already dragging
-      if (activeToolRef.current !== 'none' || draggingLineRef.current) {
-        console.log('⏭️ Skipping mousedown - active tool or already dragging')
-        return
-      }
+      if (activeToolRef.current !== 'none' || draggingLineRef.current) return
 
       if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
 
@@ -561,22 +547,14 @@ export default function TradingChart() {
       const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
       if (price === null || price === undefined) return
 
-      console.log('🎯 Mousedown price:', price)
-
       // Check if we clicked near a position tool's SL or TP line
       const tolerance = 0.02 // 2% price tolerance (increased for easier dragging)
-
-      console.log('📋 drawnLinesRef.current has', drawnLinesRef.current.length, 'lines')
 
       for (const line of drawnLinesRef.current) {
         if (line.type !== 'long-position' && line.type !== 'short-position') continue
 
-        console.log('🔍 Checking line:', line.id, 'Entry:', line.price.toFixed(2), 'SL:', line.stopLoss?.toFixed(2), 'TP:', line.takeProfit?.toFixed(2))
-        console.log('   Distance from SL:', line.stopLoss ? Math.abs(price - line.stopLoss).toFixed(2) : 'N/A', '| Distance from TP:', line.takeProfit ? Math.abs(price - line.takeProfit).toFixed(2) : 'N/A')
-
         // Check SL line
         if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
-          console.log('✅ Detected click on SL line!')
           setDraggingLine({ lineId: line.id, lineType: 'stopLoss' })
           e.preventDefault()
           return
@@ -584,14 +562,11 @@ export default function TradingChart() {
 
         // Check TP line
         if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance) {
-          console.log('✅ Detected click on TP line!')
           setDraggingLine({ lineId: line.id, lineType: 'takeProfit' })
           e.preventDefault()
           return
         }
       }
-
-      console.log('❌ No draggable line detected at this price')
     }
 
     // Mousemove handler for dragging SL/TP lines
@@ -629,12 +604,10 @@ export default function TradingChart() {
 
           // Check if hovering over SL or TP line
           if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
-            console.log('🔥 Hovering over SL line! Price:', price.toFixed(2), 'SL:', line.stopLoss.toFixed(2), 'diff%:', ((Math.abs(price - line.stopLoss) / line.stopLoss) * 100).toFixed(3))
             isOverDraggableLine = true
             break
           }
           if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance) {
-            console.log('🔥 Hovering over TP line! Price:', price.toFixed(2), 'TP:', line.takeProfit.toFixed(2), 'diff%:', ((Math.abs(price - line.takeProfit) / line.takeProfit) * 100).toFixed(3))
             isOverDraggableLine = true
             break
           }
@@ -642,7 +615,6 @@ export default function TradingChart() {
 
         // Change cursor style
         if (isOverDraggableLine && activeToolRef.current === 'none') {
-          console.log('⇕ Changing cursor to ns-resize')
           chartContainerRef.current.style.cursor = 'ns-resize'
         } else if (activeToolRef.current !== 'none') {
           chartContainerRef.current.style.cursor = 'crosshair'
@@ -655,7 +627,6 @@ export default function TradingChart() {
     // Mouseup handler to end dragging
     const handleMouseUp = () => {
       if (draggingLineRef.current) {
-        console.log('Ended dragging:', draggingLineRef.current)
         setDraggingLine(null)
       }
     }
@@ -932,8 +903,6 @@ export default function TradingChart() {
         const sl = line.stopLoss
         const tp = line.takeProfit
 
-        console.log('🟢 Rendering LONG position - Entry:', entryPrice.toFixed(2), 'SL:', sl?.toFixed(2), 'TP:', tp?.toFixed(2))
-
         const firstCandle = gameState.candles[0]
         const lastCandle = gameState.candles[gameState.currentIndex]
         if (!firstCandle || !lastCandle) return
@@ -1013,8 +982,6 @@ export default function TradingChart() {
         const entryPrice = line.price
         const sl = line.stopLoss
         const tp = line.takeProfit
-
-        console.log('🔴 Rendering SHORT position - Entry:', entryPrice.toFixed(2), 'SL:', sl?.toFixed(2), 'TP:', tp?.toFixed(2))
 
         const firstCandle = gameState.candles[0]
         const lastCandle = gameState.candles[gameState.currentIndex]
