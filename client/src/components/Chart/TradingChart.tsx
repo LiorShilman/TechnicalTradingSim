@@ -1079,11 +1079,11 @@ export default function TradingChart() {
         const endTime = endCandle.time
         markers.push({
           time: endTime as Time,
-          position: 'aboveBar' as const,
-          color: isSelected ? '#ffffff' : '#9ca3af',
+          position: 'inBar' as const, // ממוקם על הנר במקום מעל
+          color: isSelected ? '#FFD700' : '#FF9800', // כתום בהיר או זהב אם נבחר
           shape: 'square' as const,
           text: '⇔', // סמל resize
-          size: 1.2,
+          size: 2, // גדול יותר לזיהוי קל
         })
       }
       // כלי Short Position - סימולציה של עסקת SHORT עם SL/TP
@@ -1217,11 +1217,11 @@ export default function TradingChart() {
         const endTime = endCandle.time
         markers.push({
           time: endTime as Time,
-          position: 'belowBar' as const,
-          color: isSelected ? '#ffffff' : '#9ca3af',
+          position: 'inBar' as const, // ממוקם על הנר במקום מתחת
+          color: isSelected ? '#FFD700' : '#FF9800', // כתום בהיר או זהב אם נבחר
           shape: 'square' as const,
           text: '⇔', // סמל resize
-          size: 1.2,
+          size: 2, // גדול יותר לזיהוי קל
         })
       }
       // חצים והערות - markers
