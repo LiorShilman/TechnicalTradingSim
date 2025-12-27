@@ -286,10 +286,10 @@ Lightweight Charts (TradingView) integration:
        - Marker positioned at midpoint of measurement line
     9. **Long Position Simulator**: Interactive LONG trade planning tool with automatic SL/TP and visual profit/loss zones
        - Single-click on chart to place entry point
-       - **Smart default SL/TP**: Automatically calculates SL/TP based on 1% account risk with 1:2 R:R ratio
-         - Risk = 1% of account equity (e.g., $100 on $10,000 account)
-         - SL distance = Risk / assumed quantity (0.01 BTC)
+       - **Smart default SL/TP**: Automatically calculates SL/TP based on small percentage of entry price with 1:2 R:R ratio
+         - SL distance = 0.5% of entry price (very small, relative to price)
          - TP distance = SL distance × 2 (for 1:2 R:R)
+         - Example: Entry at $50,000 → SL at $49,750, TP at $50,500
        - **Visual lines**:
          - Entry: White dotted horizontal line
          - Stop Loss: Red dashed line below entry
@@ -301,15 +301,20 @@ Lightweight Charts (TradingView) integration:
        - **Info marker** displays: `LONG | R:R 1:X.XX | TP: +X.X% | SL: -X.X%`
        - All lines extend across entire visible chart
        - Selection highlighting: brightens all lines when selected
+       - **Drag to adjust**: Click and drag SL or TP lines to new price levels
+         - Cursor changes to ns-resize (⇕) when hovering over draggable lines
+         - Real-time visual updates as lines are dragged
+         - Zones automatically recalculate during drag
        - **Double-click to edit**: Double-click anywhere on the tool (near Entry/SL/TP lines) to open edit modal
-         - Modal allows editing SL and TP values
+         - Modal allows precise editing of SL and TP values
          - Real-time R:R ratio display in modal
          - Zones automatically update after saving changes
     10. **Short Position Simulator**: Interactive SHORT trade planning tool with automatic SL/TP and visual profit/loss zones
         - Single-click on chart to place entry point
-        - **Smart default SL/TP**: Automatically calculates SL/TP based on 1% account risk with 1:2 R:R ratio (inverted for SHORT)
-          - Risk = 1% of account equity
+        - **Smart default SL/TP**: Automatically calculates SL/TP based on small percentage of entry price with 1:2 R:R ratio (inverted for SHORT)
+          - SL distance = 0.5% of entry price (very small, relative to price)
           - SL above entry, TP below entry (SHORT profits when price drops)
+          - Example: Entry at $50,000 → SL at $50,250, TP at $49,500
         - **Visual lines**:
           - Entry: White dotted horizontal line
           - Stop Loss: Red dashed line above entry (inverted for SHORT)
@@ -321,8 +326,12 @@ Lightweight Charts (TradingView) integration:
         - **Info marker** displays: `SHORT | R:R 1:X.XX | TP: +X.X% | SL: -X.X%`
         - All lines extend across entire visible chart
         - Selection highlighting: brightens all lines when selected
+        - **Drag to adjust**: Click and drag SL or TP lines to new price levels
+          - Cursor changes to ns-resize (⇕) when hovering over draggable lines
+          - Real-time visual updates as lines are dragged
+          - Zones automatically recalculate during drag
         - **Double-click to edit**: Double-click anywhere on the tool (near Entry/SL/TP lines) to open edit modal
-          - Modal allows editing SL and TP values
+          - Modal allows precise editing of SL and TP values
           - Real-time R:R ratio display in modal
           - Zones automatically update after saving changes
   - **Professional selection highlighting**:
