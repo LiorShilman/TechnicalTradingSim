@@ -46,6 +46,7 @@ export default function TradingChart() {
   const [drawnLines, setDrawnLines] = useState<DrawnLine[]>([])
   const drawnLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
   const drawnMarkersRef = useRef<any[]>([]) // markers from drawing tools (arrows, notes)
+  const [selectedLineId, setSelectedLineId] = useState<string | null>(null)
 
   // For multi-point tools (trend line, fibonacci)
   const [, setDrawingInProgress] = useState<{
@@ -94,7 +95,7 @@ export default function TradingChart() {
         horzLines: { color: '#1e2442' },
       },
       crosshair: {
-        mode: 0, // Normal mode (0) - no magnetism to price
+        mode: 0, // Normal mode (0) - no magnetism, smooth crosshair movement
         vertLine: {
           width: 1,
           color: '#758696',
@@ -308,14 +309,16 @@ export default function TradingChart() {
       const relativeY = e.clientY - rect.top
       const relativeX = e.clientX - rect.left
 
-      // המרה למחיר
+      // המרה למחיר - coordinateToPrice returns exact price at Y coordinate (not snapped to candle)
       const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
       if (price === null || price === undefined) return
 
-      // המרה לזמן
+      // המרה לזמן - coordinateToTime may snap to nearest bar, but that's actually desired for time alignment
       const timeScale = chartRef.current.timeScale()
       const time = timeScale.coordinateToTime(relativeX)
       if (time === null || time === undefined) return
+
+      console.log('handleChartClick:', { price, time, relativeX, relativeY, currentTool: activeToolRef.current })
 
       const currentTool = activeToolRef.current
 
@@ -332,12 +335,18 @@ export default function TradingChart() {
           id: `line-${Date.now()}`,
           type: currentTool,
           price: price,
-          startTime: currentTool === 'horizontal-ray' ? (time as number) : undefined,
+          // חצים וקווים צריכים startTime
+          startTime: (currentTool === 'horizontal-ray' || currentTool === 'arrow-up' || currentTool === 'arrow-down') ? (time as number) : undefined,
           color: toolColors[currentTool] || '#FFD700',
           width: 2,
         }
 
-        setDrawnLines((prev) => [...prev, newLine])
+        console.log('Creating new line:', newLine)
+        setDrawnLines((prev) => {
+          const updated = [...prev, newLine]
+          console.log('Updated drawnLines:', updated)
+          return updated
+        })
         setActiveTool('none')
       }
       // כלים שצריכים שתי נקודות (trend line, fibonacci)
@@ -526,15 +535,32 @@ export default function TradingChart() {
     // מערך markers לחצים והערות
     const markers: any[] = []
 
+    console.log('renderDrawnLines: Processing', drawnLines.length, 'drawn lines')
+
     // ציור כל הקווים
     drawnLines.forEach((line) => {
+      const isSelected = line.id === selectedLineId
+
       if (line.type === 'horizontal-line' || line.type === 'horizontal-ray' || line.type === 'trend-line') {
+        // פונקציה להבהרת צבע - מקצועי ועדין יותר
+        const brightenColor = (color: string) => {
+          const hex = color.replace('#', '')
+          const r = parseInt(hex.substring(0, 2), 16)
+          const g = parseInt(hex.substring(2, 4), 16)
+          const b = parseInt(hex.substring(4, 6), 16)
+          // הבהרה עדינה יותר - רק 40 במקום 80
+          const newR = Math.min(255, r + 40)
+          const newG = Math.min(255, g + 40)
+          const newB = Math.min(255, b + 40)
+          return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+        }
+
         const lineSeries = chartRef.current!.addLineSeries({
-          color: line.color,
-          lineWidth: 2,
+          color: isSelected ? brightenColor(line.color) : line.color,
+          lineWidth: isSelected ? 3 : 2, // מעט עבה יותר
           priceLineVisible: false,
           lastValueVisible: false,
-          lineStyle: 0, // solid
+          lineStyle: 0, // תמיד solid
         })
 
         if (line.type === 'horizontal-line') {
@@ -590,9 +616,23 @@ export default function TradingChart() {
 
         fibLevels.forEach((level, idx) => {
           const fibPrice = line.price + (priceDiff * level)
+          const isSelectedFib = line.id === selectedLineId
+
+          // פונקציה להבהרת צבע פיבונצ'י
+          const brightenFibColor = (color: string) => {
+            const hex = color.replace('#', '')
+            const r = parseInt(hex.substring(0, 2), 16)
+            const g = parseInt(hex.substring(2, 4), 16)
+            const b = parseInt(hex.substring(4, 6), 16)
+            const newR = Math.min(255, r + 50)
+            const newG = Math.min(255, g + 50)
+            const newB = Math.min(255, b + 50)
+            return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+          }
+
           const fibSeries = chartRef.current!.addLineSeries({
-            color: fibColors[idx],
-            lineWidth: 1,
+            color: isSelectedFib ? brightenFibColor(fibColors[idx]) : fibColors[idx],
+            lineWidth: isSelectedFib ? 2 : 1,
             priceLineVisible: false,
             lastValueVisible: false,
             lineStyle: 2, // dashed
@@ -609,18 +649,50 @@ export default function TradingChart() {
       }
       // חצים והערות - markers
       else if (line.type === 'arrow-up' || line.type === 'arrow-down' || line.type === 'note') {
-        if (line.startTime) {
-          markers.push({
+        if (line.startTime !== undefined) {
+          // וידוא שהזמן תואם לנר קיים
+          const candle = gameState.candles.find(c => c.time === line.startTime)
+          if (!candle) {
+            console.warn('Marker time does not match any candle:', line.startTime)
+            // נסה למצוא את הנר הקרוב ביותר
+            const closestCandle = gameState.candles.reduce((prev, curr) => {
+              return Math.abs(curr.time - line.startTime!) < Math.abs(prev.time - line.startTime!) ? curr : prev
+            })
+            line.startTime = closestCandle.time
+            console.log('Using closest candle time:', closestCandle.time)
+          }
+
+          const isSelectedMarker = line.id === selectedLineId
+
+          // פונקציה להבהרת צבע marker
+          const brightenMarkerColor = (color: string) => {
+            const hex = color.replace('#', '')
+            const r = parseInt(hex.substring(0, 2), 16)
+            const g = parseInt(hex.substring(2, 4), 16)
+            const b = parseInt(hex.substring(4, 6), 16)
+            const newR = Math.min(255, r + 60)
+            const newG = Math.min(255, g + 60)
+            const newB = Math.min(255, b + 60)
+            return `#${newR.toString(16).padStart(2, '0')}${newG.toString(16).padStart(2, '0')}${newB.toString(16).padStart(2, '0')}`
+          }
+
+          const marker = {
             time: line.startTime as Time,
             position: line.type === 'arrow-down' ? ('aboveBar' as const) : ('belowBar' as const),
-            color: line.color,
+            color: isSelectedMarker ? brightenMarkerColor(line.color) : line.color,
             shape: line.type === 'arrow-up' ? ('arrowUp' as const) : line.type === 'arrow-down' ? ('arrowDown' as const) : ('circle' as const),
-            text: line.type === 'note' ? line.text : '',
-          })
+            text: line.type === 'note' ? line.text || '' : '',
+            size: isSelectedMarker ? 1.5 : 1, // מעט גדול יותר אם נבחר
+          }
+          console.log('renderDrawnLines: Adding marker', line.type, 'at time', line.startTime, marker)
+          markers.push(marker)
+        } else {
+          console.warn('Skipping marker - no startTime:', line)
         }
       }
     })
 
+    console.log('renderDrawnLines: Created', markers.length, 'markers for arrows/notes')
     // שמירת markers כלי הציור ב-ref לשימוש ב-createPatternMarkers
     drawnMarkersRef.current = markers
   }
@@ -629,10 +701,18 @@ export default function TradingChart() {
   useEffect(() => {
     if (gameState?.candles && gameState.currentIndex >= 0) {
       renderDrawnLines()
-      // עדכון markers (תבניות + כלי ציור)
-      createPatternMarkers()
     }
-  }, [drawnLines, gameState?.currentIndex, gameState?.candles.length, gameState?.id])
+  }, [drawnLines, selectedLineId, gameState?.currentIndex, gameState?.candles.length, gameState?.id])
+
+  // useEffect נפרד לעדכון markers (רץ אחרי renderDrawnLines)
+  useEffect(() => {
+    if (gameState?.candles && gameState.currentIndex >= 0) {
+      // קריאה מעוכבת כדי לוודא ש-drawnMarkersRef התעדכן
+      setTimeout(() => {
+        createPatternMarkers()
+      }, 0)
+    }
+  }, [drawnLines, selectedLineId, gameState?.currentIndex, gameState?.candles.length, gameState?.id])
 
   // פונקציות לניהול קווים
   const handleDeleteLine = (id: string) => {
@@ -737,9 +817,22 @@ export default function TradingChart() {
     // מיזוג markers תבניות עם markers כלי ציור
     const allMarkers = [...markers, ...drawnMarkersRef.current]
 
+    // ⚠️ CRITICAL: חייבים למיין לפי זמן! lightweight-charts דורש סדר עולה
+    allMarkers.sort((a, b) => {
+      const timeA = typeof a.time === 'number' ? a.time : 0
+      const timeB = typeof b.time === 'number' ? b.time : 0
+      return timeA - timeB
+    })
+
+    console.log('createPatternMarkers: Merging', markers.length, 'pattern markers +', drawnMarkersRef.current.length, 'drawn markers =', allMarkers.length, 'total (sorted by time)')
+
     // הגדרת כל ה-markers בבת אחת
     if (allMarkers.length > 0 && candlestickSeriesRef.current) {
+      console.log('createPatternMarkers: Setting', allMarkers.length, 'markers on candlestick series')
       candlestickSeriesRef.current.setMarkers(allMarkers)
+    } else if (allMarkers.length === 0 && candlestickSeriesRef.current) {
+      // Clear markers if none
+      candlestickSeriesRef.current.setMarkers([])
     }
   }
 
@@ -1009,6 +1102,7 @@ export default function TradingChart() {
         drawnLines={drawnLines}
         onDeleteLine={handleDeleteLine}
         onClearAll={handleClearAllLines}
+        onSelectLine={setSelectedLineId}
       />
 
       {/* Pending Order Menu */}

@@ -25,6 +25,7 @@ interface ChartToolsPanelProps {
   drawnLines: DrawnLine[]
   onDeleteLine: (id: string) => void
   onClearAll: () => void
+  onSelectLine?: (lineId: string | null) => void
 }
 
 const STORAGE_KEY = 'trading-game-ma-settings'
@@ -46,9 +47,16 @@ export default function ChartToolsPanel({
   drawnLines,
   onDeleteLine,
   onClearAll,
+  onSelectLine,
 }: ChartToolsPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [activeSection, setActiveSection] = useState<'indicators' | 'drawing'>('indicators')
+  const [selectedLineId, setSelectedLineId] = useState<string | null>(null)
+
+  const handleSelectLine = (lineId: string | null) => {
+    setSelectedLineId(lineId)
+    onSelectLine?.(lineId)
+  }
 
   const [maSettings, setMASettings] = useState<MASettings>(() => {
     const saved = localStorage.getItem(STORAGE_KEY)
@@ -262,29 +270,54 @@ export default function ChartToolsPanel({
                   </div>
 
                   <div className="space-y-1 max-h-40 overflow-y-auto">
-                    {drawnLines.map((line) => (
-                      <div
-                        key={line.id}
-                        className="flex items-center justify-between px-2 py-1.5 bg-dark-bg/50 rounded hover:bg-dark-bg/70 transition-colors"
-                      >
-                        <div className="flex items-center gap-2 flex-1">
-                          <div
-                            className="w-6 h-0.5 rounded"
-                            style={{ backgroundColor: line.color }}
-                          />
-                          <span className="text-xs">${line.price.toFixed(2)}</span>
-                          <span className="text-[10px] text-text-secondary">
-                            {line.type === 'horizontal-line' ? 'Line' : 'Ray'}
-                          </span>
-                        </div>
-                        <button
-                          onClick={() => onDeleteLine(line.id)}
-                          className="text-text-secondary hover:text-red-400 transition-colors"
+                    {drawnLines.map((line) => {
+                      const isSelected = selectedLineId === line.id
+                      return (
+                        <div
+                          key={line.id}
+                          onClick={() => handleSelectLine(isSelected ? null : line.id)}
+                          className={`flex items-center justify-between px-3 py-2 rounded-md transition-all duration-200 cursor-pointer ${
+                            isSelected
+                              ? 'bg-gradient-to-r from-blue-600/20 to-blue-500/20 border-l-4 border-blue-400 shadow-md'
+                              : 'bg-dark-bg/40 hover:bg-dark-bg/60 border-l-4 border-transparent'
+                          }`}
                         >
-                          <Trash2 size={12} />
-                        </button>
-                      </div>
-                    ))}
+                          <div className="flex items-center gap-2 flex-1">
+                            <div
+                              className="w-6 h-0.5 rounded"
+                              style={{ backgroundColor: line.color }}
+                            />
+                            <span className="text-xs">${line.price.toFixed(2)}</span>
+                            <span className="text-[10px] text-text-secondary">
+                              {(() => {
+                                const labels: Record<string, string> = {
+                                  'horizontal-line': 'H-Line',
+                                  'horizontal-ray': 'H-Ray',
+                                  'trend-line': 'Trend',
+                                  'arrow-up': 'Arrow ↑',
+                                  'arrow-down': 'Arrow ↓',
+                                  'fibonacci': 'Fib',
+                                  'note': 'Note',
+                                }
+                                return labels[line.type] || line.type
+                              })()}
+                            </span>
+                          </div>
+                          {isSelected && (
+                            <button
+                              onClick={(e) => {
+                                e.stopPropagation()
+                                onDeleteLine(line.id)
+                                handleSelectLine(null)
+                              }}
+                              className="text-red-400 hover:text-red-300 transition-colors font-semibold"
+                            >
+                              <Trash2 size={14} />
+                            </button>
+                          )}
+                        </div>
+                      )
+                    })}
                   </div>
                 </div>
               )}

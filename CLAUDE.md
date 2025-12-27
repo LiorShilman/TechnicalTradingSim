@@ -87,10 +87,13 @@ Test server health: `curl http://localhost:5000/api/health`
 - `client/src/stores/gameStore.ts` - Zustand state management with localStorage persistence
 - `client/src/services/api.ts` - Axios API client with interceptors
 - `client/src/types/game.types.ts` - Shared TypeScript types (duplicate of server types)
-- `client/src/components/Chart/TradingChart.tsx` - Lightweight Charts integration with pattern visualization
+- `client/src/components/Chart/TradingChart.tsx` - Lightweight Charts integration with pattern visualization and drawing tools
+- `client/src/components/Chart/ChartToolsPanel.tsx` - Unified panel for indicators (MA) and drawing tools with selection
 - `client/src/components/Trading/OrderPanel.tsx` - Buy/Sell interface with advanced SL/TP and risk management
 - `client/src/components/Trading/AccountInfo.tsx` - Real-time account balance and P&L display
-- `client/src/components/Trading/PendingOrdersList.tsx` - Displays and manages pending orders with cancel functionality
+- `client/src/components/Trading/PositionsList.tsx` - Displays open positions with edit and close functionality
+- `client/src/components/Trading/PendingOrdersList.tsx` - Displays and manages pending orders with edit and cancel functionality
+- `client/src/components/Trading/EditPositionModal.tsx` - Modal for editing SL/TP on positions and pending orders
 - `client/src/components/Stats/GameStats.tsx` - End-game statistics display
 - `client/src/App.tsx` - Main app with CSV upload, filename parsing, and balance persistence
 
@@ -259,6 +262,27 @@ Lightweight Charts (TradingView) integration:
 - Data format: `{ time: number, open, high, low, close }` (seconds-based timestamps)
 - Volume displayed as histogram series
 - **Pattern visualization**: Displays detected patterns with colored boxes (green for Breakout, blue for Retest, purple for Bull Flag) and markers
+- **Drawing Tools System** (ChartToolsPanel + TradingChart):
+  - **Unified panel** combining indicators and drawing tools with tabbed interface
+  - **Moving Averages**: MA 20, 50, 200 with option to calculate from current index (real-time simulation mode)
+  - **Seven drawing tools** for technical analysis:
+    1. **Horizontal Line**: Full-width line across entire chart (#FFD700 gold)
+    2. **Horizontal Ray**: Line extending right from click point (#00CED1 cyan)
+    3. **Trend Line**: Two-point line between candles (#9C27B0 purple)
+    4. **Arrow Up ↑**: Marker below candle for bullish signals (#4CAF50 green)
+    5. **Arrow Down ↓**: Marker above candle for bearish signals (#F44336 red)
+    6. **Fibonacci Retracement**: 7 levels (0, 23.6%, 38.2%, 50%, 61.8%, 78.6%, 100%) between two points
+    7. **Text Note**: Custom text marker on chart (#03A9F4 blue)
+  - **Professional selection highlighting**:
+    - Click on drawn object in list to select it
+    - Selected objects brightened using RGB color manipulation (+40 for lines, +50 for Fib, +60 for markers)
+    - Selected line width increases (2→3 for lines, 1→2 for Fib, size 1→1.5 for markers)
+    - List shows gradient background with left border for selected item
+    - Delete button appears only for selected items (prevents accidental deletion)
+  - **Crosshair behavior**: Mode 0 (normal) - smooth continuous movement without magnetism to candles
+  - **Marker time ordering**: All markers (patterns + drawings) sorted by time before passing to lightweight-charts API
+  - **localStorage persistence**: All drawn lines saved and restored across sessions
+  - **Hebrew descriptions**: Each tool has Hebrew tooltip explaining its use
 - **Pending Orders**: Right-click on chart to create pending order at exact price
   - Uses `candlestickSeriesRef.current.coordinateToPrice(relativeY)` for accurate price detection
   - The `coordinateToPrice` method is called on the series (not priceScale) to convert Y-coordinate to price
@@ -277,10 +301,11 @@ Lightweight Charts (TradingView) integration:
     - Shows order type (Buy Stop/Limit, Sell Stop/Limit), direction (LONG/SHORT), target price, quantity
     - Displays distance from current price in both $ and %
     - Shows SL/TP values if defined (color-coded green/red)
+    - Edit button to modify pending orders (Edit2 icon)
     - Cancel button with XCircle icon to delete pending orders
     - Color-coded by order type: green for buy orders, red for sell orders
     - Positioned between OrderPanel and PositionsList in sidebar
-    - Scrollable if many orders exist (max-h-80)
+    - Scrollable if many orders exist
 
 ### Balance Persistence with localStorage
 The app persists account balance across sessions using localStorage:
