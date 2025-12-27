@@ -557,11 +557,14 @@ export default function TradingChart() {
 
       if (price === null || price === undefined || time === null || time === undefined) return
 
+      console.log('👆 Mousedown on chart:', { price, time, positionTools: drawnLinesRef.current.filter(l => l.type === 'long-position' || l.type === 'short-position') })
+
       // Check if we clicked near a position tool's SL or TP line
       const priceTolerance = 0.02 // 2% price tolerance
 
       for (const line of drawnLinesRef.current) {
         if (line.type !== 'long-position' && line.type !== 'short-position') continue
+        console.log('🔍 Checking line:', { lineId: line.id, type: line.type, endIndex: line.endIndex })
 
         // Check for resize handle click (at endIndex time)
         if (line.endIndex !== undefined && gameState) {
