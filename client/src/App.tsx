@@ -338,14 +338,22 @@ function App() {
                       </div>
                     </div>
                     <button
-                      onClick={() => {
-                        clearSavedGame()
-                        setRefreshSavedGame(prev => prev + 1) // כפיית re-render כדי לעדכן את savedGameInfo
-                      }}
-                      className="px-4 py-2 bg-red-600/80 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 whitespace-nowrap"
-                      title="מחק משחק שמור והתחל משחק חדש"
+                      onClick={handleStartGame}
+                      disabled={isLoading}
+                      className="px-4 py-2 bg-green-600/80 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                      title="המשך משחק שמור"
                     >
-                      🗑️ התחל משחק חדש
+                      {isLoading ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin" />
+                          <span>טוען...</span>
+                        </>
+                      ) : (
+                        <>
+                          <Play size={16} className="transform rotate-180" />
+                          <span>המשך משחק</span>
+                        </>
+                      )}
                     </button>
                   </div>
                 </div>
@@ -475,12 +483,19 @@ function App() {
           {/* כפתור התחלה */}
           <div className="text-center">
             <button
-              onClick={handleStartGame}
+              onClick={() => {
+                // אם יש משחק שמור, מחק אותו לפני התחלת משחק חדש
+                if (savedGameInfo && uploadedFile && savedGameInfo.sourceFileName === uploadedFile.name) {
+                  clearSavedGame()
+                  setRefreshSavedGame(prev => prev + 1)
+                }
+                handleStartGame()
+              }}
               disabled={isLoading}
               className="group relative px-12 py-5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl font-bold text-2xl hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-2xl shadow-blue-500/50 hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="flex items-center gap-3 justify-center">
-                <span>{uploadedFile ? 'התחל עם קובץ שלי' : 'התחל משחק חדש'}</span>
+                <span>התחל משחק חדש</span>
                 {isLoading ? (
                   <Loader2 size={32} className="animate-spin" />
                 ) : (
