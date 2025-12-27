@@ -497,33 +497,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
         savedState.timeframe,
         savedState.account.initialBalance,
         dateRange,
-        savedState.currentIndex // שליחת האינדקס השמור לשרת
+        savedState.currentIndex, // שליחת האינדקס השמור לשרת
+        {
+          // שליחת המצב השמור לשרת כדי שישחזר אותו
+          positions: savedState.positions,
+          closedPositions: savedState.closedPositions,
+          pendingOrders: savedState.pendingOrders || [],
+          account: savedState.account,
+          stats: savedState.stats,
+          feedbackHistory: savedState.feedbackHistory,
+        }
       )
 
       console.log('🔍 loadSavedGame: Server response:', {
         totalCandles: response.game.candles?.length,
         currentIndex: response.game.currentIndex,
         gameId: response.game.id,
+        positions: response.game.positions.length,
+        pendingOrders: response.game.pendingOrders?.length || 0,
         firstCandleTime: response.game.candles?.[0]?.time,
         lastCandleTime: response.game.candles?.[response.game.candles.length - 1]?.time,
       })
 
-      // שחזור המצב השמור - CRITICAL: צריך לשחזר הכל כולל initialBalance
-      // עושים את השינויים לפני ה-set כדי למנוע עדכון כפול של הגרף
-      // השרת כבר החזיר את ה-currentIndex הנכון, אז לא צריך לדרוס אותו
+      // השרת כבר שיחזר את כל המידע, אז פשוט נשתמש בו
       const restoredGame: GameState = {
         ...response.game,
-        // currentIndex כבר נכון מהשרת
-        account: {
-          ...savedState.account,
-          initialBalance: savedState.account.initialBalance, // שמירת יתרה התחלתית מקורית
-        },
-        positions: [...savedState.positions], // העתקה עמוקה
-        closedPositions: [...savedState.closedPositions],
-        stats: { ...savedState.stats },
-        feedbackHistory: [...savedState.feedbackHistory],
-        isComplete: savedState.isComplete,
-        pendingOrders: savedState.pendingOrders ? [...savedState.pendingOrders] : [],
       }
 
       console.log('✅ Restored game state:', {

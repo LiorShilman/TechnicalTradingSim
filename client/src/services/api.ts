@@ -40,7 +40,22 @@ export const api = {
   /**
    * יצירת משחק חדש מקובץ CSV
    */
-  createGameWithCSV: async (file: File, assetName?: string, timeframe?: string, initialBalance?: number, dateRange?: { start: string; end: string } | null, startIndex?: number): Promise<NewGameResponse> => {
+  createGameWithCSV: async (
+    file: File,
+    assetName?: string,
+    timeframe?: string,
+    initialBalance?: number,
+    dateRange?: { start: string; end: string } | null,
+    startIndex?: number,
+    savedGameState?: {
+      positions: any[]
+      closedPositions: any[]
+      pendingOrders: any[]
+      account: any
+      stats: any
+      feedbackHistory: any[]
+    }
+  ): Promise<NewGameResponse> => {
     const formData = new FormData()
     formData.append('csvFile', file)
     if (assetName) {
@@ -58,6 +73,15 @@ export const api = {
     if (dateRange) {
       formData.append('startDate', dateRange.start)
       formData.append('endDate', dateRange.end)
+    }
+    // שחזור מצב משחק שמור
+    if (savedGameState) {
+      formData.append('savedPositions', JSON.stringify(savedGameState.positions))
+      formData.append('savedClosedPositions', JSON.stringify(savedGameState.closedPositions))
+      formData.append('savedPendingOrders', JSON.stringify(savedGameState.pendingOrders))
+      formData.append('savedAccount', JSON.stringify(savedGameState.account))
+      formData.append('savedStats', JSON.stringify(savedGameState.stats))
+      formData.append('savedFeedback', JSON.stringify(savedGameState.feedbackHistory))
     }
 
     const response = await apiClient.post<NewGameResponse>('/game/upload-csv', formData, {

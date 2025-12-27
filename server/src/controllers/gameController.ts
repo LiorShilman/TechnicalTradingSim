@@ -169,7 +169,19 @@ export const createGameFromCSV = async (req: Request, res: Response) => {
     const startIndex = req.body.startIndex ? parseInt(req.body.startIndex) : 0 // אינדקס התחלתי (לטעינת משחק שמור)
     const startDate = req.body.startDate
     const endDate = req.body.endDate
+
+    // שחזור מצב משחק שמור (אם סופק)
+    const savedPositions = req.body.savedPositions ? JSON.parse(req.body.savedPositions) : []
+    const savedClosedPositions = req.body.savedClosedPositions ? JSON.parse(req.body.savedClosedPositions) : []
+    const savedPendingOrders = req.body.savedPendingOrders ? JSON.parse(req.body.savedPendingOrders) : []
+    const savedAccount = req.body.savedAccount ? JSON.parse(req.body.savedAccount) : null
+    const savedStats = req.body.savedStats ? JSON.parse(req.body.savedStats) : null
+    const savedFeedback = req.body.savedFeedback ? JSON.parse(req.body.savedFeedback) : []
+
     console.log(`Asset: ${assetName}, Timeframe: ${timeframe}, Initial Balance: ${initialBalance}, Start Index: ${startIndex}`)
+    if (savedPositions.length > 0 || savedPendingOrders.length > 0) {
+      console.log(`🔄 Restoring saved game state: ${savedPositions.length} positions, ${savedPendingOrders.length} pending orders`)
+    }
     if (startDate && endDate) {
       console.log(`Date Range: ${startDate} to ${endDate}`)
     }
@@ -249,16 +261,17 @@ export const createGameFromCSV = async (req: Request, res: Response) => {
       patterns,
       currentIndex: startIndex || 49, // משתמשים באינדקס שהתקבל (49 למשחק חדש, או אינדקס שמור למשחק טעון)
       visibleCandles: 100,
-      account: {
+      account: savedAccount || {
         balance: initialBalance,
         equity: initialBalance,
         initialBalance: initialBalance,
         realizedPnL: 0,
         unrealizedPnL: 0,
       },
-      positions: [],
-      closedPositions: [],
-      stats: {
+      positions: savedPositions,
+      closedPositions: savedClosedPositions,
+      pendingOrders: savedPendingOrders,
+      stats: savedStats || {
         totalTrades: 0,
         winningTrades: 0,
         losingTrades: 0,
@@ -277,7 +290,7 @@ export const createGameFromCSV = async (req: Request, res: Response) => {
         maxWinStreak: 0,
         maxLossStreak: 0,
       },
-      feedbackHistory: [],
+      feedbackHistory: savedFeedback,
       isComplete: false,
       asset: assetName,
       timeframe: timeframe,

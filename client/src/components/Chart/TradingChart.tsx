@@ -441,6 +441,8 @@ export default function TradingChart() {
         // התאמה אוטומטית כדי להציג את הנרות בצורה מיטבית
         setTimeout(() => {
           chartRef.current?.timeScale().fitContent()
+          // ✅ וידוא שה-volume series גם מתעדכן
+          volumeSeriesRef.current?.applyOptions({})
         }, 100)
       }
       return
