@@ -2,6 +2,7 @@ import { useEffect, useRef, useState } from 'react'
 import { createChart, IChartApi, ISeriesApi, ISeriesApi as LineSeriesApi, Time } from 'lightweight-charts'
 import { useGameStore } from '@/stores/gameStore'
 import PendingOrderMenu from './PendingOrderMenu'
+import IndicatorControls, { type MASettings } from './IndicatorControls'
 
 export default function TradingChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -15,6 +16,11 @@ export default function TradingChart() {
   const initialIndexRef = useRef<number>(-1) // האינדקס ההתחלתי של המשחק
   const lastGameIdRef = useRef<string | null>(null) // מעקב אחרי gameId כדי לזהות משחק חדש/טעון
 
+  // Moving Average series refs
+  const ma20SeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+  const ma50SeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+  const ma200SeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+
   const { gameState, setChartControls } = useGameStore()
 
   // State for pending order menu
@@ -23,6 +29,14 @@ export default function TradingChart() {
     x: number
     y: number
   } | null>(null)
+
+  // State for MA settings
+  const [maSettings, setMASettings] = useState<MASettings>({
+    ma20: false,
+    ma50: false,
+    ma200: false,
+    startFromCurrentIndex: true,
+  })
 
   useEffect(() => {
     console.log('TradingChart: Mounting chart component')
@@ -137,7 +151,7 @@ export default function TradingChart() {
     volumeMASeries.priceScale().applyOptions({
       scaleMargins: {
         top: 0.72, // Volume מתחיל ב-72% מלמעלה (הפרדה ברורה יותר)
-        bottom: 0.02, // רווח קטן מלמטה
+        bottom: 0.08, // רווח מספיק מלמטה כדי שלא יחתך
       },
     })
 
@@ -154,7 +168,7 @@ export default function TradingChart() {
     volumeSeries.priceScale().applyOptions({
       scaleMargins: {
         top: 0.72, // Volume מתחיל ב-72% מלמעלה (הפרדה ברורה)
-        bottom: 0.02, // רווח קטן מלמטה
+        bottom: 0.08, // רווח מספיק מלמטה כדי שלא יחתך
       },
     })
 
@@ -166,10 +180,38 @@ export default function TradingChart() {
       },
     })
 
+    // יצירת סדרות ממוצעים נעים (מוסתרות בהתחלה)
+    const ma20Series = chart.addLineSeries({
+      color: '#2196F3', // כחול
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false, // מוסתר בהתחלה
+    })
+
+    const ma50Series = chart.addLineSeries({
+      color: '#FF9800', // כתום
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false, // מוסתר בהתחלה
+    })
+
+    const ma200Series = chart.addLineSeries({
+      color: '#F44336', // אדום
+      lineWidth: 2,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      visible: false, // מוסתר בהתחלה
+    })
+
     chartRef.current = chart
     candlestickSeriesRef.current = candlestickSeries
     volumeSeriesRef.current = volumeSeries
     volumeMASeriesRef.current = volumeMASeries
+    ma20SeriesRef.current = ma20Series
+    ma50SeriesRef.current = ma50Series
+    ma200SeriesRef.current = ma200Series
 
     // Resize handler
     const handleResize = () => {
@@ -235,6 +277,74 @@ export default function TradingChart() {
       chart.remove()
     }
   }, [])
+
+  // פונקציה לחישוב ממוצע נע פשוט (SMA)
+  const calculateSMA = (candles: any[], period: number, startIndex: number = 0) => {
+    if (!candles || candles.length < period) return []
+
+    const smaData: { time: Time; value: number }[] = []
+
+    // אם startFromCurrentIndex=true, מתחילים מהאינדקס הנוכחי
+    const effectiveStartIndex = Math.max(startIndex, period - 1)
+
+    for (let i = effectiveStartIndex; i < candles.length; i++) {
+      // חישוב ממוצע של period נרות אחרונים
+      let sum = 0
+      for (let j = 0; j < period; j++) {
+        sum += candles[i - j].close
+      }
+      const avg = sum / period
+
+      smaData.push({
+        time: candles[i].time as Time,
+        value: avg,
+      })
+    }
+
+    return smaData
+  }
+
+  // פונקציה לעדכון סדרות ממוצעים נעים
+  const updateMASeriesVisibility = () => {
+    if (!gameState?.candles || !ma20SeriesRef.current || !ma50SeriesRef.current || !ma200SeriesRef.current) return
+
+    const visibleCandles = gameState.candles.slice(0, gameState.currentIndex + 1)
+    const startIndex = maSettings.startFromCurrentIndex ? Math.max(0, gameState.currentIndex - 200) : 0
+
+    // MA 20
+    if (maSettings.ma20) {
+      const ma20Data = calculateSMA(visibleCandles, 20, startIndex)
+      ma20SeriesRef.current.setData(ma20Data)
+      ma20SeriesRef.current.applyOptions({ visible: true })
+    } else {
+      ma20SeriesRef.current.applyOptions({ visible: false })
+    }
+
+    // MA 50
+    if (maSettings.ma50) {
+      const ma50Data = calculateSMA(visibleCandles, 50, startIndex)
+      ma50SeriesRef.current.setData(ma50Data)
+      ma50SeriesRef.current.applyOptions({ visible: true })
+    } else {
+      ma50SeriesRef.current.applyOptions({ visible: false })
+    }
+
+    // MA 200
+    if (maSettings.ma200) {
+      const ma200Data = calculateSMA(visibleCandles, 200, startIndex)
+      ma200SeriesRef.current.setData(ma200Data)
+      ma200SeriesRef.current.applyOptions({ visible: true })
+    } else {
+      ma200SeriesRef.current.applyOptions({ visible: false })
+    }
+  }
+
+  // useEffect לעדכון ממוצעים כאשר ההגדרות או הנרות משתנים
+  useEffect(() => {
+    if (gameState?.candles && gameState.currentIndex >= 0) {
+      updateMASeriesVisibility()
+    }
+  }, [maSettings, gameState?.currentIndex, gameState?.candles.length, gameState?.id])
 
   // פונקציה ליצירת סימון תבניות
   const createPatternMarkers = () => {
@@ -585,6 +695,9 @@ export default function TradingChart() {
   return (
     <div className="w-full h-full bg-dark-panel rounded-lg overflow-hidden relative">
       <div ref={chartContainerRef} className="w-full h-full" />
+
+      {/* Indicator Controls */}
+      <IndicatorControls onMASettingsChange={setMASettings} />
 
       {/* Pending Order Menu */}
       {pendingOrderMenu && (
