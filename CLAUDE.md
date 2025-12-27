@@ -284,26 +284,42 @@ Lightweight Charts (TradingView) integration:
     8. **Measure Tool**: Two-point measurement showing price change ($), percentage (%), and number of bars (#FFD700 gold)
        - Displays: `Δ $XX.XX (±X.X%) | N bars`
        - Marker positioned at midpoint of measurement line
-    9. **Long Position Simulator**: Interactive LONG trade planning tool with automatic SL/TP
+    9. **Long Position Simulator**: Interactive LONG trade planning tool with automatic SL/TP and visual profit/loss zones
        - Single-click on chart to place entry point
        - Automatically creates default SL (-2%) and TP (+4%) for 1:2 R:R ratio
        - **Visual lines**:
          - Entry: White dotted horizontal line
          - Stop Loss: Red dashed line below entry
          - Take Profit: Green dashed line above entry
+       - **Colored profit/loss zones** (TradingView-style):
+         - Green semi-transparent area between Entry and TP (profit zone)
+         - Red semi-transparent area between Entry and SL (loss zone)
+         - Zones created using AreaSeries with gradient fill
        - **Info marker** displays: `LONG | R:R 1:X.XX | TP: +X.X% | SL: -X.X%`
        - All lines extend across entire visible chart
        - Selection highlighting: brightens all lines when selected
-    10. **Short Position Simulator**: Interactive SHORT trade planning tool with automatic SL/TP
+       - **Double-click to edit**: Double-click anywhere on the tool (near Entry/SL/TP lines) to open edit modal
+         - Modal allows editing SL and TP values
+         - Real-time R:R ratio display in modal
+         - Zones automatically update after saving changes
+    10. **Short Position Simulator**: Interactive SHORT trade planning tool with automatic SL/TP and visual profit/loss zones
         - Single-click on chart to place entry point
         - Automatically creates default SL (+2%) and TP (-4%) for 1:2 R:R ratio
         - **Visual lines**:
           - Entry: White dotted horizontal line
           - Stop Loss: Red dashed line above entry (inverted for SHORT)
           - Take Profit: Green dashed line below entry (inverted for SHORT)
+        - **Colored profit/loss zones** (TradingView-style, inverted):
+          - Blue semi-transparent area between Entry and TP below (profit zone for SHORT)
+          - Red semi-transparent area between Entry and SL above (loss zone for SHORT)
+          - Zones created using AreaSeries with gradient fill
         - **Info marker** displays: `SHORT | R:R 1:X.XX | TP: +X.X% | SL: -X.X%`
         - All lines extend across entire visible chart
         - Selection highlighting: brightens all lines when selected
+        - **Double-click to edit**: Double-click anywhere on the tool (near Entry/SL/TP lines) to open edit modal
+          - Modal allows editing SL and TP values
+          - Real-time R:R ratio display in modal
+          - Zones automatically update after saving changes
   - **Professional selection highlighting**:
     - Click on drawn object in list to select it
     - Selected objects brightened using RGB color manipulation (+40 for lines, +50 for Fib, +60 for markers)

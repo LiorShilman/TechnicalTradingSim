@@ -47,12 +47,14 @@ export default function TradingChart() {
   const drawnLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
   const drawnMarkersRef = useRef<any[]>([]) // markers from drawing tools (arrows, notes)
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null)
+  const [editingLineId, setEditingLineId] = useState<string | null>(null) // For edit modal
 
   // For multi-point tools (trend line, fibonacci)
   const [, setDrawingInProgress] = useState<{
     type: DrawingTool
     price: number
     time: number
+    candleIndex?: number
   } | null>(null)
 
   // Preview lines for pending order (shown while menu is open)
@@ -471,7 +473,38 @@ export default function TradingChart() {
       })
     }
 
+    // Double-click handler for editing position tools
+    const handleChartDoubleClick = (e: MouseEvent) => {
+      if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
+
+      // Get cursor position
+      const rect = chartContainerRef.current.getBoundingClientRect()
+      const relativeY = e.clientY - rect.top
+      const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
+      if (price === null || price === undefined) return
+
+      // Check if we double-clicked near a position tool line
+      const tolerance = 0.005 // 0.5% price tolerance for detecting clicks near lines
+
+      const positionLine = drawnLines.find(line => {
+        if (line.type !== 'long-position' && line.type !== 'short-position') return false
+
+        // Check if click is near entry, SL, or TP price
+        const entryMatch = Math.abs((price - line.price) / line.price) < tolerance
+        const slMatch = line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance
+        const tpMatch = line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance
+
+        return entryMatch || slMatch || tpMatch
+      })
+
+      if (positionLine) {
+        console.log('Double-clicked on position tool:', positionLine.id)
+        setEditingLineId(positionLine.id)
+      }
+    }
+
     chartContainerRef.current.addEventListener('click', handleChartClick)
+    chartContainerRef.current.addEventListener('dblclick', handleChartDoubleClick)
     chartContainerRef.current.addEventListener('contextmenu', handleContextMenu)
 
     return () => {
@@ -479,6 +512,7 @@ export default function TradingChart() {
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleLogicalRangeChange)
       window.removeEventListener('resize', handleResize)
       chartContainerRef.current?.removeEventListener('click', handleChartClick)
+      chartContainerRef.current?.removeEventListener('dblclick', handleChartDoubleClick)
       chartContainerRef.current?.removeEventListener('contextmenu', handleContextMenu)
       chart.remove()
     }
@@ -785,6 +819,45 @@ export default function TradingChart() {
           drawnLineSeriesRef.current.push(tpSeries)
         }
 
+        // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones)
+        if (sl && tp) {
+          // אזור רווח ירוק (Entry → TP) - משתמש ב-AreaSeries
+          const profitAreaSeries = chartRef.current!.addAreaSeries({
+            topColor: 'rgba(34, 197, 94, 0.25)',
+            bottomColor: 'rgba(34, 197, 94, 0.05)',
+            lineColor: 'rgba(34, 197, 94, 0.4)',
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
+
+          // נתונים לאזור רווח - קו העליון בגובה TP
+          const profitArea: { time: Time; value: number }[] = []
+          for (let i = 0; i <= gameState.currentIndex; i++) {
+            profitArea.push({ time: gameState.candles[i].time as Time, value: tp })
+          }
+          profitAreaSeries.setData(profitArea)
+          drawnLineSeriesRef.current.push(profitAreaSeries as any)
+
+          // אזור הפסד אדום (SL → Entry)
+          const lossAreaSeries = chartRef.current!.addAreaSeries({
+            topColor: 'rgba(239, 68, 68, 0.05)',
+            bottomColor: 'rgba(239, 68, 68, 0.25)',
+            lineColor: 'rgba(239, 68, 68, 0.4)',
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
+
+          // נתונים לאזור הפסד - קו התחתון בגובה SL
+          const lossArea: { time: Time; value: number }[] = []
+          for (let i = 0; i <= gameState.currentIndex; i++) {
+            lossArea.push({ time: gameState.candles[i].time as Time, value: sl })
+          }
+          lossAreaSeries.setData(lossArea)
+          drawnLineSeriesRef.current.push(lossAreaSeries as any)
+        }
+
         // חישוב R:R ו-P&L
         if (sl && tp) {
           const risk = Math.abs(entryPrice - sl)
@@ -859,6 +932,45 @@ export default function TradingChart() {
             { time: times[1] as Time, value: tp },
           ])
           drawnLineSeriesRef.current.push(tpSeries)
+        }
+
+        // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones) - הפוך ל-SHORT
+        if (sl && tp) {
+          // אזור רווח כחול (Entry → TP מתחת) - ב-SHORT רווח כשהמחיר יורד
+          const profitAreaSeries = chartRef.current!.addAreaSeries({
+            topColor: 'rgba(59, 130, 246, 0.05)',
+            bottomColor: 'rgba(59, 130, 246, 0.25)',
+            lineColor: 'rgba(59, 130, 246, 0.4)',
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
+
+          // נתונים לאזור רווח - קו התחתון בגובה TP (מתחת ל-entry)
+          const profitArea: { time: Time; value: number }[] = []
+          for (let i = 0; i <= gameState.currentIndex; i++) {
+            profitArea.push({ time: gameState.candles[i].time as Time, value: tp })
+          }
+          profitAreaSeries.setData(profitArea)
+          drawnLineSeriesRef.current.push(profitAreaSeries as any)
+
+          // אזור הפסד אדום (Entry → SL מעל)
+          const lossAreaSeries = chartRef.current!.addAreaSeries({
+            topColor: 'rgba(239, 68, 68, 0.25)',
+            bottomColor: 'rgba(239, 68, 68, 0.05)',
+            lineColor: 'rgba(239, 68, 68, 0.4)',
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
+
+          // נתונים לאזור הפסד - קו העליון בגובה SL (מעל ל-entry)
+          const lossArea: { time: Time; value: number }[] = []
+          for (let i = 0; i <= gameState.currentIndex; i++) {
+            lossArea.push({ time: gameState.candles[i].time as Time, value: sl })
+          }
+          lossAreaSeries.setData(lossArea)
+          drawnLineSeriesRef.current.push(lossAreaSeries as any)
         }
 
         // חישוב R:R ו-P&L
@@ -1468,6 +1580,119 @@ export default function TradingChart() {
           onPreviewUpdate={showPreviewLine}
         />
       )}
+
+      {/* Edit Position Tool Modal */}
+      {editingLineId && (() => {
+        const line = drawnLines.find(l => l.id === editingLineId)
+        if (!line || (line.type !== 'long-position' && line.type !== 'short-position')) return null
+
+        const handleSave = (newSL: number, newTP: number) => {
+          setDrawnLines(prev => prev.map(l =>
+            l.id === editingLineId
+              ? { ...l, stopLoss: newSL, takeProfit: newTP }
+              : l
+          ))
+          setEditingLineId(null)
+        }
+
+        return (
+          <>
+            {/* Background overlay */}
+            <div
+              className="fixed inset-0 z-40 bg-black/50"
+              onClick={() => setEditingLineId(null)}
+            />
+
+            {/* Modal */}
+            <div
+              className="fixed z-50 bg-dark-panel border border-dark-border rounded-lg shadow-2xl p-4 min-w-[300px]"
+              style={{
+                left: '50%',
+                top: '50%',
+                transform: 'translate(-50%, -50%)',
+              }}
+              onClick={(e) => e.stopPropagation()}
+            >
+              <div className="flex items-center justify-between mb-3 pb-2 border-b border-dark-border">
+                <div className="text-sm font-bold text-text-primary">
+                  {line.type === 'long-position' ? 'Edit LONG Position' : 'Edit SHORT Position'}
+                </div>
+                <button
+                  onClick={() => setEditingLineId(null)}
+                  className="text-text-secondary hover:text-text-primary transition-colors"
+                >
+                  ×
+                </button>
+              </div>
+
+              {/* Entry Price (read-only) */}
+              <div className="mb-3">
+                <label className="block text-xs text-text-secondary mb-1">Entry Price</label>
+                <input
+                  type="number"
+                  value={line.price.toFixed(2)}
+                  disabled
+                  className="w-full px-3 py-2 bg-dark-bg/50 border border-dark-border rounded text-sm text-text-secondary"
+                />
+              </div>
+
+              {/* Stop Loss */}
+              <div className="mb-3">
+                <label className="block text-xs text-text-secondary mb-1">Stop Loss</label>
+                <input
+                  type="number"
+                  defaultValue={line.stopLoss?.toFixed(2) || ''}
+                  step="0.01"
+                  id="edit-sl-input"
+                  className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-red-500"
+                />
+              </div>
+
+              {/* Take Profit */}
+              <div className="mb-4">
+                <label className="block text-xs text-text-secondary mb-1">Take Profit</label>
+                <input
+                  type="number"
+                  defaultValue={line.takeProfit?.toFixed(2) || ''}
+                  step="0.01"
+                  id="edit-tp-input"
+                  className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-green-500"
+                />
+              </div>
+
+              {/* R:R Display */}
+              {line.stopLoss && line.takeProfit && (() => {
+                const risk = Math.abs(line.price - line.stopLoss)
+                const reward = Math.abs(line.takeProfit - line.price)
+                const rrRatio = reward / risk
+                return (
+                  <div className="mb-4 p-2 bg-blue-900/20 border border-blue-500/30 rounded text-center">
+                    <div className="text-xs text-text-secondary">Current R:R Ratio</div>
+                    <div className="text-lg font-bold text-blue-400">1:{rrRatio.toFixed(2)}</div>
+                  </div>
+                )
+              })()}
+
+              {/* Save Button */}
+              <button
+                onClick={() => {
+                  const slInput = document.getElementById('edit-sl-input') as HTMLInputElement
+                  const tpInput = document.getElementById('edit-tp-input') as HTMLInputElement
+                  const newSL = parseFloat(slInput.value)
+                  const newTP = parseFloat(tpInput.value)
+
+                  if (!isNaN(newSL) && !isNaN(newTP)) {
+                    handleSave(newSL, newTP)
+                  }
+                }}
+                className="w-full px-4 py-2 bg-blue-600 hover:bg-blue-700 rounded font-semibold text-sm transition-colors"
+              >
+                Save Changes
+              </button>
+            </div>
+          </>
+        )
+      })()}
 
       {/* קו הפרדה מודגש בין גרף נרות ל-Volume */}
       <div
