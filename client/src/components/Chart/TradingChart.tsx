@@ -83,25 +83,34 @@ export default function TradingChart() {
     drawnLinesRef.current = drawnLines
   }, [drawnLines])
 
-  // Load drawn lines from localStorage
+  // Load drawn lines from localStorage (per game)
   useEffect(() => {
-    const saved = localStorage.getItem('trading-game-drawings')
+    if (!gameState?.id) return
+
+    const saved = localStorage.getItem(`trading-game-drawings-${gameState.id}`)
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
         setDrawnLines(parsed)
+        console.log(`📐 Loaded ${parsed.length} drawings for game ${gameState.id}`)
       } catch (e) {
         console.error('Failed to parse drawings from localStorage', e)
       }
+    } else {
+      // משחק חדש - נקה קווים
+      setDrawnLines([])
+      console.log(`🆕 New game ${gameState.id} - no drawings`)
     }
-  }, [])
+  }, [gameState?.id])
 
-  // Save drawn lines to localStorage
+  // Save drawn lines to localStorage (per game)
   useEffect(() => {
+    if (!gameState?.id) return
+
     if (drawnLines.length > 0) {
-      localStorage.setItem('trading-game-drawings', JSON.stringify(drawnLines))
+      localStorage.setItem(`trading-game-drawings-${gameState.id}`, JSON.stringify(drawnLines))
     }
-  }, [drawnLines])
+  }, [drawnLines, gameState?.id])
 
   useEffect(() => {
     console.log('TradingChart: Mounting chart component')
