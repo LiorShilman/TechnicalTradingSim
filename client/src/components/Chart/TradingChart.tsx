@@ -955,9 +955,53 @@ export default function TradingChart() {
           drawnLineSeriesRef.current.push(tpSeries)
         }
 
-        // Note: אזורי צבע בין Entry-TP ו-Entry-SL לא נתמכים ב-Lightweight Charts
-        // הספרייה לא מאפשרת fill בין שני קווים שרירותיים
-        // הקווים עצמם (Entry, SL, TP) מספקים אינדיקציה ברורה למטרות הסימולציה
+        // אזורי רווח/הפסד ויזואליים - מספר קווים דקים צבעוניים (LONG)
+        if (sl && tp) {
+          const profitSteps = 5 // מספר קווים באזור הרווח
+          const lossSteps = 5 // מספר קווים באזור ההפסד
+
+          // יצירת קווים ירוקים בין Entry ל-TP
+          for (let i = 0; i <= profitSteps; i++) {
+            const ratio = i / profitSteps
+            const price = entryPrice + (tp - entryPrice) * ratio
+            const opacity = 0.08 // שקיפות קבועה
+
+            const profitLine = chartRef.current!.addLineSeries({
+              color: `rgba(34, 197, 94, ${opacity})`,
+              lineWidth: 2,
+              priceLineVisible: false,
+              lastValueVisible: false,
+              lineStyle: 0,
+            })
+
+            profitLine.setData([
+              { time: times[0] as Time, value: price },
+              { time: times[1] as Time, value: price },
+            ])
+            drawnLineSeriesRef.current.push(profitLine)
+          }
+
+          // יצירת קווים אדומים בין Entry ל-SL
+          for (let i = 0; i <= lossSteps; i++) {
+            const ratio = i / lossSteps
+            const price = entryPrice - (entryPrice - sl) * ratio
+            const opacity = 0.08
+
+            const lossLine = chartRef.current!.addLineSeries({
+              color: `rgba(239, 68, 68, ${opacity})`,
+              lineWidth: 2,
+              priceLineVisible: false,
+              lastValueVisible: false,
+              lineStyle: 0,
+            })
+
+            lossLine.setData([
+              { time: times[0] as Time, value: price },
+              { time: times[1] as Time, value: price },
+            ])
+            drawnLineSeriesRef.current.push(lossLine)
+          }
+        }
 
         // חישוב R:R ו-P&L
         if (sl && tp) {
@@ -1035,9 +1079,53 @@ export default function TradingChart() {
           drawnLineSeriesRef.current.push(tpSeries)
         }
 
-        // Note: אזורי צבע בין Entry-TP ו-Entry-SL לא נתמכים ב-Lightweight Charts
-        // הספרייה לא מאפשרת fill בין שני קווים שרירותיים
-        // הקווים עצמם (Entry, SL, TP) מספקים אינדיקציה ברורה למטרות הסימולציה
+        // אזורי רווח/הפסד ויזואליים - מספר קווים דקים צבעוניים (SHORT)
+        if (sl && tp) {
+          const profitSteps = 5
+          const lossSteps = 5
+
+          // יצירת קווים כחולים בין Entry ל-TP (מטה ב-SHORT)
+          for (let i = 0; i <= profitSteps; i++) {
+            const ratio = i / profitSteps
+            const price = entryPrice - (entryPrice - tp) * ratio
+            const opacity = 0.08
+
+            const profitLine = chartRef.current!.addLineSeries({
+              color: `rgba(59, 130, 246, ${opacity})`, // כחול ל-SHORT
+              lineWidth: 2,
+              priceLineVisible: false,
+              lastValueVisible: false,
+              lineStyle: 0,
+            })
+
+            profitLine.setData([
+              { time: times[0] as Time, value: price },
+              { time: times[1] as Time, value: price },
+            ])
+            drawnLineSeriesRef.current.push(profitLine)
+          }
+
+          // יצירת קווים אדומים בין Entry ל-SL (מעלה ב-SHORT)
+          for (let i = 0; i <= lossSteps; i++) {
+            const ratio = i / lossSteps
+            const price = entryPrice + (sl - entryPrice) * ratio
+            const opacity = 0.08
+
+            const lossLine = chartRef.current!.addLineSeries({
+              color: `rgba(239, 68, 68, ${opacity})`,
+              lineWidth: 2,
+              priceLineVisible: false,
+              lastValueVisible: false,
+              lineStyle: 0,
+            })
+
+            lossLine.setData([
+              { time: times[0] as Time, value: price },
+              { time: times[1] as Time, value: price },
+            ])
+            drawnLineSeriesRef.current.push(lossLine)
+          }
+        }
 
         // חישוב R:R ו-P&L
         if (sl && tp) {
