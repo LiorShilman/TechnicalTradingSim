@@ -3,6 +3,7 @@ import { createChart, IChartApi, ISeriesApi, ISeriesApi as LineSeriesApi, Time }
 import { useGameStore } from '@/stores/gameStore'
 import PendingOrderMenu from './PendingOrderMenu'
 import IndicatorControls, { type MASettings } from './IndicatorControls'
+import DrawingControls, { type DrawingTool, type DrawnLine } from './DrawingControls'
 
 export default function TradingChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -37,6 +38,31 @@ export default function TradingChart() {
     ma200: false,
     startFromCurrentIndex: true,
   })
+
+  // State for drawing tools
+  const [activeTool, setActiveTool] = useState<DrawingTool>('none')
+  const [drawnLines, setDrawnLines] = useState<DrawnLine[]>([])
+  const drawnLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
+
+  // Load drawn lines from localStorage
+  useEffect(() => {
+    const saved = localStorage.getItem('trading-game-drawings')
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        setDrawnLines(parsed)
+      } catch (e) {
+        console.error('Failed to parse drawings from localStorage', e)
+      }
+    }
+  }, [])
+
+  // Save drawn lines to localStorage
+  useEffect(() => {
+    if (drawnLines.length > 0) {
+      localStorage.setItem('trading-game-drawings', JSON.stringify(drawnLines))
+    }
+  }, [drawnLines])
 
   useEffect(() => {
     console.log('TradingChart: Mounting chart component')
@@ -240,9 +266,52 @@ export default function TradingChart() {
     chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleLogicalRangeChange)
     window.addEventListener('resize', handleResize)
 
+    // Click handler for drawing tools
+    const handleChartClick = (e: MouseEvent) => {
+      // אם אין כלי שרטוט פעיל, לא עושים כלום
+      if (activeTool === 'none') return
+
+      if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
+
+      // Get cursor position relative to chart
+      const rect = chartContainerRef.current.getBoundingClientRect()
+      const relativeY = e.clientY - rect.top
+      const relativeX = e.clientX - rect.left
+
+      // המרה למחיר
+      const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
+      if (price === null || price === undefined) return
+
+      // המרה לזמן
+      const timeScale = chartRef.current.timeScale()
+      const time = timeScale.coordinateToTime(relativeX)
+      if (time === null || time === undefined) return
+
+      // יצירת קו חדש
+      const newLine: DrawnLine = {
+        id: `line-${Date.now()}`,
+        type: activeTool,
+        price: price,
+        startTime: activeTool === 'horizontal-ray' ? (time as number) : undefined,
+        color: activeTool === 'horizontal-line' ? '#FFD700' : '#00CED1',
+        width: 2,
+      }
+
+      setDrawnLines((prev) => [...prev, newLine])
+
+      // אחרי שרטוט, מבטלים את הכלי
+      setActiveTool('none')
+    }
+
     // Right-click handler for pending orders
     const handleContextMenu = (e: MouseEvent) => {
       e.preventDefault()
+
+      // אם יש כלי שרטוט פעיל, ביטול במקום תפריט
+      if (activeTool !== 'none') {
+        setActiveTool('none')
+        return
+      }
 
       if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
 
@@ -267,16 +336,18 @@ export default function TradingChart() {
       })
     }
 
+    chartContainerRef.current.addEventListener('click', handleChartClick)
     chartContainerRef.current.addEventListener('contextmenu', handleContextMenu)
 
     return () => {
       console.log('TradingChart: Unmounting chart component')
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleLogicalRangeChange)
       window.removeEventListener('resize', handleResize)
+      chartContainerRef.current?.removeEventListener('click', handleChartClick)
       chartContainerRef.current?.removeEventListener('contextmenu', handleContextMenu)
       chart.remove()
     }
-  }, [])
+  }, [activeTool])
 
   // פונקציה לחישוב ממוצע נע פשוט (SMA)
   const calculateSMA = (candles: any[], period: number, startIndex: number = 0) => {
@@ -345,6 +416,74 @@ export default function TradingChart() {
       updateMASeriesVisibility()
     }
   }, [maSettings, gameState?.currentIndex, gameState?.candles.length, gameState?.id])
+
+  // פונקציה לציור קווים שרטוטיים
+  const renderDrawnLines = () => {
+    if (!chartRef.current || !gameState?.candles) return
+
+    // הסרת קווים ישנים
+    drawnLineSeriesRef.current.forEach((series) => {
+      try {
+        chartRef.current?.removeSeries(series)
+      } catch (e) {
+        // Series might already be removed, ignore error
+      }
+    })
+    drawnLineSeriesRef.current = []
+
+    // ציור כל הקווים
+    drawnLines.forEach((line) => {
+      const lineSeries = chartRef.current!.addLineSeries({
+        color: line.color,
+        lineWidth: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+        lineStyle: 0, // solid
+      })
+
+      if (line.type === 'horizontal-line') {
+        // קו אופקי על פני כל הגרף
+        const firstCandle = gameState.candles[0]
+        const lastCandle = gameState.candles[gameState.currentIndex]
+
+        if (firstCandle && lastCandle) {
+          lineSeries.setData([
+            { time: firstCandle.time as Time, value: line.price },
+            { time: lastCandle.time as Time, value: line.price },
+          ])
+        }
+      } else if (line.type === 'horizontal-ray' && line.startTime) {
+        // קו אופקי מנקודה מסוימת ימינה
+        const lastCandle = gameState.candles[gameState.currentIndex]
+
+        if (lastCandle) {
+          lineSeries.setData([
+            { time: line.startTime as Time, value: line.price },
+            { time: lastCandle.time as Time, value: line.price },
+          ])
+        }
+      }
+
+      drawnLineSeriesRef.current.push(lineSeries)
+    })
+  }
+
+  // useEffect לציור קווים כאשר הם משתנים
+  useEffect(() => {
+    if (gameState?.candles && gameState.currentIndex >= 0) {
+      renderDrawnLines()
+    }
+  }, [drawnLines, gameState?.currentIndex, gameState?.candles.length, gameState?.id])
+
+  // פונקציות לניהול קווים
+  const handleDeleteLine = (id: string) => {
+    setDrawnLines((prev) => prev.filter((line) => line.id !== id))
+  }
+
+  const handleClearAllLines = () => {
+    setDrawnLines([])
+    localStorage.removeItem('trading-game-drawings')
+  }
 
   // פונקציה ליצירת סימון תבניות
   const createPatternMarkers = () => {
@@ -698,6 +837,15 @@ export default function TradingChart() {
 
       {/* Indicator Controls */}
       <IndicatorControls onMASettingsChange={setMASettings} />
+
+      {/* Drawing Controls */}
+      <DrawingControls
+        activeTool={activeTool}
+        onToolChange={setActiveTool}
+        drawnLines={drawnLines}
+        onDeleteLine={handleDeleteLine}
+        onClearAll={handleClearAllLines}
+      />
 
       {/* Pending Order Menu */}
       {pendingOrderMenu && (
