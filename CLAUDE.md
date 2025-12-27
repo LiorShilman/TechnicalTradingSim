@@ -243,6 +243,10 @@ Currently stub implementations in `patternGenerator.ts`. When implementing:
 - Client: Axios interceptor catches errors, extracts `response.data.message`
 - Server: Express error middleware catches unhandled errors
 - Store errors in `gameStore.error`, display to user, clear with `clearError()`
+- **CRITICAL**: When errors occur in `executeTrade`, `nextCandle`, or `createPendingOrder`, the `gameState` is preserved (not reset)
+  - Previous bug: errors caused `gameState` to become undefined, triggering `useEffect` in App.tsx to reset the game
+  - Fix: Only set `error` and `isLoading` in catch blocks, keeping `gameState` intact
+  - This prevents positions from disappearing when operations fail (e.g., insufficient funds)
 
 ### Chart Integration
 Lightweight Charts (TradingView) integration:

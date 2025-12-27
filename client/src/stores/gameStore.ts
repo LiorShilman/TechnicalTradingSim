@@ -210,6 +210,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isLoading: false
       })
     } catch (error) {
+      toast.error(`שגיאה: ${error instanceof Error ? error.message : 'Failed to get next candle'}`, {
+        icon: '❌',
+      })
+      // ⚠️ CRITICAL: לא מאפסים את gameState בשגיאה
       set({
         error: error instanceof Error ? error.message : 'Failed to get next candle',
         isLoading: false
@@ -276,9 +280,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       toast.error(`שגיאה: ${errorMessage}`, {
         icon: '❌',
       })
+      // ⚠️ CRITICAL: אסור לאפס את gameState בשגיאה!
+      // זה גורם ל-useEffect ב-App.tsx לחשוב שהמשחק אופס ולחזור למסך ההתחלה
       set({
         error: errorMessage,
         isLoading: false
+        // ✅ gameState נשאר כפי שהיה - לא מאפסים אותו!
       })
     }
   },
@@ -321,6 +328,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       toast.error(`שגיאה: ${errorMessage}`, {
         icon: '❌',
       })
+      // ⚠️ CRITICAL: לא מאפסים את gameState בשגיאה
       set({
         error: errorMessage,
         isLoading: false
