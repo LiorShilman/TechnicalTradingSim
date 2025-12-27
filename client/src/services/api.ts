@@ -5,6 +5,7 @@ import type {
   TradeRequest,
   TradeResponse,
   CreateGameRequest,
+  PendingOrderType,
 } from '@/types/game.types'
 
 const BASE_URL = '/api'
@@ -100,7 +101,8 @@ export const api = {
     targetPrice: number,
     quantity: number,
     stopLoss?: number,
-    takeProfit?: number
+    takeProfit?: number,
+    orderType?: PendingOrderType
   ): Promise<{ pendingOrder: any; feedback: any }> => {
     const response = await apiClient.post(`/game/${gameId}/pending-order`, {
       type,
@@ -108,6 +110,7 @@ export const api = {
       quantity,
       stopLoss,
       takeProfit,
+      orderType,
     })
     return response.data
   },

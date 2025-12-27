@@ -154,11 +154,21 @@ export interface SavedGameState {
 }
 
 /**
+ * סוג הפקודה העתידית
+ * - buyStop: קנייה מעל המחיר הנוכחי (breakout long)
+ * - buyLimit: קנייה מתחת למחיר הנוכחי (pullback long)
+ * - sellStop: מכירה מתחת למחיר הנוכחי (breakout short)
+ * - sellLimit: מכירה מעל המחיר הנוכחי (pullback short)
+ */
+export type PendingOrderType = 'buyStop' | 'buyLimit' | 'sellStop' | 'sellLimit'
+
+/**
  * פקודה עתידית - פקודה שתבוצע כשנגיע למחיר מסוים
  */
 export interface PendingOrder {
   id: string
   type: PositionType           // long או short
+  orderType: PendingOrderType  // סוג הפקודה (Stop/Limit)
   targetPrice: number          // המחיר שבו הפקודה תבוצע
   targetCandleIndex: number    // האינדקס של הנר שבו המחיר נמצא
   quantity: number

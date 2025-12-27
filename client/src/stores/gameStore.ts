@@ -32,7 +32,8 @@ interface GameStore {
     targetPrice: number,
     quantity: number,
     stopLoss?: number,
-    takeProfit?: number
+    takeProfit?: number,
+    orderType?: import('@/types/game.types').PendingOrderType
   ) => Promise<void>
   resetGame: () => Promise<void>
   toggleAutoPlay: () => void
@@ -282,7 +283,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
-  createPendingOrder: async (type, targetPrice, quantity, stopLoss, takeProfit) => {
+  createPendingOrder: async (type, targetPrice, quantity, stopLoss, takeProfit, orderType) => {
     const { gameState } = get()
     if (!gameState) return
 
@@ -294,7 +295,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
         targetPrice,
         quantity,
         stopLoss,
-        takeProfit
+        takeProfit,
+        orderType
       )
 
       // עדכון state עם הפקודה החדשה

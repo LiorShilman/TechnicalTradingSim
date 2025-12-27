@@ -498,19 +498,43 @@ export const nextCandle = async (req: Request, res: Response) => {
     // 2.5. בדיקת פקודות עתידיות והפעלתן
     if (game.pendingOrders && game.pendingOrders.length > 0) {
       const currentPrice = currentCandle.close
+      const previousCandle = game.candles[game.currentIndex - 1]
+      const previousPrice = previousCandle?.close || currentPrice
       const ordersToExecute: typeof game.pendingOrders = []
       const ordersToKeep: typeof game.pendingOrders = []
 
       for (const order of game.pendingOrders) {
         let shouldExecute = false
 
-        // בדיקה אם המחיר הגיע ליעד
-        if (order.type === 'long') {
-          // LONG: מבצעים כשהמחיר מגיע או עובר את המחיר היעד מלמטה
-          shouldExecute = currentPrice >= order.targetPrice
-        } else {
-          // SHORT: מבצעים כשהמחיר מגיע או יורד מתחת למחיר היעד
-          shouldExecute = currentPrice <= order.targetPrice
+        // ✅ לוגיקה מתקדמת: בדיקה לפי סוג הפקודה (Stop/Limit)
+        switch (order.orderType) {
+          case 'buyStop':
+            // Buy Stop: קנייה מעל המחיר הנוכחי - מבוצע כשהמחיר עולה ועובר את היעד
+            shouldExecute = previousPrice < order.targetPrice && currentPrice >= order.targetPrice
+            break
+
+          case 'buyLimit':
+            // Buy Limit: קנייה מתחת למחיר הנוכחי - מבוצע כשהמחיר יורד ועובר את היעד
+            shouldExecute = previousPrice > order.targetPrice && currentPrice <= order.targetPrice
+            break
+
+          case 'sellStop':
+            // Sell Stop: מכירה מתחת למחיר הנוכחי - מבוצע כשהמחיר יורד ועובר את היעד
+            shouldExecute = previousPrice > order.targetPrice && currentPrice <= order.targetPrice
+            break
+
+          case 'sellLimit':
+            // Sell Limit: מכירה מעל המחיר הנוכחי - מבוצע כשהמחיר עולה ועובר את היעד
+            shouldExecute = previousPrice < order.targetPrice && currentPrice >= order.targetPrice
+            break
+
+          default:
+            // Fallback ללוגיקה הישנה אם orderType לא מוגדר
+            if (order.type === 'long') {
+              shouldExecute = currentPrice >= order.targetPrice
+            } else {
+              shouldExecute = currentPrice <= order.targetPrice
+            }
         }
 
         if (shouldExecute) {
@@ -911,7 +935,7 @@ export const executeTrade = async (req: Request, res: Response) => {
 export const createPendingOrder = async (req: Request, res: Response) => {
   try {
     const { gameId } = req.params
-    const { type, targetPrice, quantity, stopLoss, takeProfit } = req.body
+    const { type, targetPrice, quantity, stopLoss, takeProfit, orderType } = req.body
     const game = games.get(gameId)
 
     if (!game) {
@@ -952,10 +976,22 @@ export const createPendingOrder = async (req: Request, res: Response) => {
       })
     }
 
+    // קביעת orderType אוטומטית אם לא סופק
+    const currentPrice = game.candles[game.currentIndex].close
+    let finalOrderType = orderType
+    if (!finalOrderType) {
+      if (type === 'long') {
+        finalOrderType = targetPrice > currentPrice ? 'buyStop' : 'buyLimit'
+      } else {
+        finalOrderType = targetPrice < currentPrice ? 'sellStop' : 'sellLimit'
+      }
+    }
+
     // יצירת פקודה עתידית
     const pendingOrder = {
       id: uuidv4(),
       type: type as 'long' | 'short',
+      orderType: finalOrderType,
       targetPrice,
       targetCandleIndex: -1, // יעודכן כשהפקודה תתבצע
       quantity,

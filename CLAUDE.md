@@ -256,6 +256,12 @@ Lightweight Charts (TradingView) integration:
   - The `coordinateToPrice` method is called on the series (not priceScale) to convert Y-coordinate to price
   - Price is captured at exact mouse Y-coordinate on chart
   - Context menu appears at click location with precise price for order entry
+  - **Four order types** based on price direction:
+    - **Buy Stop**: Long entry above current price (breakout)
+    - **Buy Limit**: Long entry below current price (pullback)
+    - **Sell Stop**: Short entry below current price (breakdown)
+    - **Sell Limit**: Short entry above current price (retracement)
+  - Orders execute only when price crosses target in correct direction (prevents instant execution)
 
 ### Balance Persistence with localStorage
 The app persists account balance across sessions using localStorage:

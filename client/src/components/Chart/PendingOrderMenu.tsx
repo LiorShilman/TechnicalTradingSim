@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { TrendingUp, TrendingDown, X } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
+import type { PendingOrderType } from '@/types/game.types'
 
 interface PendingOrderMenuProps {
   price: number
@@ -15,10 +16,25 @@ export default function PendingOrderMenu({ price, x, y, onClose }: PendingOrderM
   const [stopLoss, setStopLoss] = useState<number | undefined>()
   const [takeProfit, setTakeProfit] = useState<number | undefined>()
 
+  // קבלת המחיר הנוכחי
+  const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
+
+  // קביעת סוג הפקודה לפי המחיר היעד ביחס למחיר הנוכחי
+  const determineOrderType = (positionType: 'long' | 'short'): PendingOrderType => {
+    if (positionType === 'long') {
+      // LONG: מעל = Buy Stop, מתחת = Buy Limit
+      return price > currentPrice ? 'buyStop' : 'buyLimit'
+    } else {
+      // SHORT: מתחת = Sell Stop, מעל = Sell Limit
+      return price < currentPrice ? 'sellStop' : 'sellLimit'
+    }
+  }
+
   const handlePlaceOrder = async (type: 'long' | 'short') => {
     if (!gameState) return
 
-    await createPendingOrder(type, price, quantity, stopLoss, takeProfit)
+    const orderType = determineOrderType(type)
+    await createPendingOrder(type, price, quantity, stopLoss, takeProfit, orderType)
     onClose()
   }
 
@@ -56,6 +72,9 @@ export default function PendingOrderMenu({ price, x, y, onClose }: PendingOrderM
           <div className="text-xs text-text-secondary mb-1">מחיר יעד</div>
           <div className="text-xl font-bold text-blue-400" dir="ltr">
             ${price.toFixed(2)}
+          </div>
+          <div className="text-xs text-text-secondary mt-1" dir="ltr">
+            מחיר נוכחי: ${currentPrice.toFixed(2)}
           </div>
         </div>
 
@@ -102,23 +121,47 @@ export default function PendingOrderMenu({ price, x, y, onClose }: PendingOrderM
         <div className="grid grid-cols-2 gap-2">
           <button
             onClick={() => handlePlaceOrder('long')}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+            className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-bold text-sm flex flex-col items-center justify-center gap-1 transition-colors"
           >
-            <TrendingUp size={16} />
-            <span>BUY LONG</span>
+            <div className="flex items-center gap-2">
+              <TrendingUp size={16} />
+              <span>BUY LONG</span>
+            </div>
+            <span className="text-xs font-normal opacity-80">
+              {price > currentPrice ? '(Buy Stop)' : '(Buy Limit)'}
+            </span>
           </button>
           <button
             onClick={() => handlePlaceOrder('short')}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-bold text-sm flex items-center justify-center gap-2 transition-colors"
+            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-bold text-sm flex flex-col items-center justify-center gap-1 transition-colors"
           >
-            <TrendingDown size={16} />
-            <span>SELL SHORT</span>
+            <div className="flex items-center gap-2">
+              <TrendingDown size={16} />
+              <span>SELL SHORT</span>
+            </div>
+            <span className="text-xs font-normal opacity-80">
+              {price < currentPrice ? '(Sell Stop)' : '(Sell Limit)'}
+            </span>
           </button>
         </div>
 
         {/* הסבר */}
         <div className="mt-3 pt-3 border-t border-dark-border text-xs text-text-secondary">
-          הפקודה תבוצע אוטומטית כשהמחיר יגיע ל-${price.toFixed(2)}
+          {price > currentPrice && (
+            <div className="mb-1">
+              <span className="font-semibold">Stop Order:</span> הפקודה תבוצע כשהמחיר יעלה ל-${price.toFixed(2)}
+            </div>
+          )}
+          {price < currentPrice && (
+            <div className="mb-1">
+              <span className="font-semibold">Stop Order:</span> הפקודה תבוצע כשהמחיר ירד ל-${price.toFixed(2)}
+            </div>
+          )}
+          {price === currentPrice && (
+            <div className="mb-1 text-yellow-400">
+              <span className="font-semibold">שים לב:</span> המחיר זהה למחיר הנוכחי
+            </div>
+          )}
         </div>
       </div>
     </>
