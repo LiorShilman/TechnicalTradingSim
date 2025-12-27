@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import {
   TrendingUp,
   Minus,
@@ -55,7 +55,6 @@ export default function ChartToolsPanel({
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
-        onMASettingsChange(parsed)
         return parsed
       } catch (e) {
         console.error('Failed to parse MA settings from localStorage', e)
@@ -68,6 +67,19 @@ export default function ChartToolsPanel({
       startFromCurrentIndex: true,
     }
   })
+
+  // Load settings on mount
+  useEffect(() => {
+    const saved = localStorage.getItem(STORAGE_KEY)
+    if (saved) {
+      try {
+        const parsed = JSON.parse(saved)
+        onMASettingsChange(parsed)
+      } catch (e) {
+        console.error('Failed to parse MA settings from localStorage', e)
+      }
+    }
+  }, [onMASettingsChange])
 
   const handleToggleMA = (ma: keyof MASettings) => {
     const newSettings = {

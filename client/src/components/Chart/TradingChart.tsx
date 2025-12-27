@@ -545,6 +545,12 @@ export default function TradingChart() {
           }
         } else if (line.type === 'trend-line' && line.startTime && line.endTime && line.price2 !== undefined) {
           // קו מגמה בין שתי נקודות
+          // Skip if start and end are the same (invalid trend line)
+          if (line.startTime === line.endTime) {
+            console.warn('Skipping trend-line with same start/end time')
+            return
+          }
+
           const times = [line.startTime, line.endTime].sort((a, b) => a - b)
           lineSeries.setData([
             { time: times[0] as Time, value: line.startTime === times[0] ? line.price : line.price2 },
@@ -556,6 +562,12 @@ export default function TradingChart() {
       }
       // פיבונצ'י - מספר קווים
       else if (line.type === 'fibonacci' && line.startTime && line.endTime && line.price2 !== undefined) {
+        // Skip if start and end are the same (invalid fibonacci)
+        if (line.startTime === line.endTime) {
+          console.warn('Skipping fibonacci with same start/end time')
+          return
+        }
+
         const fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
         const fibColors = ['#808080', '#FF6B6B', '#4ECDC4', '#FFD93D', '#6BCB77', '#4D96FF', '#9D4EDD']
 
