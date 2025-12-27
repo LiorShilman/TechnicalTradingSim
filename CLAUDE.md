@@ -286,15 +286,18 @@ Lightweight Charts (TradingView) integration:
        - Marker positioned at midpoint of measurement line
     9. **Long Position Simulator**: Interactive LONG trade planning tool with automatic SL/TP and visual profit/loss zones
        - Single-click on chart to place entry point
-       - Automatically creates default SL (-2%) and TP (+4%) for 1:2 R:R ratio
+       - **Smart default SL/TP**: Automatically calculates SL/TP based on 1% account risk with 1:2 R:R ratio
+         - Risk = 1% of account equity (e.g., $100 on $10,000 account)
+         - SL distance = Risk / assumed quantity (0.01 BTC)
+         - TP distance = SL distance × 2 (for 1:2 R:R)
        - **Visual lines**:
          - Entry: White dotted horizontal line
          - Stop Loss: Red dashed line below entry
          - Take Profit: Green dashed line above entry
        - **Colored profit/loss zones** (TradingView-style):
-         - Green semi-transparent area between Entry and TP (profit zone)
-         - Red semi-transparent area between Entry and SL (loss zone)
-         - Zones created using AreaSeries with gradient fill
+         - Green semi-transparent rectangle between Entry and TP (profit zone)
+         - Red semi-transparent rectangle between Entry and SL (loss zone)
+         - Zones rendered using HistogramSeries for proper fill display
        - **Info marker** displays: `LONG | R:R 1:X.XX | TP: +X.X% | SL: -X.X%`
        - All lines extend across entire visible chart
        - Selection highlighting: brightens all lines when selected
@@ -304,15 +307,17 @@ Lightweight Charts (TradingView) integration:
          - Zones automatically update after saving changes
     10. **Short Position Simulator**: Interactive SHORT trade planning tool with automatic SL/TP and visual profit/loss zones
         - Single-click on chart to place entry point
-        - Automatically creates default SL (+2%) and TP (-4%) for 1:2 R:R ratio
+        - **Smart default SL/TP**: Automatically calculates SL/TP based on 1% account risk with 1:2 R:R ratio (inverted for SHORT)
+          - Risk = 1% of account equity
+          - SL above entry, TP below entry (SHORT profits when price drops)
         - **Visual lines**:
           - Entry: White dotted horizontal line
           - Stop Loss: Red dashed line above entry (inverted for SHORT)
           - Take Profit: Green dashed line below entry (inverted for SHORT)
         - **Colored profit/loss zones** (TradingView-style, inverted):
-          - Blue semi-transparent area between Entry and TP below (profit zone for SHORT)
-          - Red semi-transparent area between Entry and SL above (loss zone for SHORT)
-          - Zones created using AreaSeries with gradient fill
+          - Blue semi-transparent rectangle between Entry and TP below (profit zone for SHORT)
+          - Red semi-transparent rectangle between Entry and SL above (loss zone for SHORT)
+          - Zones rendered using HistogramSeries with negative/positive values
         - **Info marker** displays: `SHORT | R:R 1:X.XX | TP: +X.X% | SL: -X.X%`
         - All lines extend across entire visible chart
         - Selection highlighting: brightens all lines when selected

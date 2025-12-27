@@ -339,17 +339,31 @@ export default function TradingChart() {
         }
 
         // עבור position tools, נוסיף ברירות מחדל ל-SL/TP
+        // חישוב SL/TP מבוסס על 1% סיכון מגודל התיק עם יחס R:R 1:2
         let defaultSL: number | undefined = undefined
         let defaultTP: number | undefined = undefined
 
-        if (currentTool === 'long-position') {
-          // LONG: SL מתחת, TP מעל
-          defaultSL = price * 0.98 // 2% מתחת
-          defaultTP = price * 1.04 // 4% מעל (2:1 R:R)
-        } else if (currentTool === 'short-position') {
-          // SHORT: SL מעל, TP מתחת
-          defaultSL = price * 1.02 // 2% מעל
-          defaultTP = price * 0.96 // 4% מתחת (2:1 R:R)
+        if (currentTool === 'long-position' || currentTool === 'short-position') {
+          const accountBalance = gameState?.account?.equity || 10000 // ברירת מחדל $10,000
+          const riskPercent = 0.01 // 1% סיכון
+          const riskAmount = accountBalance * riskPercent // $100 בברירת מחדל
+
+          // חישוב SL לפי גודל הסיכון (בהנחת 0.01 BTC quantity)
+          const assumedQuantity = 0.01
+          const slDistance = riskAmount / assumedQuantity // מרחק SL במחיר
+
+          // יחס R:R 1:2 (רווח פוטנציאלי פי 2 מהסיכון)
+          const tpDistance = slDistance * 2
+
+          if (currentTool === 'long-position') {
+            // LONG: SL מתחת, TP מעל
+            defaultSL = price - slDistance
+            defaultTP = price + tpDistance
+          } else if (currentTool === 'short-position') {
+            // SHORT: SL מעל, TP מתחת
+            defaultSL = price + slDistance
+            defaultTP = price - tpDistance
+          }
         }
 
         const candleIndex = gameState?.candles.findIndex(c => c.time === time)
@@ -819,43 +833,57 @@ export default function TradingChart() {
           drawnLineSeriesRef.current.push(tpSeries)
         }
 
-        // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones)
+        // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones) - TradingView style
         if (sl && tp) {
-          // אזור רווח ירוק (Entry → TP) - משתמש ב-AreaSeries
-          const profitAreaSeries = chartRef.current!.addAreaSeries({
-            topColor: 'rgba(34, 197, 94, 0.25)',
-            bottomColor: 'rgba(34, 197, 94, 0.05)',
-            lineColor: 'rgba(34, 197, 94, 0.4)',
-            lineWidth: 1,
+          // יצירת מלבן רקע ירוק לרווח (Entry → TP) באמצעות HistogramSeries
+          const profitZoneSeries = chartRef.current!.addHistogramSeries({
+            color: 'rgba(34, 197, 94, 0.15)',
+            priceFormat: {
+              type: 'price',
+              precision: 2,
+              minMove: 0.01,
+            },
             priceLineVisible: false,
             lastValueVisible: false,
           })
 
-          // נתונים לאזור רווח - קו העליון בגובה TP
-          const profitArea: { time: Time; value: number }[] = []
+          // נתונים למלבן רווח - גובה המלבן = המרחק מ-Entry ל-TP
+          const profitHeight = Math.abs(tp - entryPrice)
+          const profitZone: { time: Time; value: number; color?: string }[] = []
           for (let i = 0; i <= gameState.currentIndex; i++) {
-            profitArea.push({ time: gameState.candles[i].time as Time, value: tp })
+            profitZone.push({
+              time: gameState.candles[i].time as Time,
+              value: profitHeight,
+              color: 'rgba(34, 197, 94, 0.15)',
+            })
           }
-          profitAreaSeries.setData(profitArea)
-          drawnLineSeriesRef.current.push(profitAreaSeries as any)
+          profitZoneSeries.setData(profitZone)
+          drawnLineSeriesRef.current.push(profitZoneSeries as any)
 
-          // אזור הפסד אדום (SL → Entry)
-          const lossAreaSeries = chartRef.current!.addAreaSeries({
-            topColor: 'rgba(239, 68, 68, 0.05)',
-            bottomColor: 'rgba(239, 68, 68, 0.25)',
-            lineColor: 'rgba(239, 68, 68, 0.4)',
-            lineWidth: 1,
+          // יצירת מלבן רקע אדום להפסד (Entry → SL) באמצעות HistogramSeries
+          const lossZoneSeries = chartRef.current!.addHistogramSeries({
+            color: 'rgba(239, 68, 68, 0.15)',
+            priceFormat: {
+              type: 'price',
+              precision: 2,
+              minMove: 0.01,
+            },
             priceLineVisible: false,
             lastValueVisible: false,
           })
 
-          // נתונים לאזור הפסד - קו התחתון בגובה SL
-          const lossArea: { time: Time; value: number }[] = []
+          // נתונים למלבן הפסד - גובה המלבן = המרחק מ-Entry ל-SL
+          const lossHeight = Math.abs(entryPrice - sl)
+          const lossZone: { time: Time; value: number; color?: string }[] = []
           for (let i = 0; i <= gameState.currentIndex; i++) {
-            lossArea.push({ time: gameState.candles[i].time as Time, value: sl })
+            lossZone.push({
+              time: gameState.candles[i].time as Time,
+              value: -lossHeight, // שלילי כי הולך למטה
+              color: 'rgba(239, 68, 68, 0.15)',
+            })
           }
-          lossAreaSeries.setData(lossArea)
-          drawnLineSeriesRef.current.push(lossAreaSeries as any)
+          lossZoneSeries.setData(lossZone)
+          drawnLineSeriesRef.current.push(lossZoneSeries as any)
         }
 
         // חישוב R:R ו-P&L
@@ -934,43 +962,57 @@ export default function TradingChart() {
           drawnLineSeriesRef.current.push(tpSeries)
         }
 
-        // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones) - הפוך ל-SHORT
+        // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones) - SHORT (הפוך)
         if (sl && tp) {
-          // אזור רווח כחול (Entry → TP מתחת) - ב-SHORT רווח כשהמחיר יורד
-          const profitAreaSeries = chartRef.current!.addAreaSeries({
-            topColor: 'rgba(59, 130, 246, 0.05)',
-            bottomColor: 'rgba(59, 130, 246, 0.25)',
-            lineColor: 'rgba(59, 130, 246, 0.4)',
-            lineWidth: 1,
+          // יצירת מלבן רקע כחול לרווח (Entry → TP למטה) - SHORT מרוויח כשהמחיר יורד
+          const profitZoneSeries = chartRef.current!.addHistogramSeries({
+            color: 'rgba(59, 130, 246, 0.15)',
+            priceFormat: {
+              type: 'price',
+              precision: 2,
+              minMove: 0.01,
+            },
             priceLineVisible: false,
             lastValueVisible: false,
           })
 
-          // נתונים לאזור רווח - קו התחתון בגובה TP (מתחת ל-entry)
-          const profitArea: { time: Time; value: number }[] = []
+          // נתונים למלבן רווח SHORT - גובה שלילי כי יורד למטה
+          const profitHeight = Math.abs(entryPrice - tp)
+          const profitZone: { time: Time; value: number; color?: string }[] = []
           for (let i = 0; i <= gameState.currentIndex; i++) {
-            profitArea.push({ time: gameState.candles[i].time as Time, value: tp })
+            profitZone.push({
+              time: gameState.candles[i].time as Time,
+              value: -profitHeight, // שלילי כי SHORT מרוויח למטה
+              color: 'rgba(59, 130, 246, 0.15)',
+            })
           }
-          profitAreaSeries.setData(profitArea)
-          drawnLineSeriesRef.current.push(profitAreaSeries as any)
+          profitZoneSeries.setData(profitZone)
+          drawnLineSeriesRef.current.push(profitZoneSeries as any)
 
-          // אזור הפסד אדום (Entry → SL מעל)
-          const lossAreaSeries = chartRef.current!.addAreaSeries({
-            topColor: 'rgba(239, 68, 68, 0.25)',
-            bottomColor: 'rgba(239, 68, 68, 0.05)',
-            lineColor: 'rgba(239, 68, 68, 0.4)',
-            lineWidth: 1,
+          // יצירת מלבן רקע אדום להפסד (Entry → SL למעלה)
+          const lossZoneSeries = chartRef.current!.addHistogramSeries({
+            color: 'rgba(239, 68, 68, 0.15)',
+            priceFormat: {
+              type: 'price',
+              precision: 2,
+              minMove: 0.01,
+            },
             priceLineVisible: false,
             lastValueVisible: false,
           })
 
-          // נתונים לאזור הפסד - קו העליון בגובה SL (מעל ל-entry)
-          const lossArea: { time: Time; value: number }[] = []
+          // נתונים למלבן הפסד SHORT - גובה חיובי כי עולה למעלה
+          const lossHeight = Math.abs(sl - entryPrice)
+          const lossZone: { time: Time; value: number; color?: string }[] = []
           for (let i = 0; i <= gameState.currentIndex; i++) {
-            lossArea.push({ time: gameState.candles[i].time as Time, value: sl })
+            lossZone.push({
+              time: gameState.candles[i].time as Time,
+              value: lossHeight, // חיובי כי SL מעל entry ב-SHORT
+              color: 'rgba(239, 68, 68, 0.15)',
+            })
           }
-          lossAreaSeries.setData(lossArea)
-          drawnLineSeriesRef.current.push(lossAreaSeries as any)
+          lossZoneSeries.setData(lossZone)
+          drawnLineSeriesRef.current.push(lossZoneSeries as any)
         }
 
         // חישוב R:R ו-P&L
