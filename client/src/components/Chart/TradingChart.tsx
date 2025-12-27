@@ -527,11 +527,16 @@ export default function TradingChart() {
 
     // Mousedown handler for initiating drag of SL/TP lines
     const handleMouseDown = (e: MouseEvent) => {
+      console.log('🖱️ Mousedown detected, button:', e.button, 'activeTool:', activeToolRef.current)
+
       // Only handle left click
       if (e.button !== 0) return
 
       // Don't interfere with drawing tools or if we're already dragging
-      if (activeToolRef.current !== 'none' || draggingLineRef.current) return
+      if (activeToolRef.current !== 'none' || draggingLineRef.current) {
+        console.log('⏭️ Skipping mousedown - active tool or already dragging')
+        return
+      }
 
       if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
 
@@ -541,14 +546,19 @@ export default function TradingChart() {
       const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
       if (price === null || price === undefined) return
 
+      console.log('🎯 Mousedown price:', price)
+
       // Check if we clicked near a position tool's SL or TP line
       const tolerance = 0.005 // 0.5% price tolerance
 
       for (const line of drawnLines) {
         if (line.type !== 'long-position' && line.type !== 'short-position') continue
 
+        console.log('🔍 Checking line:', line.id, 'SL:', line.stopLoss, 'TP:', line.takeProfit)
+
         // Check SL line
         if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
+          console.log('✅ Detected click on SL line!')
           setDraggingLine({ lineId: line.id, lineType: 'stopLoss' })
           e.preventDefault()
           return
@@ -556,11 +566,14 @@ export default function TradingChart() {
 
         // Check TP line
         if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance) {
+          console.log('✅ Detected click on TP line!')
           setDraggingLine({ lineId: line.id, lineType: 'takeProfit' })
           e.preventDefault()
           return
         }
       }
+
+      console.log('❌ No draggable line detected at this price')
     }
 
     // Mousemove handler for dragging SL/TP lines
@@ -598,10 +611,12 @@ export default function TradingChart() {
 
           // Check if hovering over SL or TP line
           if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
+            console.log('🔥 Hovering over SL line! Price:', price, 'SL:', line.stopLoss)
             isOverDraggableLine = true
             break
           }
           if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance) {
+            console.log('🔥 Hovering over TP line! Price:', price, 'TP:', line.takeProfit)
             isOverDraggableLine = true
             break
           }
@@ -609,6 +624,7 @@ export default function TradingChart() {
 
         // Change cursor style
         if (isOverDraggableLine && activeToolRef.current === 'none') {
+          console.log('⇕ Changing cursor to ns-resize')
           chartContainerRef.current.style.cursor = 'ns-resize'
         } else if (activeToolRef.current !== 'none') {
           chartContainerRef.current.style.cursor = 'crosshair'
@@ -950,54 +966,9 @@ export default function TradingChart() {
           drawnLineSeriesRef.current.push(tpSeries)
         }
 
-        // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones) - TradingView style
-        if (sl && tp) {
-          console.log('🟢 Creating LONG profit/loss zones:', { entry: entryPrice, sl, tp })
-
-          // יצירת אזור רווח ירוק (Entry → TP) באמצעות AreaSeries
-          const profitZoneSeries = chartRef.current!.addAreaSeries({
-            topColor: 'rgba(34, 197, 94, 0.3)',
-            bottomColor: 'rgba(34, 197, 94, 0.05)',
-            lineColor: 'rgba(34, 197, 94, 0.8)',
-            lineWidth: 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            priceScaleId: '',
-          })
-
-          // נתונים לאזור רווח - מ-Entry עד TP
-          const profitData: { time: Time; value: number }[] = []
-          for (let i = 0; i <= gameState.currentIndex; i++) {
-            profitData.push({
-              time: gameState.candles[i].time as Time,
-              value: tp, // גבול עליון
-            })
-          }
-          profitZoneSeries.setData(profitData)
-          drawnLineSeriesRef.current.push(profitZoneSeries as any)
-
-          // יצירת אזור הפסד אדום (Entry → SL) באמצעות AreaSeries
-          const lossZoneSeries = chartRef.current!.addAreaSeries({
-            topColor: 'rgba(239, 68, 68, 0.3)',
-            bottomColor: 'rgba(239, 68, 68, 0.05)',
-            lineColor: 'rgba(239, 68, 68, 0.8)',
-            lineWidth: 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            priceScaleId: '',
-          })
-
-          // נתונים לאזור הפסד - מ-Entry עד SL
-          const lossData: { time: Time; value: number }[] = []
-          for (let i = 0; i <= gameState.currentIndex; i++) {
-            lossData.push({
-              time: gameState.candles[i].time as Time,
-              value: sl, // גבול תחתון
-            })
-          }
-          lossZoneSeries.setData(lossData)
-          drawnLineSeriesRef.current.push(lossZoneSeries as any)
-        }
+        // Note: אזורי צבע בין Entry-TP ו-Entry-SL לא נתמכים ב-Lightweight Charts
+        // הספרייה לא מאפשרת fill בין שני קווים שרירותיים
+        // הקווים עצמם (Entry, SL, TP) מספקים אינדיקציה ברורה למטרות הסימולציה
 
         // חישוב R:R ו-P&L
         if (sl && tp) {
@@ -1075,54 +1046,9 @@ export default function TradingChart() {
           drawnLineSeriesRef.current.push(tpSeries)
         }
 
-        // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones) - SHORT (הפוך)
-        if (sl && tp) {
-          console.log('🔴 Creating SHORT profit/loss zones:', { entry: entryPrice, sl, tp })
-
-          // יצירת אזור רווח כחול (Entry → TP למטה) - SHORT מרוויח כשהמחיר יורד
-          const profitZoneSeries = chartRef.current!.addAreaSeries({
-            topColor: 'rgba(59, 130, 246, 0.3)',
-            bottomColor: 'rgba(59, 130, 246, 0.05)',
-            lineColor: 'rgba(59, 130, 246, 0.8)',
-            lineWidth: 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            priceScaleId: '',
-          })
-
-          // נתונים לאזור רווח SHORT - TP מתחת entry
-          const profitData: { time: Time; value: number }[] = []
-          for (let i = 0; i <= gameState.currentIndex; i++) {
-            profitData.push({
-              time: gameState.candles[i].time as Time,
-              value: tp, // גבול תחתון (TP)
-            })
-          }
-          profitZoneSeries.setData(profitData)
-          drawnLineSeriesRef.current.push(profitZoneSeries as any)
-
-          // יצירת אזור הפסד אדום (Entry → SL למעלה)
-          const lossZoneSeries = chartRef.current!.addAreaSeries({
-            topColor: 'rgba(239, 68, 68, 0.3)',
-            bottomColor: 'rgba(239, 68, 68, 0.05)',
-            lineColor: 'rgba(239, 68, 68, 0.8)',
-            lineWidth: 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            priceScaleId: '',
-          })
-
-          // נתונים לאזור הפסד SHORT - SL מעל entry
-          const lossData: { time: Time; value: number }[] = []
-          for (let i = 0; i <= gameState.currentIndex; i++) {
-            lossData.push({
-              time: gameState.candles[i].time as Time,
-              value: sl, // גבול עליון (SL)
-            })
-          }
-          lossZoneSeries.setData(lossData)
-          drawnLineSeriesRef.current.push(lossZoneSeries as any)
-        }
+        // Note: אזורי צבע בין Entry-TP ו-Entry-SL לא נתמכים ב-Lightweight Charts
+        // הספרייה לא מאפשרת fill בין שני קווים שרירותיים
+        // הקווים עצמם (Entry, SL, TP) מספקים אינדיקציה ברורה למטרות הסימולציה
 
         // חישוב R:R ו-P&L
         if (sl && tp) {
