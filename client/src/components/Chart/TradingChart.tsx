@@ -382,6 +382,12 @@ export default function TradingChart() {
 
         const candleIndex = gameState?.candles.findIndex(c => c.time === time)
 
+        // עבור position tools, נקבע endIndex התחלתי (15 נרות קדימה)
+        let defaultEndIndex: number | undefined = undefined
+        if ((currentTool === 'long-position' || currentTool === 'short-position') && candleIndex !== undefined && candleIndex !== -1 && gameState) {
+          defaultEndIndex = Math.min(candleIndex + 15, gameState.currentIndex) // 15 נרות או עד currentIndex
+        }
+
         const newLine: DrawnLine = {
           id: `line-${Date.now()}`,
           type: currentTool,
@@ -389,6 +395,7 @@ export default function TradingChart() {
           // חצים וקווים צריכים startTime
           startTime: (currentTool === 'horizontal-ray' || currentTool === 'arrow-up' || currentTool === 'arrow-down' || currentTool === 'long-position' || currentTool === 'short-position') ? (time as number) : undefined,
           startIndex: (currentTool === 'long-position' || currentTool === 'short-position') && candleIndex !== -1 ? candleIndex : undefined,
+          endIndex: defaultEndIndex, // ✅ רוחב התחלתי
           color: toolColors[currentTool] || '#FFD700',
           width: 2,
           // SL/TP עבור position tools
@@ -897,17 +904,20 @@ export default function TradingChart() {
         }
       }
       // כלי Long Position - סימולציה של עסקת LONG עם SL/TP
-      else if (line.type === 'long-position' && line.startTime) {
+      else if (line.type === 'long-position' && line.startTime && line.startIndex !== undefined) {
         const isSelected = line.id === selectedLineId
         const entryPrice = line.price
         const sl = line.stopLoss
         const tp = line.takeProfit
 
-        const firstCandle = gameState.candles[0]
-        const lastCandle = gameState.candles[gameState.currentIndex]
-        if (!firstCandle || !lastCandle) return
+        // חישוב זמן התחלה וסיום לפי startIndex ו-endIndex
+        const startCandle = gameState.candles[line.startIndex]
+        const endIndex = line.endIndex !== undefined ? line.endIndex : Math.min(line.startIndex + 15, gameState.currentIndex)
+        const endCandle = gameState.candles[endIndex]
 
-        const times = [firstCandle.time, lastCandle.time].sort((a, b) => a - b)
+        if (!startCandle || !endCandle) return
+
+        const times = [startCandle.time, endCandle.time].sort((a, b) => a - b)
 
         // קו Entry - לבן מקווקו
         const entrySeries = chartRef.current!.addLineSeries({
@@ -1009,7 +1019,7 @@ export default function TradingChart() {
           const reward = Math.abs(tp - entryPrice)
           const rrRatio = reward / risk
 
-          // Info marker
+          // Info marker בתחילה
           markers.push({
             time: line.startTime as Time,
             position: 'aboveBar' as const,
@@ -1018,20 +1028,34 @@ export default function TradingChart() {
             text: `LONG | R:R 1:${rrRatio.toFixed(2)} | TP: +${((reward / entryPrice) * 100).toFixed(1)}% | SL: -${((risk / entryPrice) * 100).toFixed(1)}%`,
             size: 1.4,
           })
+
+          // Resize marker בסוף - ידית לגרירה
+          const endTime = endCandle.time
+          markers.push({
+            time: endTime as Time,
+            position: 'aboveBar' as const,
+            color: isSelected ? '#ffffff' : '#9ca3af',
+            shape: 'square' as const,
+            text: '⇔', // סמל resize
+            size: 1.2,
+          })
         }
       }
       // כלי Short Position - סימולציה של עסקת SHORT עם SL/TP
-      else if (line.type === 'short-position' && line.startTime) {
+      else if (line.type === 'short-position' && line.startTime && line.startIndex !== undefined) {
         const isSelected = line.id === selectedLineId
         const entryPrice = line.price
         const sl = line.stopLoss
         const tp = line.takeProfit
 
-        const firstCandle = gameState.candles[0]
-        const lastCandle = gameState.candles[gameState.currentIndex]
-        if (!firstCandle || !lastCandle) return
+        // חישוב זמן התחלה וסיום לפי startIndex ו-endIndex
+        const startCandle = gameState.candles[line.startIndex]
+        const endIndex = line.endIndex !== undefined ? line.endIndex : Math.min(line.startIndex + 15, gameState.currentIndex)
+        const endCandle = gameState.candles[endIndex]
 
-        const times = [firstCandle.time, lastCandle.time].sort((a, b) => a - b)
+        if (!startCandle || !endCandle) return
+
+        const times = [startCandle.time, endCandle.time].sort((a, b) => a - b)
 
         // קו Entry - לבן מקווקו
         const entrySeries = chartRef.current!.addLineSeries({
@@ -1133,7 +1157,7 @@ export default function TradingChart() {
           const reward = Math.abs(entryPrice - tp) // TP מתחת entry ב-SHORT
           const rrRatio = reward / risk
 
-          // Info marker
+          // Info marker בתחילה
           markers.push({
             time: line.startTime as Time,
             position: 'belowBar' as const,
@@ -1141,6 +1165,17 @@ export default function TradingChart() {
             shape: 'circle' as const,
             text: `SHORT | R:R 1:${rrRatio.toFixed(2)} | TP: +${((reward / entryPrice) * 100).toFixed(1)}% | SL: -${((risk / entryPrice) * 100).toFixed(1)}%`,
             size: 1.4,
+          })
+
+          // Resize marker בסוף - ידית לגרירה
+          const endTime = endCandle.time
+          markers.push({
+            time: endTime as Time,
+            position: 'belowBar' as const,
+            color: isSelected ? '#ffffff' : '#9ca3af',
+            shape: 'square' as const,
+            text: '⇔', // סמל resize
+            size: 1.2,
           })
         }
       }
