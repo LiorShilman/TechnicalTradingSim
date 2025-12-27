@@ -2,8 +2,9 @@ import { useEffect, useRef, useState } from 'react'
 import { createChart, IChartApi, ISeriesApi, ISeriesApi as LineSeriesApi, Time } from 'lightweight-charts'
 import { useGameStore } from '@/stores/gameStore'
 import PendingOrderMenu from './PendingOrderMenu'
-import IndicatorControls, { type MASettings } from './IndicatorControls'
-import DrawingControls, { type DrawingTool, type DrawnLine } from './DrawingControls'
+import ChartToolsPanel from './ChartToolsPanel'
+import { type MASettings } from './IndicatorControls'
+import { type DrawingTool, type DrawnLine } from './DrawingControls'
 
 export default function TradingChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -41,8 +42,14 @@ export default function TradingChart() {
 
   // State for drawing tools
   const [activeTool, setActiveTool] = useState<DrawingTool>('none')
+  const activeToolRef = useRef<DrawingTool>('none') // ref for event listeners
   const [drawnLines, setDrawnLines] = useState<DrawnLine[]>([])
   const drawnLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
+
+  // Sync activeTool state with ref
+  useEffect(() => {
+    activeToolRef.current = activeTool
+  }, [activeTool])
 
   // Load drawn lines from localStorage
   useEffect(() => {
@@ -269,7 +276,7 @@ export default function TradingChart() {
     // Click handler for drawing tools
     const handleChartClick = (e: MouseEvent) => {
       // אם אין כלי שרטוט פעיל, לא עושים כלום
-      if (activeTool === 'none') return
+      if (activeToolRef.current === 'none') return
 
       if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
 
@@ -290,10 +297,10 @@ export default function TradingChart() {
       // יצירת קו חדש
       const newLine: DrawnLine = {
         id: `line-${Date.now()}`,
-        type: activeTool,
+        type: activeToolRef.current,
         price: price,
-        startTime: activeTool === 'horizontal-ray' ? (time as number) : undefined,
-        color: activeTool === 'horizontal-line' ? '#FFD700' : '#00CED1',
+        startTime: activeToolRef.current === 'horizontal-ray' ? (time as number) : undefined,
+        color: activeToolRef.current === 'horizontal-line' ? '#FFD700' : '#00CED1',
         width: 2,
       }
 
@@ -308,7 +315,7 @@ export default function TradingChart() {
       e.preventDefault()
 
       // אם יש כלי שרטוט פעיל, ביטול במקום תפריט
-      if (activeTool !== 'none') {
+      if (activeToolRef.current !== 'none') {
         setActiveTool('none')
         return
       }
@@ -347,7 +354,7 @@ export default function TradingChart() {
       chartContainerRef.current?.removeEventListener('contextmenu', handleContextMenu)
       chart.remove()
     }
-  }, [activeTool])
+  }, [])
 
   // פונקציה לחישוב ממוצע נע פשוט (SMA)
   const calculateSMA = (candles: any[], period: number, startIndex: number = 0) => {
@@ -843,11 +850,9 @@ export default function TradingChart() {
         style={{ cursor: activeTool !== 'none' ? 'crosshair' : 'default' }}
       />
 
-      {/* Indicator Controls */}
-      <IndicatorControls onMASettingsChange={setMASettings} />
-
-      {/* Drawing Controls */}
-      <DrawingControls
+      {/* Chart Tools Panel (unified) */}
+      <ChartToolsPanel
+        onMASettingsChange={setMASettings}
         activeTool={activeTool}
         onToolChange={setActiveTool}
         drawnLines={drawnLines}
