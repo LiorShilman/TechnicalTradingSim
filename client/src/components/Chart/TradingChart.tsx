@@ -1073,18 +1073,18 @@ export default function TradingChart() {
             text: `LONG | R:R 1:${rrRatio.toFixed(2)} | TP: +${((reward / entryPrice) * 100).toFixed(1)}% | SL: -${((risk / entryPrice) * 100).toFixed(1)}%`,
             size: 1.4,
           })
-
-          // Resize marker בסוף - ידית לגרירה
-          const endTime = endCandle.time
-          markers.push({
-            time: endTime as Time,
-            position: 'aboveBar' as const,
-            color: isSelected ? '#ffffff' : '#9ca3af',
-            shape: 'square' as const,
-            text: '⇔', // סמל resize
-            size: 1.2,
-          })
         }
+
+        // Resize marker בסוף - ידית לגרירה (תמיד מוצג)
+        const endTime = endCandle.time
+        markers.push({
+          time: endTime as Time,
+          position: 'aboveBar' as const,
+          color: isSelected ? '#ffffff' : '#9ca3af',
+          shape: 'square' as const,
+          text: '⇔', // סמל resize
+          size: 1.2,
+        })
       }
       // כלי Short Position - סימולציה של עסקת SHORT עם SL/TP
       else if (line.type === 'short-position' && line.startTime && line.startIndex !== undefined) {
@@ -1211,18 +1211,18 @@ export default function TradingChart() {
             text: `SHORT | R:R 1:${rrRatio.toFixed(2)} | TP: +${((reward / entryPrice) * 100).toFixed(1)}% | SL: -${((risk / entryPrice) * 100).toFixed(1)}%`,
             size: 1.4,
           })
-
-          // Resize marker בסוף - ידית לגרירה
-          const endTime = endCandle.time
-          markers.push({
-            time: endTime as Time,
-            position: 'belowBar' as const,
-            color: isSelected ? '#ffffff' : '#9ca3af',
-            shape: 'square' as const,
-            text: '⇔', // סמל resize
-            size: 1.2,
-          })
         }
+
+        // Resize marker בסוף - ידית לגרירה (תמיד מוצג)
+        const endTime = endCandle.time
+        markers.push({
+          time: endTime as Time,
+          position: 'belowBar' as const,
+          color: isSelected ? '#ffffff' : '#9ca3af',
+          shape: 'square' as const,
+          text: '⇔', // סמל resize
+          size: 1.2,
+        })
       }
       // חצים והערות - markers
       else if (line.type === 'arrow-up' || line.type === 'arrow-down' || line.type === 'note') {
