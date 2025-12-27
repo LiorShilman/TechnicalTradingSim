@@ -10,17 +10,25 @@ export type DrawingTool =
   | 'arrow-down'
   | 'fibonacci'
   | 'note'
+  | 'measure'
+  | 'long-position'
+  | 'short-position'
 
 export interface DrawnLine {
   id: string
   type: DrawingTool
   price: number
-  price2?: number // For trend line end point & fibonacci
-  startTime?: number // For ray/trend line start
-  endTime?: number // For trend line end & fibonacci
+  price2?: number // For trend line end point & fibonacci & measure & positions
+  startTime?: number // For ray/trend line start & measure & positions
+  endTime?: number // For trend line end & fibonacci & measure & positions
   text?: string // For notes
   color: string
   width: number
+  // Additional data for measure/position tools
+  startIndex?: number // Candle index for start point
+  endIndex?: number // Candle index for end point
+  pnl?: number // Calculated P&L for position tools
+  pnlPercent?: number // Calculated P&L percentage for position tools
 }
 
 interface DrawingControlsProps {

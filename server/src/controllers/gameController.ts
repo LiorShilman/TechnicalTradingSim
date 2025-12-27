@@ -660,7 +660,7 @@ export const nextCandle = async (req: Request, res: Response) => {
       game.feedbackHistory.push(...feedback)
     }
 
-    console.log(`Game ${gameId}: Advanced to candle ${newIndex}, returning ${game.candles.length} candles`)
+    //console.log(`Game ${gameId}: Advanced to candle ${newIndex}, returning ${game.candles.length} candles`)
 
     return res.json({
       game,

@@ -352,21 +352,48 @@ export default function TradingChart() {
         })
         setActiveTool('none')
       }
-      // כלים שצריכים שתי נקודות (trend line, fibonacci)
-      else if (currentTool === 'trend-line' || currentTool === 'fibonacci') {
+      // כלים שצריכים שתי נקודות (trend line, fibonacci, measure, position tools)
+      else if (currentTool === 'trend-line' || currentTool === 'fibonacci' || currentTool === 'measure' || currentTool === 'long-position' || currentTool === 'short-position') {
         setDrawingInProgress((prev) => {
           if (!prev) {
             // נקודה ראשונה - שמירה
+            // מציאת אינדקס הנר
+            const candleIndex = gameState?.candles.findIndex(c => c.time === time)
             return {
               type: currentTool,
               price: price,
               time: time as number,
+              candleIndex: candleIndex !== -1 ? candleIndex : undefined,
             }
           } else {
             // נקודה שנייה - יצירת הקו
             const toolColors: Record<string, string> = {
               'trend-line': '#9C27B0',
               'fibonacci': '#FF9800',
+              'measure': '#FFD700',
+              'long-position': '#22c55e',
+              'short-position': '#3b82f6',
+            }
+
+            // מציאת אינדקס הנר של הנקודה השנייה
+            const endCandleIndex = gameState?.candles.findIndex(c => c.time === time)
+
+            // חישוב נתונים נוספים עבור measure ו-position tools
+            let pnl: number | undefined = undefined
+            let pnlPercent: number | undefined = undefined
+
+            if (currentTool === 'long-position') {
+              // LONG: רווח אם המחיר עלה
+              const entryPrice = prev.price
+              const exitPrice = price
+              pnl = exitPrice - entryPrice
+              pnlPercent = ((exitPrice - entryPrice) / entryPrice) * 100
+            } else if (currentTool === 'short-position') {
+              // SHORT: רווח אם המחיר ירד
+              const entryPrice = prev.price
+              const exitPrice = price
+              pnl = entryPrice - exitPrice
+              pnlPercent = ((entryPrice - exitPrice) / entryPrice) * 100
             }
 
             const newLine: DrawnLine = {
@@ -376,6 +403,10 @@ export default function TradingChart() {
               price2: price,
               startTime: prev.time,
               endTime: time as number,
+              startIndex: prev.candleIndex,
+              endIndex: endCandleIndex !== -1 ? endCandleIndex : undefined,
+              pnl,
+              pnlPercent,
               color: toolColors[currentTool] || '#9C27B0',
               width: 2,
             }
@@ -649,6 +680,175 @@ export default function TradingChart() {
 
           drawnLineSeriesRef.current.push(fibSeries)
         })
+      }
+      // כלי Measure - קו מדידה עם מידע
+      else if (line.type === 'measure' && line.startTime && line.endTime && line.price2 !== undefined) {
+        if (line.startTime === line.endTime) {
+          console.warn('Skipping measure with same start/end time')
+          return
+        }
+
+        const isSelected = line.id === selectedLineId
+
+        // קו מדידה ראשי
+        const measureSeries = chartRef.current!.addLineSeries({
+          color: isSelected ? '#FFED4E' : '#FFD700',
+          lineWidth: isSelected ? 3 : 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          lineStyle: 0, // solid
+        })
+
+        const times = [line.startTime, line.endTime].sort((a, b) => a - b)
+        measureSeries.setData([
+          { time: times[0] as Time, value: line.startTime === times[0] ? line.price : line.price2 },
+          { time: times[1] as Time, value: line.endTime === times[1] ? line.price2 : line.price },
+        ])
+
+        drawnLineSeriesRef.current.push(measureSeries)
+
+        // הוספת marker עם מידע
+        if (line.startIndex !== undefined && line.endIndex !== undefined) {
+          const priceDiff = line.price2 - line.price
+          const pricePercent = ((priceDiff / line.price) * 100).toFixed(2)
+          const bars = Math.abs(line.endIndex - line.startIndex)
+
+          // marker באמצע הקו
+          const midTime = times[0] + (times[1] - times[0]) / 2
+
+          markers.push({
+            time: midTime as Time,
+            position: priceDiff >= 0 ? ('aboveBar' as const) : ('belowBar' as const),
+            color: '#FFD700',
+            shape: 'circle' as const,
+            text: `Δ $${Math.abs(priceDiff).toFixed(2)} (${pricePercent}%) | ${bars} bars`,
+            size: 1.3,
+          })
+        }
+      }
+      // כלי Long Position - סימולציה של עסקת LONG
+      else if (line.type === 'long-position' && line.startTime && line.endTime && line.price2 !== undefined) {
+        if (line.startTime === line.endTime) {
+          console.warn('Skipping long-position with same start/end time')
+          return
+        }
+
+        const isSelected = line.id === selectedLineId
+        const entryPrice = line.price
+        const exitPrice = line.price2
+        const pnl = line.pnl || 0
+        const isProfitable = pnl > 0
+
+        const times = [line.startTime, line.endTime].sort((a, b) => a - b)
+
+        // קו עליון (exit price) - צבע לפי רווח/הפסד
+        const exitLineSeries = chartRef.current!.addLineSeries({
+          color: isProfitable ? (isSelected ? '#4ade80' : '#22c55e') : (isSelected ? '#f87171' : '#ef4444'),
+          lineWidth: 3,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          lineStyle: 0, // solid
+        })
+
+        exitLineSeries.setData([
+          { time: times[0] as Time, value: exitPrice },
+          { time: times[1] as Time, value: exitPrice },
+        ])
+
+        drawnLineSeriesRef.current.push(exitLineSeries)
+
+        // קו מחיר כניסה
+        const entrySeries = chartRef.current!.addLineSeries({
+          color: '#ffffff',
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          lineStyle: 1, // dotted
+        })
+
+        entrySeries.setData([
+          { time: times[0] as Time, value: entryPrice },
+          { time: times[1] as Time, value: entryPrice },
+        ])
+
+        drawnLineSeriesRef.current.push(entrySeries)
+
+        // marker עם מידע
+        if (line.startIndex !== undefined && line.endIndex !== undefined) {
+          const bars = Math.abs(line.endIndex - line.startIndex)
+          const pnlPercent = line.pnlPercent?.toFixed(2) || '0.00'
+
+          markers.push({
+            time: line.endTime as Time,
+            position: isProfitable ? ('aboveBar' as const) : ('belowBar' as const),
+            color: isProfitable ? '#22c55e' : '#ef4444',
+            shape: 'circle' as const,
+            text: `LONG ${isProfitable ? '+' : ''}$${pnl.toFixed(2)} (${pnlPercent}%) | ${bars} bars`,
+            size: 1.4,
+          })
+        }
+      }
+      // כלי Short Position - סימולציה של עסקת SHORT
+      else if (line.type === 'short-position' && line.startTime && line.endTime && line.price2 !== undefined) {
+        if (line.startTime === line.endTime) {
+          console.warn('Skipping short-position with same start/end time')
+          return
+        }
+
+        const isSelected = line.id === selectedLineId
+        const entryPrice = line.price
+        const exitPrice = line.price2
+        const pnl = line.pnl || 0
+        const isProfitable = pnl > 0
+
+        const times = [line.startTime, line.endTime].sort((a, b) => a - b)
+
+        // קו exit price - צבע כחול
+        const exitLineSeries = chartRef.current!.addLineSeries({
+          color: isSelected ? '#60a5fa' : '#3b82f6',
+          lineWidth: 3,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          lineStyle: 0, // solid
+        })
+
+        exitLineSeries.setData([
+          { time: times[0] as Time, value: exitPrice },
+          { time: times[1] as Time, value: exitPrice },
+        ])
+
+        drawnLineSeriesRef.current.push(exitLineSeries)
+
+        // קו מחיר כניסה
+        const entrySeries = chartRef.current!.addLineSeries({
+          color: '#ffffff',
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          lineStyle: 1, // dotted
+        })
+
+        entrySeries.setData([
+          { time: times[0] as Time, value: entryPrice },
+          { time: times[1] as Time, value: entryPrice },
+        ])
+
+        drawnLineSeriesRef.current.push(entrySeries)
+
+        // marker עם מידע
+        if (line.startIndex !== undefined && line.endIndex !== undefined) {
+          const bars = Math.abs(line.endIndex - line.startIndex)
+          const pnlPercent = line.pnlPercent?.toFixed(2) || '0.00'
+
+          markers.push({
+            time: line.endTime as Time,
+            position: isProfitable ? ('aboveBar' as const) : ('belowBar' as const),
+            color: isProfitable ? '#22c55e' : '#ef4444',
+            shape: 'circle' as const,
+            text: `SHORT ${isProfitable ? '+' : ''}$${pnl.toFixed(2)} (${pnlPercent}%) | ${bars} bars`,
+            size: 1.4,
+          })
+        }
       }
       // חצים והערות - markers
       else if (line.type === 'arrow-up' || line.type === 'arrow-down' || line.type === 'note') {

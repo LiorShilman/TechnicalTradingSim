@@ -273,7 +273,7 @@ Lightweight Charts (TradingView) integration:
 - **Drawing Tools System** (ChartToolsPanel + TradingChart):
   - **Unified panel** combining indicators and drawing tools with tabbed interface
   - **Moving Averages**: MA 20, 50, 200 with option to calculate from current index (real-time simulation mode)
-  - **Seven drawing tools** for technical analysis:
+  - **Ten drawing tools** for technical analysis:
     1. **Horizontal Line**: Full-width line across entire chart (#FFD700 gold)
     2. **Horizontal Ray**: Line extending right from click point (#00CED1 cyan)
     3. **Trend Line**: Two-point line between candles (#9C27B0 purple)
@@ -281,6 +281,19 @@ Lightweight Charts (TradingView) integration:
     5. **Arrow Down ↓**: Marker above candle for bearish signals (#F44336 red)
     6. **Fibonacci Retracement**: 7 levels (0, 23.6%, 38.2%, 50%, 61.8%, 78.6%, 100%) between two points
     7. **Text Note**: Custom text marker on chart (#03A9F4 blue)
+    8. **Measure Tool**: Two-point measurement showing price change ($), percentage (%), and number of bars (#FFD700 gold)
+       - Displays: `Δ $XX.XX (±X.X%) | N bars`
+       - Marker positioned at midpoint of measurement line
+    9. **Long Position Simulator**: Visual simulation of LONG trade with P&L calculation
+       - Entry line: White dotted line at entry price
+       - Exit line: Green (profit) or red (loss) solid line at exit price (3px)
+       - Info marker shows: `LONG ±$XX.XX (±X.X%) | N bars`
+       - Color-coded by profitability (green for profit, red for loss)
+    10. **Short Position Simulator**: Visual simulation of SHORT trade with P&L calculation
+        - Entry line: White dotted line at entry price
+        - Exit line: Blue solid line at exit price (3px)
+        - Info marker shows: `SHORT ±$XX.XX (±X.X%) | N bars`
+        - P&L calculated correctly for SHORT (profit when price goes down)
   - **Professional selection highlighting**:
     - Click on drawn object in list to select it
     - Selected objects brightened using RGB color manipulation (+40 for lines, +50 for Fib, +60 for markers)

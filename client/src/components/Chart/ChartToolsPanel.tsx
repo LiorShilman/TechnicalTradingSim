@@ -12,6 +12,8 @@ import {
   ArrowDown,
   Activity,
   StickyNote,
+  Ruler,
+  TrendingDown,
 } from 'lucide-react'
 import type { DrawingTool, DrawnLine } from './DrawingControls'
 import type { MASettings } from './IndicatorControls'
@@ -38,6 +40,9 @@ const DRAWING_TOOLS = [
   { id: 'arrow-down' as DrawingTool, label: 'Arrow Down ↓', icon: ArrowDown, color: '#F44336', description: 'חץ מטה לסימון נר חשוב' },
   { id: 'fibonacci' as DrawingTool, label: 'Fibonacci', icon: Activity, color: '#FF9800', description: 'רמות פיבונצ\'י בין שתי נקודות' },
   { id: 'note' as DrawingTool, label: 'Text Note', icon: StickyNote, color: '#03A9F4', description: 'הערת טקסט על הגרף' },
+  { id: 'measure' as DrawingTool, label: 'Measure', icon: Ruler, color: '#FFD700', description: 'מדידת מרחק ושינוי מחיר בין שתי נקודות' },
+  { id: 'long-position' as DrawingTool, label: 'Long Position', icon: TrendingUp, color: '#22c55e', description: 'סימולציה של עסקת LONG עם אזורי רווח/הפסד' },
+  { id: 'short-position' as DrawingTool, label: 'Short Position', icon: TrendingDown, color: '#3b82f6', description: 'סימולציה של עסקת SHORT עם אזורי רווח/הפסד' },
 ]
 
 export default function ChartToolsPanel({
@@ -298,6 +303,9 @@ export default function ChartToolsPanel({
                                   'arrow-down': 'Arrow ↓',
                                   'fibonacci': 'Fib',
                                   'note': 'Note',
+                                  'measure': 'Measure',
+                                  'long-position': 'Long',
+                                  'short-position': 'Short',
                                 }
                                 return labels[line.type] || line.type
                               })()}
