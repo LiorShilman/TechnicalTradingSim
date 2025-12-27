@@ -57,6 +57,13 @@ export default function TradingChart() {
     candleIndex?: number
   } | null>(null)
 
+  // State for dragging SL/TP lines
+  const [draggingLine, setDraggingLine] = useState<{
+    lineId: string
+    lineType: 'stopLoss' | 'takeProfit' | 'entry'
+  } | null>(null)
+  const draggingLineRef = useRef<{ lineId: string; lineType: 'stopLoss' | 'takeProfit' | 'entry' } | null>(null)
+
   // Preview lines for pending order (shown while menu is open)
   const previewLineSeriesRef = useRef<ISeriesApi<'Line'>[]>([])
 
@@ -64,6 +71,11 @@ export default function TradingChart() {
   useEffect(() => {
     activeToolRef.current = activeTool
   }, [activeTool])
+
+  // Sync draggingLine state with ref
+  useEffect(() => {
+    draggingLineRef.current = draggingLine
+  }, [draggingLine])
 
   // Load drawn lines from localStorage
   useEffect(() => {
@@ -339,20 +351,16 @@ export default function TradingChart() {
         }
 
         // עבור position tools, נוסיף ברירות מחדל ל-SL/TP
-        // חישוב SL/TP מבוסס על 1% סיכון מגודל התיק עם יחס R:R 1:2
+        // חישוב SL/TP כאחוז קטן מהמחיר עצמו (0.5% ל-SL, 1% ל-TP = יחס 1:2)
         let defaultSL: number | undefined = undefined
         let defaultTP: number | undefined = undefined
 
         if (currentTool === 'long-position' || currentTool === 'short-position') {
-          const accountBalance = gameState?.account?.equity || 10000 // ברירת מחדל $10,000
-          const riskPercent = 0.01 // 1% סיכון
-          const riskAmount = accountBalance * riskPercent // $100 בברירת מחדל
+          // מרחק SL = 0.5% מהמחיר (סיכון קטן)
+          const slPercent = 0.005 // 0.5%
+          const slDistance = price * slPercent
 
-          // חישוב SL לפי גודל הסיכון (בהנחת 0.01 BTC quantity)
-          const assumedQuantity = 0.01
-          const slDistance = riskAmount / assumedQuantity // מרחק SL במחיר
-
-          // יחס R:R 1:2 (רווח פוטנציאלי פי 2 מהסיכון)
+          // מרחק TP = 1% מהמחיר (רווח פוטנציאלי) = יחס R:R 1:2
           const tpDistance = slDistance * 2
 
           if (currentTool === 'long-position') {
@@ -517,9 +525,114 @@ export default function TradingChart() {
       }
     }
 
+    // Mousedown handler for initiating drag of SL/TP lines
+    const handleMouseDown = (e: MouseEvent) => {
+      // Only handle left click
+      if (e.button !== 0) return
+
+      // Don't interfere with drawing tools or if we're already dragging
+      if (activeToolRef.current !== 'none' || draggingLineRef.current) return
+
+      if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
+
+      // Get cursor position
+      const rect = chartContainerRef.current.getBoundingClientRect()
+      const relativeY = e.clientY - rect.top
+      const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
+      if (price === null || price === undefined) return
+
+      // Check if we clicked near a position tool's SL or TP line
+      const tolerance = 0.005 // 0.5% price tolerance
+
+      for (const line of drawnLines) {
+        if (line.type !== 'long-position' && line.type !== 'short-position') continue
+
+        // Check SL line
+        if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
+          setDraggingLine({ lineId: line.id, lineType: 'stopLoss' })
+          e.preventDefault()
+          return
+        }
+
+        // Check TP line
+        if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance) {
+          setDraggingLine({ lineId: line.id, lineType: 'takeProfit' })
+          e.preventDefault()
+          return
+        }
+      }
+    }
+
+    // Mousemove handler for dragging SL/TP lines
+    const handleMouseMove = (e: MouseEvent) => {
+      if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
+
+      // Get cursor position
+      const rect = chartContainerRef.current.getBoundingClientRect()
+      const relativeY = e.clientY - rect.top
+      const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
+      if (price === null || price === undefined) return
+
+      // If we're dragging, update the line position
+      if (draggingLineRef.current) {
+        const { lineId, lineType } = draggingLineRef.current
+
+        // Update the line's SL or TP price
+        setDrawnLines(prev => prev.map(line => {
+          if (line.id !== lineId) return line
+
+          if (lineType === 'stopLoss') {
+            return { ...line, stopLoss: price }
+          } else if (lineType === 'takeProfit') {
+            return { ...line, takeProfit: price }
+          }
+          return line
+        }))
+      } else {
+        // Not dragging - check if we're hovering over a draggable line and change cursor
+        const tolerance = 0.005 // 0.5% price tolerance
+        let isOverDraggableLine = false
+
+        for (const line of drawnLines) {
+          if (line.type !== 'long-position' && line.type !== 'short-position') continue
+
+          // Check if hovering over SL or TP line
+          if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
+            isOverDraggableLine = true
+            break
+          }
+          if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance) {
+            isOverDraggableLine = true
+            break
+          }
+        }
+
+        // Change cursor style
+        if (isOverDraggableLine && activeToolRef.current === 'none') {
+          chartContainerRef.current.style.cursor = 'ns-resize'
+        } else if (activeToolRef.current !== 'none') {
+          chartContainerRef.current.style.cursor = 'crosshair'
+        } else {
+          chartContainerRef.current.style.cursor = 'default'
+        }
+      }
+    }
+
+    // Mouseup handler to end dragging
+    const handleMouseUp = () => {
+      if (draggingLineRef.current) {
+        console.log('Ended dragging:', draggingLineRef.current)
+        setDraggingLine(null)
+      }
+    }
+
     chartContainerRef.current.addEventListener('click', handleChartClick)
     chartContainerRef.current.addEventListener('dblclick', handleChartDoubleClick)
     chartContainerRef.current.addEventListener('contextmenu', handleContextMenu)
+    chartContainerRef.current.addEventListener('mousedown', handleMouseDown)
+    chartContainerRef.current.addEventListener('mousemove', handleMouseMove)
+    chartContainerRef.current.addEventListener('mouseup', handleMouseUp)
+    chartContainerRef.current.addEventListener('mouseleave', handleMouseUp) // Also end drag if mouse leaves chart
 
     return () => {
       console.log('TradingChart: Unmounting chart component')
@@ -528,6 +641,10 @@ export default function TradingChart() {
       chartContainerRef.current?.removeEventListener('click', handleChartClick)
       chartContainerRef.current?.removeEventListener('dblclick', handleChartDoubleClick)
       chartContainerRef.current?.removeEventListener('contextmenu', handleContextMenu)
+      chartContainerRef.current?.removeEventListener('mousedown', handleMouseDown)
+      chartContainerRef.current?.removeEventListener('mousemove', handleMouseMove)
+      chartContainerRef.current?.removeEventListener('mouseup', handleMouseUp)
+      chartContainerRef.current?.removeEventListener('mouseleave', handleMouseUp)
       chart.remove()
     }
   }, [])
