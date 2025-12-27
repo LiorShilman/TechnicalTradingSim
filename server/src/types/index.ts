@@ -101,6 +101,9 @@ export interface Feedback {
     orderId?: string
     targetPrice?: number
     quantity?: number
+    positionId?: string
+    stopLoss?: number
+    takeProfit?: number
   }
 }
 

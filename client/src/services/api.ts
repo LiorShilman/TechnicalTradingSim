@@ -149,4 +149,36 @@ export const api = {
     const response = await apiClient.delete(`/game/${gameId}/pending-order/${orderId}`)
     return response.data
   },
+
+  /**
+   * עדכון פוזיציה קיימת
+   */
+  updatePosition: async (
+    gameId: string,
+    positionId: string,
+    updates: {
+      stopLoss?: number
+      takeProfit?: number
+    }
+  ): Promise<{ success: boolean; position: any; feedback: any }> => {
+    const response = await apiClient.put(`/game/${gameId}/position/${positionId}`, updates)
+    return response.data
+  },
+
+  /**
+   * עדכון פקודה עתידית
+   */
+  updatePendingOrder: async (
+    gameId: string,
+    orderId: string,
+    updates: {
+      targetPrice?: number
+      quantity?: number
+      stopLoss?: number
+      takeProfit?: number
+    }
+  ): Promise<{ success: boolean; pendingOrder: any; feedback: any }> => {
+    const response = await apiClient.put(`/game/${gameId}/pending-order/${orderId}`, updates)
+    return response.data
+  },
 }

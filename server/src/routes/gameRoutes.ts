@@ -1,6 +1,6 @@
 import express from 'express'
 import multer from 'multer'
-import { createGame, createGameFromCSV, getGame, nextCandle, executeTrade, createPendingOrder, cancelPendingOrder } from '../controllers/gameController.js'
+import { createGame, createGameFromCSV, getGame, nextCandle, executeTrade, createPendingOrder, cancelPendingOrder, updatePosition, updatePendingOrder } from '../controllers/gameController.js'
 
 const router = express.Router()
 
@@ -39,5 +39,11 @@ router.post('/:gameId/pending-order', createPendingOrder)
 
 // ביטול פקודה עתידית
 router.delete('/:gameId/pending-order/:orderId', cancelPendingOrder)
+
+// עדכון פקודה עתידית
+router.put('/:gameId/pending-order/:orderId', updatePendingOrder)
+
+// עדכון פוזיציה
+router.put('/:gameId/position/:positionId', updatePosition)
 
 export default router

@@ -36,6 +36,8 @@ interface GameStore {
     orderType?: import('@/types/game.types').PendingOrderType
   ) => Promise<void>
   cancelPendingOrder: (orderId: string) => Promise<void>
+  updatePosition: (positionId: string, updates: { stopLoss?: number; takeProfit?: number }) => Promise<void>
+  updatePendingOrder: (orderId: string, updates: { targetPrice?: number; quantity?: number; stopLoss?: number; takeProfit?: number }) => Promise<void>
   resetGame: () => Promise<void>
   toggleAutoPlay: () => void
   setAutoPlaySpeed: (speed: number) => void
@@ -582,6 +584,75 @@ export const useGameStore = create<GameStore>((set, get) => ({
     localStorage.removeItem(SAVED_GAME_KEY)
     console.log('Saved game cleared')
     toast.success('משחק שמור נמחק', { icon: '🗑️' })
+  },
+
+  // עדכון פוזיציה קיימת
+  updatePosition: async (positionId: string, updates: { stopLoss?: number; takeProfit?: number }) => {
+    const { gameState } = get()
+    if (!gameState) return
+
+    set({ isLoading: true, error: null })
+    try {
+      const response = await api.updatePosition(gameState.id, positionId, updates)
+
+      // עדכון הפוזיציה במצב
+      const updatedPositions = gameState.positions.map(p =>
+        p.id === positionId ? response.position : p
+      )
+
+      set({
+        gameState: {
+          ...gameState,
+          positions: updatedPositions,
+          feedbackHistory: response.feedback
+            ? [...gameState.feedbackHistory, response.feedback]
+            : gameState.feedbackHistory,
+        },
+        isLoading: false
+      })
+
+      toast.success('פוזיציה עודכנה בהצלחה! ✏️', { icon: '✅' })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update position'
+      set({ error: errorMessage, isLoading: false })
+      toast.error(`שגיאה: ${errorMessage}`, { icon: '❌' })
+    }
+  },
+
+  // עדכון פקודה עתידית
+  updatePendingOrder: async (
+    orderId: string,
+    updates: { targetPrice?: number; quantity?: number; stopLoss?: number; takeProfit?: number }
+  ) => {
+    const { gameState } = get()
+    if (!gameState) return
+
+    set({ isLoading: true, error: null })
+    try {
+      const response = await api.updatePendingOrder(gameState.id, orderId, updates)
+
+      // עדכון הפקודה במצב
+      const updatedOrders = gameState.pendingOrders?.map(o =>
+        o.id === orderId ? response.pendingOrder : o
+      ) || []
+
+      set({
+        gameState: {
+          ...gameState,
+          pendingOrders: updatedOrders,
+          feedbackHistory: response.feedback
+            ? [...gameState.feedbackHistory, response.feedback]
+            : gameState.feedbackHistory,
+        },
+        isLoading: false
+      })
+
+      toast.success('פקודה עתידית עודכנה בהצלחה! ✏️', { icon: '✅' })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to update pending order'
+      set({ error: errorMessage, isLoading: false })
+      toast.error(`שגיאה: ${errorMessage}`, { icon: '❌' })
+    }
   },
 
   clearError: () => set({ error: null }),

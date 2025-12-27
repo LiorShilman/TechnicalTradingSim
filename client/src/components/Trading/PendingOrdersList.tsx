@@ -1,8 +1,12 @@
-import { XCircle, TrendingUp, TrendingDown, Clock } from 'lucide-react'
+import { useState } from 'react'
+import { XCircle, TrendingUp, TrendingDown, Clock, Edit2 } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
+import EditPositionModal from './EditPositionModal'
+import type { PendingOrder } from '@/types/game.types'
 
 export default function PendingOrdersList() {
-  const { gameState, cancelPendingOrder } = useGameStore()
+  const { gameState, cancelPendingOrder, updatePendingOrder } = useGameStore()
+  const [editingOrder, setEditingOrder] = useState<PendingOrder | null>(null)
 
   if (!gameState?.pendingOrders || gameState.pendingOrders.length === 0) {
     return (
@@ -44,6 +48,21 @@ export default function PendingOrdersList() {
     return { percent, diff }
   }
 
+  const handleEdit = (order: PendingOrder) => {
+    setEditingOrder(order)
+  }
+
+  const handleSaveEdit = async (updates: {
+    targetPrice?: number
+    quantity?: number
+    stopLoss?: number
+    takeProfit?: number
+  }) => {
+    if (editingOrder) {
+      await updatePendingOrder(editingOrder.id, updates)
+    }
+  }
+
   return (
     <div className="flex-shrink-0 p-4 bg-dark-panel border-t border-dark-border max-h-80 overflow-y-auto">
       <div className="flex items-center justify-between mb-3">
@@ -70,7 +89,7 @@ export default function PendingOrdersList() {
                   : 'bg-red-900/10 border-red-500/30 hover:border-red-500/50'
               }`}
             >
-              {/* Header: Type and Delete Button */}
+              {/* Header: Type and Action Buttons */}
               <div className="flex items-center justify-between mb-2">
                 <div className="flex items-center gap-2">
                   {isLong ? (
@@ -85,13 +104,22 @@ export default function PendingOrdersList() {
                     {getOrderTypeLabel(order.orderType)}
                   </span>
                 </div>
-                <button
-                  onClick={() => cancelPendingOrder(order.id)}
-                  className="text-text-secondary hover:text-red-400 transition-colors"
-                  title="ביטול פקודה"
-                >
-                  <XCircle size={16} />
-                </button>
+                <div className="flex gap-1">
+                  <button
+                    onClick={() => handleEdit(order)}
+                    className="text-text-secondary hover:text-blue-400 transition-colors"
+                    title="ערוך פקודה"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                  <button
+                    onClick={() => cancelPendingOrder(order.id)}
+                    className="text-text-secondary hover:text-red-400 transition-colors"
+                    title="ביטול פקודה"
+                  >
+                    <XCircle size={16} />
+                  </button>
+                </div>
               </div>
 
               {/* Price Info */}
@@ -148,6 +176,16 @@ export default function PendingOrdersList() {
           )
         })}
       </div>
+
+      {/* Edit Pending Order Modal */}
+      {editingOrder && (
+        <EditPositionModal
+          pendingOrder={editingOrder}
+          currentPrice={currentPrice}
+          onClose={() => setEditingOrder(null)}
+          onSave={handleSaveEdit}
+        />
+      )}
     </div>
   )
 }

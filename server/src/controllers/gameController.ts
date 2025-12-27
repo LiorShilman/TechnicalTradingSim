@@ -1110,3 +1110,154 @@ export const cancelPendingOrder = async (req: Request, res: Response) => {
     })
   }
 }
+
+/**
+ * עדכון פוזיציה קיימת (SL/TP)
+ */
+export const updatePosition = async (req: Request, res: Response) => {
+  try {
+    const { gameId, positionId } = req.params
+    const { stopLoss, takeProfit } = req.body
+
+    const game = games.get(gameId)
+
+    if (!game) {
+      return res.status(404).json({
+        error: 'Game not found',
+        message: 'Invalid game ID',
+      })
+    }
+
+    // מציאת הפוזיציה
+    const positionIndex = game.positions.findIndex(p => p.id === positionId)
+    if (positionIndex === -1) {
+      return res.status(404).json({
+        error: 'Position not found',
+        message: 'Invalid position ID',
+      })
+    }
+
+    const position = game.positions[positionIndex]
+
+    // עדכון SL/TP
+    if (stopLoss !== undefined) {
+      position.stopLoss = stopLoss
+    }
+    if (takeProfit !== undefined) {
+      position.takeProfit = takeProfit
+    }
+
+    console.log(`Game ${gameId}: Updated position ${positionId} - SL: ${stopLoss}, TP: ${takeProfit}`)
+
+    const feedback = {
+      type: 'info' as const,
+      message: `פוזיציית ${position.type === 'long' ? 'LONG' : 'SHORT'} עודכנה`,
+      timestamp: Date.now(),
+      data: {
+        positionId: position.id,
+        stopLoss,
+        takeProfit,
+      },
+    }
+
+    game.feedbackHistory.push(feedback)
+
+    return res.json({
+      success: true,
+      position,
+      feedback,
+    })
+  } catch (error) {
+    console.error('Error updating position:', error)
+    return res.status(500).json({
+      error: 'Failed to update position',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+}
+
+/**
+ * עדכון פקודה עתידית
+ */
+export const updatePendingOrder = async (req: Request, res: Response) => {
+  try {
+    const { gameId, orderId } = req.params
+    const { targetPrice, quantity, stopLoss, takeProfit } = req.body
+
+    const game = games.get(gameId)
+
+    if (!game) {
+      return res.status(404).json({
+        error: 'Game not found',
+        message: 'Invalid game ID',
+      })
+    }
+
+    if (!game.pendingOrders) {
+      return res.status(404).json({
+        error: 'No pending orders',
+        message: 'No pending orders found',
+      })
+    }
+
+    // מציאת הפקודה
+    const orderIndex = game.pendingOrders.findIndex(o => o.id === orderId)
+    if (orderIndex === -1) {
+      return res.status(404).json({
+        error: 'Order not found',
+        message: 'Invalid order ID',
+      })
+    }
+
+    const order = game.pendingOrders[orderIndex]
+
+    // עדכון פרטי הפקודה
+    if (targetPrice !== undefined) {
+      order.targetPrice = targetPrice
+
+      // עדכון סוג הפקודה לפי המחיר החדש
+      const currentPrice = game.candles[game.currentIndex]?.close || 0
+      if (order.type === 'long') {
+        order.orderType = targetPrice > currentPrice ? 'buyStop' : 'buyLimit'
+      } else {
+        order.orderType = targetPrice < currentPrice ? 'sellStop' : 'sellLimit'
+      }
+    }
+    if (quantity !== undefined) {
+      order.quantity = quantity
+    }
+    if (stopLoss !== undefined) {
+      order.stopLoss = stopLoss
+    }
+    if (takeProfit !== undefined) {
+      order.takeProfit = takeProfit
+    }
+
+    console.log(`Game ${gameId}: Updated pending order ${orderId}`)
+
+    const feedback = {
+      type: 'info' as const,
+      message: `פקודה עתידית ${order.type === 'long' ? 'LONG' : 'SHORT'} עודכנה`,
+      timestamp: Date.now(),
+      data: {
+        orderId: order.id,
+        targetPrice: order.targetPrice,
+        quantity: order.quantity,
+      },
+    }
+
+    game.feedbackHistory.push(feedback)
+
+    return res.json({
+      success: true,
+      pendingOrder: order,
+      feedback,
+    })
+  } catch (error) {
+    console.error('Error updating pending order:', error)
+    return res.status(500).json({
+      error: 'Failed to update pending order',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+}

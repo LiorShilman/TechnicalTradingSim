@@ -1,8 +1,12 @@
-import { XCircle } from 'lucide-react'
+import { useState } from 'react'
+import { XCircle, Edit2 } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
+import EditPositionModal from './EditPositionModal'
+import type { Position } from '@/types/game.types'
 
 export default function PositionsList() {
-  const { gameState, executeTrade, isLoading } = useGameStore()
+  const { gameState, executeTrade, updatePosition, isLoading } = useGameStore()
+  const [editingPosition, setEditingPosition] = useState<Position | null>(null)
 
   if (!gameState || !gameState.positions) return null
 
@@ -11,10 +15,23 @@ export default function PositionsList() {
   // שם הנכס המלא (למשל: SP/SPX, BTC/USD)
   const assetSymbol = gameState.asset || 'BTC/USD'
 
+  // מחיר נוכחי
+  const currentPrice = gameState.candles[gameState.currentIndex]?.close || 0
+
   const handleClose = async (positionId: string) => {
     const position = positions.find(p => p.id === positionId)
     if (position) {
       await executeTrade('sell', position.quantity, positionId)
+    }
+  }
+
+  const handleEdit = (position: Position) => {
+    setEditingPosition(position)
+  }
+
+  const handleSaveEdit = async (updates: { stopLoss?: number; takeProfit?: number }) => {
+    if (editingPosition) {
+      await updatePosition(editingPosition.id, updates)
     }
   }
 
@@ -46,15 +63,26 @@ export default function PositionsList() {
                       {position.quantity} {assetSymbol}
                     </div>
                   </div>
-                  <button
-                    onClick={() => handleClose(position.id)}
-                    disabled={isLoading}
-                    className="px-3 py-1 bg-loss hover:bg-red-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-md text-xs font-semibold transition-colors flex items-center gap-1.5"
-                    title="סגור פוזיציה"
-                  >
-                    <XCircle size={14} />
-                    Close
-                  </button>
+                  <div className="flex gap-1">
+                    <button
+                      onClick={() => handleEdit(position)}
+                      disabled={isLoading}
+                      className="px-2 py-1 bg-blue-600 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-md text-xs font-semibold transition-colors flex items-center gap-1"
+                      title="ערוך פוזיציה"
+                    >
+                      <Edit2 size={14} />
+                      Edit
+                    </button>
+                    <button
+                      onClick={() => handleClose(position.id)}
+                      disabled={isLoading}
+                      className="px-2 py-1 bg-loss hover:bg-red-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-md text-xs font-semibold transition-colors flex items-center gap-1"
+                      title="סגור פוזיציה"
+                    >
+                      <XCircle size={14} />
+                      Close
+                    </button>
+                  </div>
                 </div>
 
                 <div className="grid grid-cols-2 gap-2 text-xs mb-2">
@@ -107,6 +135,16 @@ export default function PositionsList() {
             )
           })}
         </div>
+      )}
+
+      {/* Edit Position Modal */}
+      {editingPosition && (
+        <EditPositionModal
+          position={editingPosition}
+          currentPrice={currentPrice}
+          onClose={() => setEditingPosition(null)}
+          onSave={handleSaveEdit}
+        />
       )}
     </div>
   )
