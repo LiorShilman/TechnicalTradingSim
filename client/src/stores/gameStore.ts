@@ -545,13 +545,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
       })
 
       // קריאה ל-chartFitContent אחרי טעינה - צריך יותר זמן
+      // קוראים פעמיים כדי לוודא שהווליום מתאים נכון
       setTimeout(() => {
         const { chartFitContent } = get()
         if (chartFitContent) {
-          console.log('📏 Auto-fitting chart after loading saved game')
+          console.log('📏 Auto-fitting chart after loading saved game (first call)')
           chartFitContent()
         }
-      }, 1000) // הגדלנו ל-1 שנייה
+      }, 500)
+
+      // קריאה שנייה לאחר 1.5 שניות כדי לוודא שהווליום התאים
+      setTimeout(() => {
+        const { chartFitContent } = get()
+        if (chartFitContent) {
+          console.log('📏 Auto-fitting chart after loading saved game (second call for volume fix)')
+          chartFitContent()
+        }
+      }, 1500)
 
       toast.success(`משחק שוחזר מ-${new Date(savedState.savedAt).toLocaleString('he-IL')} 🎮`, {
         duration: 5000,
