@@ -184,12 +184,14 @@ export default function TradingChart() {
       const rect = chartContainerRef.current.getBoundingClientRect()
       const relativeY = e.clientY - rect.top
 
-      // ✅ שימוש ב-API של Lightweight Charts לקבלת המחיר המדויק
-      // chartRef.current.priceScale('right') מחזיר את ה-price scale הראשי
-      const priceScale = chartRef.current.priceScale('right')
-      const price = priceScale.coordinateToPrice(relativeY)
+      // ✅ שימוש ב-coordinateToPrice של הסדרה עצמה (candlestickSeries)
+      // זה ה-API הנכון להמרת Y coordinate למחיר
+      const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
 
-      if (price === null || price === undefined) return
+      if (price === null || price === undefined) {
+        console.log('coordinateToPrice returned null - click might be outside chart area')
+        return
+      }
 
       // Show context menu with exact price
       setPendingOrderMenu({

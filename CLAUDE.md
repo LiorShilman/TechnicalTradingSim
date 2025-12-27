@@ -252,7 +252,8 @@ Lightweight Charts (TradingView) integration:
 - Volume displayed as histogram series
 - **Pattern visualization**: Displays detected patterns with colored boxes (green for Breakout, blue for Retest, purple for Bull Flag) and markers
 - **Pending Orders**: Right-click on chart to create pending order at exact price
-  - Uses `chartRef.current.priceScale('right').coordinateToPrice(relativeY)` for accurate price detection
+  - Uses `candlestickSeriesRef.current.coordinateToPrice(relativeY)` for accurate price detection
+  - The `coordinateToPrice` method is called on the series (not priceScale) to convert Y-coordinate to price
   - Price is captured at exact mouse Y-coordinate on chart
   - Context menu appears at click location with precise price for order entry
 
