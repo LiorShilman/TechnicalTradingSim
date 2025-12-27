@@ -715,7 +715,7 @@ export default function TradingChart() {
         createPatternMarkers()
       }, 0)
     }
-  }, [drawnLines, selectedLineId, gameState?.currentIndex, gameState?.candles.length, gameState?.id])
+  }, [drawnLines, selectedLineId, gameState?.currentIndex, gameState?.candles.length, gameState?.id, gameState?.closedPositions?.length])
 
   // פונקציות לניהול קווים
   const handleDeleteLine = (id: string) => {
@@ -725,6 +725,48 @@ export default function TradingChart() {
   const handleClearAllLines = () => {
     setDrawnLines([])
     localStorage.removeItem('trading-game-drawings')
+  }
+
+  // פונקציה ליצירת סימון עסקאות סגורות
+  const createClosedTradeMarkers = (): any[] => {
+    if (!gameState?.closedPositions || !gameState?.candles) return []
+
+    const tradeMarkers: any[] = []
+
+    gameState.closedPositions.forEach((position) => {
+      // markers לכניסה
+      if (position.entryIndex <= gameState.currentIndex) {
+        const isLong = position.type === 'long'
+
+        tradeMarkers.push({
+          time: position.entryTime as Time,
+          position: isLong ? ('belowBar' as const) : ('aboveBar' as const),
+          color: isLong ? '#22c55e' : '#ef4444', // ירוק ל-LONG, אדום ל-SHORT
+          shape: isLong ? ('arrowUp' as const) : ('arrowDown' as const),
+          text: `${isLong ? '🟢' : '🔴'} Entry`,
+          size: 1.2,
+        })
+      }
+
+      // markers ליציאה (אם היציאה כבר התרחשה)
+      if (position.exitIndex !== undefined && position.exitIndex <= gameState.currentIndex) {
+        const isProfitable = (position.exitPnL || 0) > 0
+        const pnlText = position.exitPnL
+          ? `${isProfitable ? '+' : ''}$${position.exitPnL.toFixed(2)} (${position.exitPnLPercent?.toFixed(1)}%)`
+          : 'Closed'
+
+        tradeMarkers.push({
+          time: position.exitTime as Time,
+          position: isProfitable ? ('aboveBar' as const) : ('belowBar' as const),
+          color: isProfitable ? '#22c55e' : '#ef4444',
+          shape: 'circle' as const,
+          text: pnlText,
+          size: 1.3,
+        })
+      }
+    })
+
+    return tradeMarkers
   }
 
   // פונקציה ליצירת סימון תבניות
@@ -817,8 +859,11 @@ export default function TradingChart() {
       }
     })
 
-    // מיזוג markers תבניות עם markers כלי ציור
-    const allMarkers = [...markers, ...drawnMarkersRef.current]
+    // יצירת markers לעסקאות סגורות
+    const tradeMarkers = createClosedTradeMarkers()
+
+    // מיזוג markers תבניות, עסקאות סגורות, ו-markers כלי ציור
+    const allMarkers = [...markers, ...tradeMarkers, ...drawnMarkersRef.current]
 
     // ⚠️ CRITICAL: חייבים למיין לפי זמן! lightweight-charts דורש סדר עולה
     allMarkers.sort((a, b) => {
@@ -827,7 +872,7 @@ export default function TradingChart() {
       return timeA - timeB
     })
 
-    console.log('createPatternMarkers: Merging', markers.length, 'pattern markers +', drawnMarkersRef.current.length, 'drawn markers =', allMarkers.length, 'total (sorted by time)')
+    console.log('createPatternMarkers: Merging', markers.length, 'pattern markers +', tradeMarkers.length, 'trade markers +', drawnMarkersRef.current.length, 'drawn markers =', allMarkers.length, 'total (sorted by time)')
 
     // הגדרת כל ה-markers בבת אחת
     if (allMarkers.length > 0 && candlestickSeriesRef.current) {
@@ -895,11 +940,13 @@ export default function TradingChart() {
     hidePreviewLine()
 
     const color = orderType === 'long' ? '#22c55e' : '#ef4444'
-    const currentCandle = gameState.candles[gameState.currentIndex]
-    const lastCandle = gameState.candles[gameState.candles.length - 1]
-    if (!currentCandle || !lastCandle) return
 
-    // קו המחיר היעד - קו אופקי מהנר הנוכחי עד סוף הגרף
+    // קו אופקי מהנר הראשון עד הנר האחרון שנראה בגרף
+    const firstCandle = gameState.candles[0]
+    const lastVisibleCandle = gameState.candles[gameState.currentIndex]
+    if (!firstCandle || !lastVisibleCandle) return
+
+    // קו המחיר היעד - קו אופקי על פני כל הגרף הנראה
     const priceLine = chartRef.current.addLineSeries({
       color,
       lineWidth: 3,
@@ -908,8 +955,8 @@ export default function TradingChart() {
       lastValueVisible: false,
     })
     priceLine.setData([
-      { time: currentCandle.time as Time, value: targetPrice },
-      { time: lastCandle.time as Time, value: targetPrice },
+      { time: firstCandle.time as Time, value: targetPrice },
+      { time: lastVisibleCandle.time as Time, value: targetPrice },
     ])
     previewLineSeriesRef.current.push(priceLine)
 
@@ -923,8 +970,8 @@ export default function TradingChart() {
         lastValueVisible: false,
       })
       slLine.setData([
-        { time: currentCandle.time as Time, value: stopLoss },
-        { time: lastCandle.time as Time, value: stopLoss },
+        { time: firstCandle.time as Time, value: stopLoss },
+        { time: lastVisibleCandle.time as Time, value: stopLoss },
       ])
       previewLineSeriesRef.current.push(slLine)
     }
@@ -938,8 +985,8 @@ export default function TradingChart() {
         lastValueVisible: false,
       })
       tpLine.setData([
-        { time: currentCandle.time as Time, value: takeProfit },
-        { time: lastCandle.time as Time, value: takeProfit },
+        { time: firstCandle.time as Time, value: takeProfit },
+        { time: lastVisibleCandle.time as Time, value: takeProfit },
       ])
       previewLineSeriesRef.current.push(tpLine)
     }

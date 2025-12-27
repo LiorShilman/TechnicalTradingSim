@@ -262,6 +262,14 @@ Lightweight Charts (TradingView) integration:
 - Data format: `{ time: number, open, high, low, close }` (seconds-based timestamps)
 - Volume displayed as histogram series
 - **Pattern visualization**: Displays detected patterns with colored boxes (green for Breakout, blue for Retest, purple for Bull Flag) and markers
+- **Closed Trades Visualization**: Displays entry/exit markers for completed trades
+  - **Entry markers**: Green arrow up (🟢 Entry) for LONG, red arrow down (🔴 Entry) for SHORT
+  - **Exit markers**: Circle with P&L text showing profit/loss amount and percentage
+    - Green circle above bar for profitable trades (e.g., "+$52.30 (5.2%)")
+    - Red circle below bar for losing trades (e.g., "-$23.10 (-2.3%)")
+  - Markers only appear for trades that occurred at or before current candle index
+  - Automatically updates when positions are closed or when progressing through candles
+  - Integrated with pattern markers and drawing tools, sorted by time
 - **Drawing Tools System** (ChartToolsPanel + TradingChart):
   - **Unified panel** combining indicators and drawing tools with tabbed interface
   - **Moving Averages**: MA 20, 50, 200 with option to calculate from current index (real-time simulation mode)
