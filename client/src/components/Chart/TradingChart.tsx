@@ -180,33 +180,20 @@ export default function TradingChart() {
 
       if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
 
-      // Get the current visible candles to estimate price
-      const timeScale = chartRef.current.timeScale()
-      const visibleRange = timeScale.getVisibleLogicalRange()
-
-      if (!visibleRange) return
-
       // Get cursor position relative to chart
       const rect = chartContainerRef.current.getBoundingClientRect()
       const relativeY = e.clientY - rect.top
-      const chartHeight = rect.height * 0.70 // נרות תופסים 70% מהגובה
 
-      // אם הקליק היה באזור הנרות (לא באזור Volume)
-      if (relativeY > chartHeight) return
+      // ✅ שימוש ב-API של Lightweight Charts לקבלת המחיר המדויק
+      // chartRef.current.priceScale('right') מחזיר את ה-price scale הראשי
+      const priceScale = chartRef.current.priceScale('right')
+      const price = priceScale.coordinateToPrice(relativeY)
 
-      // קירוב: המרה מפיקסל למחיר על בסיס הנרות הגלויים
-      // נשתמש במחיר הנוכחי כבסיס
-      const currentCandle = gameState?.candles[gameState.currentIndex]
-      if (!currentCandle) return
+      if (price === null || price === undefined) return
 
-      // חישוב המחיר המשוער על בסיס מיקום העכבר
-      const priceRangePercent = relativeY / chartHeight
-      const estimatedPriceOffset = (1 - priceRangePercent - 0.5) * currentCandle.close * 0.1
-      const estimatedPrice = currentCandle.close + estimatedPriceOffset
-
-      // Show context menu
+      // Show context menu with exact price
       setPendingOrderMenu({
-        price: estimatedPrice,
+        price: price,
         x: e.clientX,
         y: e.clientY,
       })
