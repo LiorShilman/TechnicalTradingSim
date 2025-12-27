@@ -335,12 +335,19 @@ export default function TradingChart() {
         lastValueVisible: false,
       })
 
-      // קו אופקי על פני כל הגרף
-      const visibleCandles = gameState.candles.slice(0, gameState.currentIndex + 1)
-      if (visibleCandles.length > 0) {
+      // ✅ קו אופקי מהנר שבו נוצרה הפקודה עד הנר הנוכחי
+      const startIndex = order.createdAtIndex
+      const endIndex = gameState.currentIndex
+
+      // וידוא שהאינדקסים תקינים
+      if (startIndex >= 0 && startIndex < gameState.candles.length &&
+          endIndex >= startIndex && endIndex < gameState.candles.length) {
+        const startCandle = gameState.candles[startIndex]
+        const endCandle = gameState.candles[endIndex]
+
         const lineData = [
-          { time: visibleCandles[0].time as Time, value: order.targetPrice },
-          { time: visibleCandles[visibleCandles.length - 1].time as Time, value: order.targetPrice },
+          { time: startCandle.time as Time, value: order.targetPrice },
+          { time: endCandle.time as Time, value: order.targetPrice },
         ]
 
         priceLine.setData(lineData)

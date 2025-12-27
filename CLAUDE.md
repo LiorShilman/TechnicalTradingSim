@@ -266,6 +266,9 @@ Lightweight Charts (TradingView) integration:
     - **Sell Stop**: Short entry below current price (breakdown)
     - **Sell Limit**: Short entry above current price (retracement)
   - Orders execute only when price crosses target in correct direction (prevents instant execution)
+  - **Visual pending order lines**: Horizontal dashed lines drawn from creation candle to current candle
+    - Green for LONG orders, red for SHORT orders
+    - Lines extend with each new candle (not from chart start)
 
 ### Balance Persistence with localStorage
 The app persists account balance across sessions using localStorage:
