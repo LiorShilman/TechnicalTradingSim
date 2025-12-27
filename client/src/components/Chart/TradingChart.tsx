@@ -576,6 +576,11 @@ export default function TradingChart() {
             const timeTolerance = candleDuration * 1.5
 
             if (Math.abs((time as number) - endCandle.time) < timeTolerance) {
+              // השבתת גרירת הגרף בזמן drag של הקו
+              chartRef.current?.applyOptions({
+                handleScroll: false,
+                handleScale: false,
+              })
               setDraggingLine({ lineId: line.id, lineType: 'resize' })
               e.preventDefault()
               return
@@ -585,6 +590,11 @@ export default function TradingChart() {
 
         // Check SL line
         if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < priceTolerance) {
+          // השבתת גרירת הגרף בזמן drag של הקו
+          chartRef.current?.applyOptions({
+            handleScroll: false,
+            handleScale: false,
+          })
           setDraggingLine({ lineId: line.id, lineType: 'stopLoss' })
           e.preventDefault()
           return
@@ -592,6 +602,11 @@ export default function TradingChart() {
 
         // Check TP line
         if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < priceTolerance) {
+          // השבתת גרירת הגרף בזמן drag של הקו
+          chartRef.current?.applyOptions({
+            handleScroll: false,
+            handleScale: false,
+          })
           setDraggingLine({ lineId: line.id, lineType: 'takeProfit' })
           e.preventDefault()
           return
@@ -602,6 +617,12 @@ export default function TradingChart() {
     // Mousemove handler for dragging SL/TP lines or resizing
     const handleMouseMove = (e: MouseEvent) => {
       if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
+
+      // If we're dragging, prevent default chart behavior (panning)
+      if (draggingLineRef.current) {
+        e.preventDefault()
+        e.stopPropagation()
+      }
 
       // Get cursor position
       const rect = chartContainerRef.current.getBoundingClientRect()
@@ -713,6 +734,11 @@ export default function TradingChart() {
     // Mouseup handler to end dragging
     const handleMouseUp = () => {
       if (draggingLineRef.current) {
+        // החזרת גרירת הגרף
+        chartRef.current?.applyOptions({
+          handleScroll: true,
+          handleScale: true,
+        })
         setDraggingLine(null)
       }
     }
