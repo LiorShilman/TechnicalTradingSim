@@ -45,6 +45,14 @@ export default function TradingChart() {
   const activeToolRef = useRef<DrawingTool>('none') // ref for event listeners
   const [drawnLines, setDrawnLines] = useState<DrawnLine[]>([])
   const drawnLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
+  const drawnMarkersRef = useRef<any[]>([]) // markers from drawing tools (arrows, notes)
+
+  // For multi-point tools (trend line, fibonacci)
+  const [, setDrawingInProgress] = useState<{
+    type: DrawingTool
+    price: number
+    time: number
+  } | null>(null)
 
   // Sync activeTool state with ref
   useEffect(() => {
@@ -294,20 +302,81 @@ export default function TradingChart() {
       const time = timeScale.coordinateToTime(relativeX)
       if (time === null || time === undefined) return
 
-      // יצירת קו חדש
-      const newLine: DrawnLine = {
-        id: `line-${Date.now()}`,
-        type: activeToolRef.current,
-        price: price,
-        startTime: activeToolRef.current === 'horizontal-ray' ? (time as number) : undefined,
-        color: activeToolRef.current === 'horizontal-line' ? '#FFD700' : '#00CED1',
-        width: 2,
+      const currentTool = activeToolRef.current
+
+      // כלים שצריכים נקודה אחת
+      if (currentTool === 'horizontal-line' || currentTool === 'horizontal-ray' || currentTool === 'arrow-up' || currentTool === 'arrow-down') {
+        const toolColors: Record<string, string> = {
+          'horizontal-line': '#FFD700',
+          'horizontal-ray': '#00CED1',
+          'arrow-up': '#4CAF50',
+          'arrow-down': '#F44336',
+        }
+
+        const newLine: DrawnLine = {
+          id: `line-${Date.now()}`,
+          type: currentTool,
+          price: price,
+          startTime: currentTool === 'horizontal-ray' ? (time as number) : undefined,
+          color: toolColors[currentTool] || '#FFD700',
+          width: 2,
+        }
+
+        setDrawnLines((prev) => [...prev, newLine])
+        setActiveTool('none')
       }
+      // כלים שצריכים שתי נקודות (trend line, fibonacci)
+      else if (currentTool === 'trend-line' || currentTool === 'fibonacci') {
+        setDrawingInProgress((prev) => {
+          if (!prev) {
+            // נקודה ראשונה - שמירה
+            return {
+              type: currentTool,
+              price: price,
+              time: time as number,
+            }
+          } else {
+            // נקודה שנייה - יצירת הקו
+            const toolColors: Record<string, string> = {
+              'trend-line': '#9C27B0',
+              'fibonacci': '#FF9800',
+            }
 
-      setDrawnLines((prev) => [...prev, newLine])
+            const newLine: DrawnLine = {
+              id: `line-${Date.now()}`,
+              type: currentTool,
+              price: prev.price,
+              price2: price,
+              startTime: prev.time,
+              endTime: time as number,
+              color: toolColors[currentTool] || '#9C27B0',
+              width: 2,
+            }
 
-      // אחרי שרטוט, מבטלים את הכלי
-      setActiveTool('none')
+            setDrawnLines((lines) => [...lines, newLine])
+            setActiveTool('none')
+            return null
+          }
+        })
+      }
+      // כלי הערות טקסט
+      else if (currentTool === 'note') {
+        const text = prompt('הכנס הערה:')
+        if (text) {
+          const newLine: DrawnLine = {
+            id: `line-${Date.now()}`,
+            type: currentTool,
+            price: price,
+            startTime: time as number,
+            text: text,
+            color: '#03A9F4',
+            width: 2,
+          }
+
+          setDrawnLines((prev) => [...prev, newLine])
+        }
+        setActiveTool('none')
+      }
     }
 
     // Right-click handler for pending orders
@@ -317,6 +386,7 @@ export default function TradingChart() {
       // אם יש כלי שרטוט פעיל, ביטול במקום תפריט
       if (activeToolRef.current !== 'none') {
         setActiveTool('none')
+        setDrawingInProgress(null)
         return
       }
 
@@ -426,7 +496,7 @@ export default function TradingChart() {
 
   // פונקציה לציור קווים שרטוטיים
   const renderDrawnLines = () => {
-    if (!chartRef.current || !gameState?.candles) return
+    if (!chartRef.current || !gameState?.candles || !candlestickSeriesRef.current) return
 
     // הסרת קווים ישנים
     drawnLineSeriesRef.current.forEach((series) => {
@@ -438,45 +508,94 @@ export default function TradingChart() {
     })
     drawnLineSeriesRef.current = []
 
+    // מערך markers לחצים והערות
+    const markers: any[] = []
+
     // ציור כל הקווים
     drawnLines.forEach((line) => {
-      const lineSeries = chartRef.current!.addLineSeries({
-        color: line.color,
-        lineWidth: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-        lineStyle: 0, // solid
-      })
+      if (line.type === 'horizontal-line' || line.type === 'horizontal-ray' || line.type === 'trend-line') {
+        const lineSeries = chartRef.current!.addLineSeries({
+          color: line.color,
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          lineStyle: 0, // solid
+        })
 
-      if (line.type === 'horizontal-line') {
-        // קו אופקי על פני כל הגרף
-        const firstCandle = gameState.candles[0]
-        const lastCandle = gameState.candles[gameState.currentIndex]
+        if (line.type === 'horizontal-line') {
+          const firstCandle = gameState.candles[0]
+          const lastCandle = gameState.candles[gameState.currentIndex]
 
-        if (firstCandle && lastCandle) {
-          // וידוא שהזמנים ממוינים עולה
-          const times = [firstCandle.time, lastCandle.time].sort((a, b) => a - b)
+          if (firstCandle && lastCandle) {
+            const times = [firstCandle.time, lastCandle.time].sort((a, b) => a - b)
+            lineSeries.setData([
+              { time: times[0] as Time, value: line.price },
+              { time: times[1] as Time, value: line.price },
+            ])
+          }
+        } else if (line.type === 'horizontal-ray' && line.startTime) {
+          const lastCandle = gameState.candles[gameState.currentIndex]
+
+          if (lastCandle) {
+            const times = [line.startTime, lastCandle.time].sort((a, b) => a - b)
+            lineSeries.setData([
+              { time: times[0] as Time, value: line.price },
+              { time: times[1] as Time, value: line.price },
+            ])
+          }
+        } else if (line.type === 'trend-line' && line.startTime && line.endTime && line.price2 !== undefined) {
+          // קו מגמה בין שתי נקודות
+          const times = [line.startTime, line.endTime].sort((a, b) => a - b)
           lineSeries.setData([
-            { time: times[0] as Time, value: line.price },
-            { time: times[1] as Time, value: line.price },
+            { time: times[0] as Time, value: line.startTime === times[0] ? line.price : line.price2 },
+            { time: times[1] as Time, value: line.endTime === times[1] ? line.price2 : line.price },
           ])
         }
-      } else if (line.type === 'horizontal-ray' && line.startTime) {
-        // קו אופקי מנקודה מסוימת ימינה
-        const lastCandle = gameState.candles[gameState.currentIndex]
 
-        if (lastCandle) {
-          // וידוא שהזמנים ממוינים עולה
-          const times = [line.startTime, lastCandle.time].sort((a, b) => a - b)
-          lineSeries.setData([
-            { time: times[0] as Time, value: line.price },
-            { time: times[1] as Time, value: line.price },
+        drawnLineSeriesRef.current.push(lineSeries)
+      }
+      // פיבונצ'י - מספר קווים
+      else if (line.type === 'fibonacci' && line.startTime && line.endTime && line.price2 !== undefined) {
+        const fibLevels = [0, 0.236, 0.382, 0.5, 0.618, 0.786, 1]
+        const fibColors = ['#808080', '#FF6B6B', '#4ECDC4', '#FFD93D', '#6BCB77', '#4D96FF', '#9D4EDD']
+
+        const priceDiff = line.price2 - line.price
+
+        fibLevels.forEach((level, idx) => {
+          const fibPrice = line.price + (priceDiff * level)
+          const fibSeries = chartRef.current!.addLineSeries({
+            color: fibColors[idx],
+            lineWidth: 1,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 2, // dashed
+          })
+
+          const times = [line.startTime!, line.endTime!].sort((a, b) => a - b)
+          fibSeries.setData([
+            { time: times[0] as Time, value: fibPrice },
+            { time: times[1] as Time, value: fibPrice },
           ])
+
+          drawnLineSeriesRef.current.push(fibSeries)
+        })
+      }
+      // חצים והערות - markers
+      else if (line.type === 'arrow-up' || line.type === 'arrow-down' || line.type === 'note') {
+        if (line.startTime) {
+          markers.push({
+            time: line.startTime as Time,
+            position: line.type === 'arrow-down' ? ('aboveBar' as const) : ('belowBar' as const),
+            color: line.color,
+            shape: line.type === 'arrow-up' ? ('arrowUp' as const) : line.type === 'arrow-down' ? ('arrowDown' as const) : ('circle' as const),
+            text: line.type === 'note' ? line.text : '',
+          })
         }
       }
-
-      drawnLineSeriesRef.current.push(lineSeries)
     })
+
+    // שמירת markers כלי הציור ב-ref לשימוש ב-createPatternMarkers
+    drawnMarkersRef.current = markers
   }
 
   // useEffect לציור קווים כאשר הם משתנים
@@ -586,9 +705,12 @@ export default function TradingChart() {
       }
     })
 
+    // מיזוג markers תבניות עם markers כלי ציור
+    const allMarkers = [...markers, ...drawnMarkersRef.current]
+
     // הגדרת כל ה-markers בבת אחת
-    if (markers.length > 0 && candlestickSeriesRef.current) {
-      candlestickSeriesRef.current.setMarkers(markers)
+    if (allMarkers.length > 0 && candlestickSeriesRef.current) {
+      candlestickSeriesRef.current.setMarkers(allMarkers)
     }
   }
 

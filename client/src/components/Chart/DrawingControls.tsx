@@ -1,13 +1,24 @@
 import { useState } from 'react'
 import { Minus, ArrowRight, Trash2, ChevronDown, ChevronUp } from 'lucide-react'
 
-export type DrawingTool = 'none' | 'horizontal-line' | 'horizontal-ray'
+export type DrawingTool =
+  | 'none'
+  | 'horizontal-line'
+  | 'horizontal-ray'
+  | 'trend-line'
+  | 'arrow-up'
+  | 'arrow-down'
+  | 'fibonacci'
+  | 'note'
 
 export interface DrawnLine {
   id: string
   type: DrawingTool
   price: number
-  startTime?: number // For ray - where it starts
+  price2?: number // For trend line end point & fibonacci
+  startTime?: number // For ray/trend line start
+  endTime?: number // For trend line end & fibonacci
+  text?: string // For notes
   color: string
   width: number
 }

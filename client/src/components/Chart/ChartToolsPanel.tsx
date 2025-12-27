@@ -1,5 +1,18 @@
 import { useState } from 'react'
-import { TrendingUp, Minus, ArrowRight, Trash2, ChevronDown, ChevronUp, Settings } from 'lucide-react'
+import {
+  TrendingUp,
+  Minus,
+  ArrowRight,
+  Trash2,
+  ChevronDown,
+  ChevronUp,
+  Settings,
+  TrendingDown as TrendLine,
+  ArrowUp,
+  ArrowDown,
+  Activity,
+  StickyNote,
+} from 'lucide-react'
 import type { DrawingTool, DrawnLine } from './DrawingControls'
 import type { MASettings } from './IndicatorControls'
 
@@ -17,8 +30,13 @@ interface ChartToolsPanelProps {
 const STORAGE_KEY = 'trading-game-ma-settings'
 
 const DRAWING_TOOLS = [
-  { id: 'horizontal-line' as DrawingTool, label: 'Horizontal Line', icon: Minus, color: '#FFD700' },
-  { id: 'horizontal-ray' as DrawingTool, label: 'Horizontal Ray', icon: ArrowRight, color: '#00CED1' },
+  { id: 'horizontal-line' as DrawingTool, label: 'Horizontal Line', icon: Minus, color: '#FFD700', description: 'קו אופקי על פני כל הגרף' },
+  { id: 'horizontal-ray' as DrawingTool, label: 'Horizontal Ray', icon: ArrowRight, color: '#00CED1', description: 'קרן אופקית מנקודה ימינה' },
+  { id: 'trend-line' as DrawingTool, label: 'Trend Line', icon: TrendLine, color: '#9C27B0', description: 'קו מגמה בין שתי נקודות' },
+  { id: 'arrow-up' as DrawingTool, label: 'Arrow Up ↑', icon: ArrowUp, color: '#4CAF50', description: 'חץ מעלה לסימון נר חשוב' },
+  { id: 'arrow-down' as DrawingTool, label: 'Arrow Down ↓', icon: ArrowDown, color: '#F44336', description: 'חץ מטה לסימון נר חשוב' },
+  { id: 'fibonacci' as DrawingTool, label: 'Fibonacci', icon: Activity, color: '#FF9800', description: 'רמות פיבונצ\'י בין שתי נקודות' },
+  { id: 'note' as DrawingTool, label: 'Text Note', icon: StickyNote, color: '#03A9F4', description: 'הערת טקסט על הגרף' },
 ]
 
 export default function ChartToolsPanel({
@@ -198,6 +216,7 @@ export default function ChartToolsPanel({
                     <button
                       key={tool.id}
                       onClick={() => handleToolClick(tool.id)}
+                      title={tool.description}
                       className={`w-full px-3 py-2 rounded flex items-center gap-2 transition-colors ${
                         isActive
                           ? 'bg-blue-600 hover:bg-blue-700'
@@ -205,7 +224,12 @@ export default function ChartToolsPanel({
                       }`}
                     >
                       <Icon size={16} style={{ color: tool.color }} />
-                      <span className="text-sm">{tool.label}</span>
+                      <div className="flex-1 text-left">
+                        <div className="text-sm">{tool.label}</div>
+                        <div className="text-[10px] text-text-secondary opacity-70">
+                          {tool.description}
+                        </div>
+                      </div>
                     </button>
                   )
                 })}
