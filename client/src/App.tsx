@@ -31,12 +31,12 @@ function App() {
   // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
   const savedGameInfo = useMemo(() => getSavedGameInfo(), [refreshSavedGame, getSavedGameInfo])
 
-  const handleStartGame = async () => {
+  const handleStartGame = async (forceNewGame = false) => {
     // ⭐ CRITICAL: אל תעדכן את setIsStartScreen לפני שהמשחק נטען!
     // זה גורם ל-re-render שמאפס את הגרף
 
-    // ניסיון לטעון משחק שמור (אם יש קובץ ותואם)
-    if (uploadedFile && savedGameInfo) {
+    // ניסיון לטעון משחק שמור (אם יש קובץ ותואם ולא נאלץ משחק חדש)
+    if (!forceNewGame && uploadedFile && savedGameInfo) {
       const loaded = await loadSavedGame(uploadedFile, selectedDateRange)
       if (loaded) {
         console.log('✅ Resumed from saved game')
@@ -338,7 +338,7 @@ function App() {
                       </div>
                     </div>
                     <button
-                      onClick={handleStartGame}
+                      onClick={() => handleStartGame(false)}
                       disabled={isLoading}
                       className="px-4 py-2 bg-green-600/80 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
                       title="המשך משחק שמור"
@@ -489,7 +489,8 @@ function App() {
                   clearSavedGame()
                   setRefreshSavedGame(prev => prev + 1)
                 }
-                handleStartGame()
+                // כפיית משחק חדש (לא לטעון שמור)
+                handleStartGame(true)
               }}
               disabled={isLoading}
               className="group relative px-12 py-5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl font-bold text-2xl hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-2xl shadow-blue-500/50 hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
