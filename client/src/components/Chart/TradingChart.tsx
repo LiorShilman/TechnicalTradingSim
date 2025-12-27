@@ -55,6 +55,9 @@ export default function TradingChart() {
     time: number
   } | null>(null)
 
+  // Preview lines for pending order (shown while menu is open)
+  const previewLineSeriesRef = useRef<ISeriesApi<'Line'>[]>([])
+
   // Sync activeTool state with ref
   useEffect(() => {
     activeToolRef.current = activeTool
@@ -884,6 +887,74 @@ export default function TradingChart() {
     })
   }
 
+  // פונקציה להצגת קו תצוגה מקדימה לפקודה עתידית
+  const showPreviewLine = (targetPrice: number, orderType: 'long' | 'short', stopLoss?: number, takeProfit?: number) => {
+    if (!chartRef.current || !gameState?.candles) return
+
+    // הסרת קווים קודמים
+    hidePreviewLine()
+
+    const color = orderType === 'long' ? '#22c55e' : '#ef4444'
+    const currentCandle = gameState.candles[gameState.currentIndex]
+    if (!currentCandle) return
+
+    // קו המחיר היעד
+    const priceLine = chartRef.current.addLineSeries({
+      color,
+      lineWidth: 3,
+      lineStyle: 2, // dashed
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })
+    priceLine.setData([
+      { time: currentCandle.time as Time, value: targetPrice },
+    ])
+    previewLineSeriesRef.current.push(priceLine)
+
+    // קווי SL/TP אם קיימים
+    if (stopLoss) {
+      const slLine = chartRef.current.addLineSeries({
+        color: '#ef4444',
+        lineWidth: 2,
+        lineStyle: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      })
+      slLine.setData([
+        { time: currentCandle.time as Time, value: stopLoss },
+      ])
+      previewLineSeriesRef.current.push(slLine)
+    }
+
+    if (takeProfit) {
+      const tpLine = chartRef.current.addLineSeries({
+        color: '#22c55e',
+        lineWidth: 2,
+        lineStyle: 2,
+        priceLineVisible: false,
+        lastValueVisible: false,
+      })
+      tpLine.setData([
+        { time: currentCandle.time as Time, value: takeProfit },
+      ])
+      previewLineSeriesRef.current.push(tpLine)
+    }
+  }
+
+  // פונקציה להסרת קו התצוגה המקדימה
+  const hidePreviewLine = () => {
+    if (chartRef.current) {
+      previewLineSeriesRef.current.forEach((series) => {
+        try {
+          chartRef.current?.removeSeries(series)
+        } catch (e) {
+          // Series might already be removed
+        }
+      })
+      previewLineSeriesRef.current = []
+    }
+  }
+
   // עדכון נתונים כשיש נרות חדשים
   useEffect(() => {
     if (!candlestickSeriesRef.current || !volumeSeriesRef.current || !volumeMASeriesRef.current || !gameState?.candles) {
@@ -1111,7 +1182,11 @@ export default function TradingChart() {
           price={pendingOrderMenu.price}
           x={pendingOrderMenu.x}
           y={pendingOrderMenu.y}
-          onClose={() => setPendingOrderMenu(null)}
+          onClose={() => {
+            hidePreviewLine()
+            setPendingOrderMenu(null)
+          }}
+          onPreviewUpdate={showPreviewLine}
         />
       )}
 

@@ -1,4 +1,4 @@
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { TrendingUp, TrendingDown, X } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
 import type { PendingOrderType } from '@/types/game.types'
@@ -8,16 +8,25 @@ interface PendingOrderMenuProps {
   x: number
   y: number
   onClose: () => void
+  onPreviewUpdate?: (targetPrice: number, orderType: 'long' | 'short', stopLoss?: number, takeProfit?: number) => void
 }
 
-export default function PendingOrderMenu({ price, x: _x, y: _y, onClose }: PendingOrderMenuProps) {
+export default function PendingOrderMenu({ price, x: _x, y: _y, onClose, onPreviewUpdate }: PendingOrderMenuProps) {
   const { gameState, createPendingOrder } = useGameStore()
   const [quantity, setQuantity] = useState(0.01)
   const [stopLoss, setStopLoss] = useState<number | undefined>()
   const [takeProfit, setTakeProfit] = useState<number | undefined>()
+  const [previewType, setPreviewType] = useState<'long' | 'short'>('long')
 
   // קבלת המחיר הנוכחי
   const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
+
+  // עדכון התצוגה המקדימה בגרף
+  useEffect(() => {
+    if (onPreviewUpdate) {
+      onPreviewUpdate(price, previewType, stopLoss, takeProfit)
+    }
+  }, [price, previewType, stopLoss, takeProfit, onPreviewUpdate])
 
   // קביעת סוג הפקודה לפי המחיר היעד ביחס למחיר הנוכחי
   const determineOrderType = (positionType: 'long' | 'short'): PendingOrderType => {
@@ -117,33 +126,52 @@ export default function PendingOrderMenu({ price, x: _x, y: _y, onClose }: Pendi
           />
         </div>
 
-        {/* כפתורי פעולה */}
-        <div className="grid grid-cols-2 gap-2">
+        {/* בחירת כיוון פקודה */}
+        <div className="mb-3 grid grid-cols-2 gap-2">
           <button
-            onClick={() => handlePlaceOrder('long')}
-            className="px-4 py-2 bg-green-600 hover:bg-green-700 rounded font-bold text-sm flex flex-col items-center justify-center gap-1 transition-colors"
+            onClick={() => setPreviewType('long')}
+            className={`px-3 py-2 rounded text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+              previewType === 'long'
+                ? 'bg-green-600 hover:bg-green-700'
+                : 'bg-dark-bg border border-green-600/30 text-green-400 hover:bg-green-600/20'
+            }`}
           >
-            <div className="flex items-center gap-2">
-              <TrendingUp size={16} />
-              <span>BUY LONG</span>
-            </div>
-            <span className="text-xs font-normal opacity-80">
-              {price > currentPrice ? '(Buy Stop)' : '(Buy Limit)'}
-            </span>
+            <TrendingUp size={16} />
+            <span>LONG</span>
           </button>
           <button
-            onClick={() => handlePlaceOrder('short')}
-            className="px-4 py-2 bg-red-600 hover:bg-red-700 rounded font-bold text-sm flex flex-col items-center justify-center gap-1 transition-colors"
+            onClick={() => setPreviewType('short')}
+            className={`px-3 py-2 rounded text-sm font-semibold flex items-center justify-center gap-2 transition-colors ${
+              previewType === 'short'
+                ? 'bg-red-600 hover:bg-red-700'
+                : 'bg-dark-bg border border-red-600/30 text-red-400 hover:bg-red-600/20'
+            }`}
           >
-            <div className="flex items-center gap-2">
-              <TrendingDown size={16} />
-              <span>SELL SHORT</span>
-            </div>
-            <span className="text-xs font-normal opacity-80">
-              {price < currentPrice ? '(Sell Stop)' : '(Sell Limit)'}
-            </span>
+            <TrendingDown size={16} />
+            <span>SHORT</span>
           </button>
         </div>
+
+        {/* כפתור אישור */}
+        <button
+          onClick={() => handlePlaceOrder(previewType)}
+          className={`w-full px-4 py-3 rounded font-bold text-sm flex flex-col items-center justify-center gap-1 transition-colors ${
+            previewType === 'long'
+              ? 'bg-green-600 hover:bg-green-700'
+              : 'bg-red-600 hover:bg-red-700'
+          }`}
+        >
+          <div className="flex items-center gap-2">
+            {previewType === 'long' ? <TrendingUp size={18} /> : <TrendingDown size={18} />}
+            <span>{previewType === 'long' ? 'BUY LONG' : 'SELL SHORT'}</span>
+          </div>
+          <span className="text-xs font-normal opacity-80">
+            {previewType === 'long'
+              ? (price > currentPrice ? '(Buy Stop)' : '(Buy Limit)')
+              : (price < currentPrice ? '(Sell Stop)' : '(Sell Limit)')
+            }
+          </span>
+        </button>
 
         {/* הסבר */}
         <div className="mt-3 pt-3 border-t border-dark-border text-xs text-text-secondary">
