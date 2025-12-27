@@ -58,12 +58,12 @@ export default function TradingChart() {
     candleIndex?: number
   } | null>(null)
 
-  // State for dragging SL/TP lines
+  // State for dragging SL/TP lines or resizing position width
   const [draggingLine, setDraggingLine] = useState<{
     lineId: string
-    lineType: 'stopLoss' | 'takeProfit' | 'entry'
+    lineType: 'stopLoss' | 'takeProfit' | 'entry' | 'resize'
   } | null>(null)
-  const draggingLineRef = useRef<{ lineId: string; lineType: 'stopLoss' | 'takeProfit' | 'entry' } | null>(null)
+  const draggingLineRef = useRef<{ lineId: string; lineType: 'stopLoss' | 'takeProfit' | 'entry' | 'resize' } | null>(null)
 
   // Preview lines for pending order (shown while menu is open)
   const previewLineSeriesRef = useRef<ISeriesApi<'Line'>[]>([])
@@ -538,7 +538,7 @@ export default function TradingChart() {
       }
     }
 
-    // Mousedown handler for initiating drag of SL/TP lines
+    // Mousedown handler for initiating drag of SL/TP lines or resize
     const handleMouseDown = (e: MouseEvent) => {
       // Only handle left click
       if (e.button !== 0) return
@@ -551,24 +551,37 @@ export default function TradingChart() {
       // Get cursor position
       const rect = chartContainerRef.current.getBoundingClientRect()
       const relativeY = e.clientY - rect.top
+      const relativeX = e.clientX - rect.left
       const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
-      if (price === null || price === undefined) return
+      const time = chartRef.current.timeScale().coordinateToTime(relativeX)
+
+      if (price === null || price === undefined || time === null || time === undefined) return
 
       // Check if we clicked near a position tool's SL or TP line
-      const tolerance = 0.02 // 2% price tolerance (increased for easier dragging)
+      const priceTolerance = 0.02 // 2% price tolerance
 
       for (const line of drawnLinesRef.current) {
         if (line.type !== 'long-position' && line.type !== 'short-position') continue
 
+        // Check for resize handle click (at endIndex time)
+        if (line.endIndex !== undefined && gameState) {
+          const endCandle = gameState.candles[line.endIndex]
+          if (endCandle && Math.abs((time as number) - endCandle.time) < 1) { // tolerance של 1 שניה
+            setDraggingLine({ lineId: line.id, lineType: 'resize' })
+            e.preventDefault()
+            return
+          }
+        }
+
         // Check SL line
-        if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
+        if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < priceTolerance) {
           setDraggingLine({ lineId: line.id, lineType: 'stopLoss' })
           e.preventDefault()
           return
         }
 
         // Check TP line
-        if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance) {
+        if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < priceTolerance) {
           setDraggingLine({ lineId: line.id, lineType: 'takeProfit' })
           e.preventDefault()
           return
@@ -576,53 +589,85 @@ export default function TradingChart() {
       }
     }
 
-    // Mousemove handler for dragging SL/TP lines
+    // Mousemove handler for dragging SL/TP lines or resizing
     const handleMouseMove = (e: MouseEvent) => {
       if (!chartContainerRef.current || !chartRef.current || !candlestickSeriesRef.current) return
 
       // Get cursor position
       const rect = chartContainerRef.current.getBoundingClientRect()
       const relativeY = e.clientY - rect.top
+      const relativeX = e.clientX - rect.left
       const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
+      const time = chartRef.current.timeScale().coordinateToTime(relativeX)
+
       if (price === null || price === undefined) return
 
       // If we're dragging, update the line position
       if (draggingLineRef.current) {
         const { lineId, lineType } = draggingLineRef.current
 
-        // Update the line's SL or TP price
-        setDrawnLines(prev => prev.map(line => {
-          if (line.id !== lineId) return line
-
-          if (lineType === 'stopLoss') {
+        if (lineType === 'resize' && time !== null && time !== undefined && gameState) {
+          // Resize: update endIndex based on time
+          const newEndIndex = gameState.candles.findIndex(c => Math.abs(c.time - (time as number)) < 1)
+          if (newEndIndex !== -1) {
+            setDrawnLines(prev => prev.map(line => {
+              if (line.id !== lineId) return line
+              // Ensure endIndex is between startIndex and currentIndex
+              const minEnd = line.startIndex !== undefined ? line.startIndex + 5 : 5 // minimum 5 candles
+              const maxEnd = gameState.currentIndex
+              const clampedEnd = Math.max(minEnd, Math.min(newEndIndex, maxEnd))
+              return { ...line, endIndex: clampedEnd }
+            }))
+          }
+        } else if (lineType === 'stopLoss') {
+          // Update SL price
+          setDrawnLines(prev => prev.map(line => {
+            if (line.id !== lineId) return line
             return { ...line, stopLoss: price }
-          } else if (lineType === 'takeProfit') {
+          }))
+        } else if (lineType === 'takeProfit') {
+          // Update TP price
+          setDrawnLines(prev => prev.map(line => {
+            if (line.id !== lineId) return line
             return { ...line, takeProfit: price }
-          }
-          return line
-        }))
+          }))
+        }
       } else {
-        // Not dragging - check if we're hovering over a draggable line and change cursor
-        const tolerance = 0.02 // 2% price tolerance (increased for easier dragging)
+        // Not dragging - check if we're hovering over a draggable line/marker and change cursor
+        const priceTolerance = 0.02
         let isOverDraggableLine = false
+        let isOverResizeMarker = false
 
-        for (const line of drawnLinesRef.current) {
-          if (line.type !== 'long-position' && line.type !== 'short-position') continue
+        if (time !== null && time !== undefined && gameState) {
+          for (const line of drawnLinesRef.current) {
+            if (line.type !== 'long-position' && line.type !== 'short-position') continue
 
-          // Check if hovering over SL or TP line
-          if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
-            isOverDraggableLine = true
-            break
-          }
-          if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance) {
-            isOverDraggableLine = true
-            break
+            // Check if hovering over resize marker
+            if (line.endIndex !== undefined) {
+              const endCandle = gameState.candles[line.endIndex]
+              if (endCandle && Math.abs((time as number) - endCandle.time) < 1) {
+                isOverResizeMarker = true
+                break
+              }
+            }
+
+            // Check if hovering over SL or TP line
+            if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < priceTolerance) {
+              isOverDraggableLine = true
+              break
+            }
+            if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < priceTolerance) {
+              isOverDraggableLine = true
+              break
+            }
           }
         }
 
         // Change cursor style
-        if (isOverDraggableLine && activeToolRef.current === 'none') {
-          chartContainerRef.current.style.cursor = 'ns-resize'
+        if (isOverResizeMarker && activeToolRef.current === 'none') {
+          chartContainerRef.current.style.cursor = 'ew-resize' // ⇔ cursor for horizontal resize
+        } else if (isOverDraggableLine && activeToolRef.current === 'none') {
+          chartContainerRef.current.style.cursor = 'ns-resize' // ⇕ cursor for vertical drag
         } else if (activeToolRef.current !== 'none') {
           chartContainerRef.current.style.cursor = 'crosshair'
         } else {
