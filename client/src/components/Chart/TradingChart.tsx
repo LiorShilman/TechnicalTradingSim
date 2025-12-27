@@ -396,7 +396,10 @@ export default function TradingChart() {
           console.log('Updated drawnLines:', updated)
           return updated
         })
+        console.log('🔄 Resetting activeTool to none after creating', currentTool)
         setActiveTool('none')
+        activeToolRef.current = 'none' // ✅ עדכון ישיר של ref כדי למנוע race condition
+        e.preventDefault() // מניעת mousedown מיד אחרי ה-click
       }
       // כלים שצריכים שתי נקודות (trend line, fibonacci, measure)
       else if (currentTool === 'trend-line' || currentTool === 'fibonacci' || currentTool === 'measure') {
@@ -437,6 +440,7 @@ export default function TradingChart() {
 
             setDrawnLines((lines) => [...lines, newLine])
             setActiveTool('none')
+            activeToolRef.current = 'none' // ✅ עדכון ישיר של ref
             return null
           }
         })
@@ -458,6 +462,7 @@ export default function TradingChart() {
           setDrawnLines((prev) => [...prev, newLine])
         }
         setActiveTool('none')
+        activeToolRef.current = 'none' // ✅ עדכון ישיר של ref
       }
     }
 
@@ -468,6 +473,7 @@ export default function TradingChart() {
       // אם יש כלי שרטוט פעיל, ביטול במקום תפריט
       if (activeToolRef.current !== 'none') {
         setActiveTool('none')
+        activeToolRef.current = 'none' // ✅ עדכון ישיר של ref
         setDrawingInProgress(null)
         return
       }
