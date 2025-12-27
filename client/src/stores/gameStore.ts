@@ -592,7 +592,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
   // מחיקת משחק שמור
   clearSavedGame: () => {
     localStorage.removeItem(SAVED_GAME_KEY)
-    console.log('Saved game cleared')
+    localStorage.removeItem('trading-game-drawings') // מחיקת קווים שרטוטיים
+    console.log('Saved game and drawings cleared')
     toast.success('משחק שמור נמחק', { icon: '🗑️' })
   },
 
