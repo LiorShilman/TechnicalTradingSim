@@ -566,10 +566,20 @@ export default function TradingChart() {
         // Check for resize handle click (at endIndex time)
         if (line.endIndex !== undefined && gameState) {
           const endCandle = gameState.candles[line.endIndex]
-          if (endCandle && Math.abs((time as number) - endCandle.time) < 1) { // tolerance של 1 שניה
-            setDraggingLine({ lineId: line.id, lineType: 'resize' })
-            e.preventDefault()
-            return
+          if (endCandle) {
+            // חישוב טולרנס זמן מבוסס על משך נר אחד (timeframe)
+            // לדוגמה: 1D = 86400 שניות, 1H = 3600 שניות
+            const candleDuration = gameState.candles.length > 1
+              ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
+              : 86400 // default 1 day
+            const timeTolerance = candleDuration * 0.5 // חצי נר טולרנס
+
+            if (Math.abs((time as number) - endCandle.time) < timeTolerance) {
+              console.log('🎯 Resize marker clicked!', { lineId: line.id, endIndex: line.endIndex, timeTolerance })
+              setDraggingLine({ lineId: line.id, lineType: 'resize' })
+              e.preventDefault()
+              return
+            }
           }
         }
 
@@ -608,14 +618,32 @@ export default function TradingChart() {
 
         if (lineType === 'resize' && time !== null && time !== undefined && gameState) {
           // Resize: update endIndex based on time
-          const newEndIndex = gameState.candles.findIndex(c => Math.abs(c.time - (time as number)) < 1)
+          // חישוב טולרנס זמן מבוסס על משך נר אחד
+          const candleDuration = gameState.candles.length > 1
+            ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
+            : 86400
+          const timeTolerance = candleDuration * 0.5
+
+          // מציאת הנר הקרוב ביותר לזמן הנוכחי
+          let newEndIndex = -1
+          let minDistance = Infinity
+          for (let i = 0; i <= gameState.currentIndex; i++) {
+            const distance = Math.abs(gameState.candles[i].time - (time as number))
+            if (distance < minDistance && distance < timeTolerance) {
+              minDistance = distance
+              newEndIndex = i
+            }
+          }
+
           if (newEndIndex !== -1) {
+            console.log('↔️ Resizing to index:', newEndIndex)
             setDrawnLines(prev => prev.map(line => {
               if (line.id !== lineId) return line
               // Ensure endIndex is between startIndex and currentIndex
               const minEnd = line.startIndex !== undefined ? line.startIndex + 5 : 5 // minimum 5 candles
               const maxEnd = gameState.currentIndex
               const clampedEnd = Math.max(minEnd, Math.min(newEndIndex, maxEnd))
+              console.log('📏 New endIndex:', clampedEnd, '(min:', minEnd, 'max:', maxEnd, ')')
               return { ...line, endIndex: clampedEnd }
             }))
           }
@@ -645,9 +673,17 @@ export default function TradingChart() {
             // Check if hovering over resize marker
             if (line.endIndex !== undefined) {
               const endCandle = gameState.candles[line.endIndex]
-              if (endCandle && Math.abs((time as number) - endCandle.time) < 1) {
-                isOverResizeMarker = true
-                break
+              if (endCandle) {
+                // חישוב טולרנס זמן מבוסס על משך נר אחד
+                const candleDuration = gameState.candles.length > 1
+                  ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
+                  : 86400
+                const timeTolerance = candleDuration * 0.5
+
+                if (Math.abs((time as number) - endCandle.time) < timeTolerance) {
+                  isOverResizeMarker = true
+                  break
+                }
               }
             }
 
