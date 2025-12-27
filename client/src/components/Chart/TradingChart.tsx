@@ -78,6 +78,18 @@ export default function TradingChart() {
     const handleFitContent = () => {
       if (chartRef.current) {
         chartRef.current.timeScale().fitContent()
+
+        // ✅ וידוא שה-volume priceScale גם מתאים את עצמו
+        if (volumeSeriesRef.current) {
+          volumeSeriesRef.current.priceScale().applyOptions({
+            autoScale: true,
+          })
+        }
+        if (volumeMASeriesRef.current) {
+          volumeMASeriesRef.current.priceScale().applyOptions({
+            autoScale: true,
+          })
+        }
       }
     }
     const handleResetZoom = () => {
@@ -86,6 +98,18 @@ export default function TradingChart() {
         chartRef.current.priceScale('right').applyOptions({
           autoScale: true,
         })
+
+        // ✅ גם לווליום
+        if (volumeSeriesRef.current) {
+          volumeSeriesRef.current.priceScale().applyOptions({
+            autoScale: true,
+          })
+        }
+        if (volumeMASeriesRef.current) {
+          volumeMASeriesRef.current.priceScale().applyOptions({
+            autoScale: true,
+          })
+        }
       }
     }
     setChartControls(handleFitContent, handleResetZoom)
