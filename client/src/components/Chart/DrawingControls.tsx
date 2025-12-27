@@ -18,17 +18,19 @@ export interface DrawnLine {
   id: string
   type: DrawingTool
   price: number
-  price2?: number // For trend line end point & fibonacci & measure & positions
+  price2?: number // For trend line end point & fibonacci & measure OR TP for positions
   startTime?: number // For ray/trend line start & measure & positions
-  endTime?: number // For trend line end & fibonacci & measure & positions
+  endTime?: number // For trend line end & fibonacci & measure
   text?: string // For notes
   color: string
   width: number
   // Additional data for measure/position tools
   startIndex?: number // Candle index for start point
   endIndex?: number // Candle index for end point
-  pnl?: number // Calculated P&L for position tools
-  pnlPercent?: number // Calculated P&L percentage for position tools
+  pnl?: number // Stop Loss price for position tools (או P&L למדידות)
+  pnlPercent?: number // Calculated percentages
+  stopLoss?: number // SL price for position tools
+  takeProfit?: number // TP price for position tools
 }
 
 interface DrawingControlsProps {

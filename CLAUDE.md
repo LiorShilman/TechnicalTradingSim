@@ -284,16 +284,26 @@ Lightweight Charts (TradingView) integration:
     8. **Measure Tool**: Two-point measurement showing price change ($), percentage (%), and number of bars (#FFD700 gold)
        - Displays: `Δ $XX.XX (±X.X%) | N bars`
        - Marker positioned at midpoint of measurement line
-    9. **Long Position Simulator**: Visual simulation of LONG trade with P&L calculation
-       - Entry line: White dotted line at entry price
-       - Exit line: Green (profit) or red (loss) solid line at exit price (3px)
-       - Info marker shows: `LONG ±$XX.XX (±X.X%) | N bars`
-       - Color-coded by profitability (green for profit, red for loss)
-    10. **Short Position Simulator**: Visual simulation of SHORT trade with P&L calculation
-        - Entry line: White dotted line at entry price
-        - Exit line: Blue solid line at exit price (3px)
-        - Info marker shows: `SHORT ±$XX.XX (±X.X%) | N bars`
-        - P&L calculated correctly for SHORT (profit when price goes down)
+    9. **Long Position Simulator**: Interactive LONG trade planning tool with automatic SL/TP
+       - Single-click on chart to place entry point
+       - Automatically creates default SL (-2%) and TP (+4%) for 1:2 R:R ratio
+       - **Visual lines**:
+         - Entry: White dotted horizontal line
+         - Stop Loss: Red dashed line below entry
+         - Take Profit: Green dashed line above entry
+       - **Info marker** displays: `LONG | R:R 1:X.XX | TP: +X.X% | SL: -X.X%`
+       - All lines extend across entire visible chart
+       - Selection highlighting: brightens all lines when selected
+    10. **Short Position Simulator**: Interactive SHORT trade planning tool with automatic SL/TP
+        - Single-click on chart to place entry point
+        - Automatically creates default SL (+2%) and TP (-4%) for 1:2 R:R ratio
+        - **Visual lines**:
+          - Entry: White dotted horizontal line
+          - Stop Loss: Red dashed line above entry (inverted for SHORT)
+          - Take Profit: Green dashed line below entry (inverted for SHORT)
+        - **Info marker** displays: `SHORT | R:R 1:X.XX | TP: +X.X% | SL: -X.X%`
+        - All lines extend across entire visible chart
+        - Selection highlighting: brightens all lines when selected
   - **Professional selection highlighting**:
     - Click on drawn object in list to select it
     - Selected objects brightened using RGB color manipulation (+40 for lines, +50 for Fib, +60 for markers)

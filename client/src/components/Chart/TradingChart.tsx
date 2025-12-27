@@ -326,22 +326,44 @@ export default function TradingChart() {
       const currentTool = activeToolRef.current
 
       // כלים שצריכים נקודה אחת
-      if (currentTool === 'horizontal-line' || currentTool === 'horizontal-ray' || currentTool === 'arrow-up' || currentTool === 'arrow-down') {
+      if (currentTool === 'horizontal-line' || currentTool === 'horizontal-ray' || currentTool === 'arrow-up' || currentTool === 'arrow-down' || currentTool === 'long-position' || currentTool === 'short-position') {
         const toolColors: Record<string, string> = {
           'horizontal-line': '#FFD700',
           'horizontal-ray': '#00CED1',
           'arrow-up': '#4CAF50',
           'arrow-down': '#F44336',
+          'long-position': '#22c55e',
+          'short-position': '#ef4444',
         }
+
+        // עבור position tools, נוסיף ברירות מחדל ל-SL/TP
+        let defaultSL: number | undefined = undefined
+        let defaultTP: number | undefined = undefined
+
+        if (currentTool === 'long-position') {
+          // LONG: SL מתחת, TP מעל
+          defaultSL = price * 0.98 // 2% מתחת
+          defaultTP = price * 1.04 // 4% מעל (2:1 R:R)
+        } else if (currentTool === 'short-position') {
+          // SHORT: SL מעל, TP מתחת
+          defaultSL = price * 1.02 // 2% מעל
+          defaultTP = price * 0.96 // 4% מתחת (2:1 R:R)
+        }
+
+        const candleIndex = gameState?.candles.findIndex(c => c.time === time)
 
         const newLine: DrawnLine = {
           id: `line-${Date.now()}`,
           type: currentTool,
-          price: price,
+          price: price, // entry price
           // חצים וקווים צריכים startTime
-          startTime: (currentTool === 'horizontal-ray' || currentTool === 'arrow-up' || currentTool === 'arrow-down') ? (time as number) : undefined,
+          startTime: (currentTool === 'horizontal-ray' || currentTool === 'arrow-up' || currentTool === 'arrow-down' || currentTool === 'long-position' || currentTool === 'short-position') ? (time as number) : undefined,
+          startIndex: (currentTool === 'long-position' || currentTool === 'short-position') && candleIndex !== -1 ? candleIndex : undefined,
           color: toolColors[currentTool] || '#FFD700',
           width: 2,
+          // SL/TP עבור position tools
+          ...(defaultSL && { stopLoss: defaultSL }),
+          ...(defaultTP && { takeProfit: defaultTP }),
         }
 
         console.log('Creating new line:', newLine)
@@ -352,8 +374,8 @@ export default function TradingChart() {
         })
         setActiveTool('none')
       }
-      // כלים שצריכים שתי נקודות (trend line, fibonacci, measure, position tools)
-      else if (currentTool === 'trend-line' || currentTool === 'fibonacci' || currentTool === 'measure' || currentTool === 'long-position' || currentTool === 'short-position') {
+      // כלים שצריכים שתי נקודות (trend line, fibonacci, measure)
+      else if (currentTool === 'trend-line' || currentTool === 'fibonacci' || currentTool === 'measure') {
         setDrawingInProgress((prev) => {
           if (!prev) {
             // נקודה ראשונה - שמירה
@@ -371,30 +393,10 @@ export default function TradingChart() {
               'trend-line': '#9C27B0',
               'fibonacci': '#FF9800',
               'measure': '#FFD700',
-              'long-position': '#22c55e',
-              'short-position': '#3b82f6',
             }
 
             // מציאת אינדקס הנר של הנקודה השנייה
             const endCandleIndex = gameState?.candles.findIndex(c => c.time === time)
-
-            // חישוב נתונים נוספים עבור measure ו-position tools
-            let pnl: number | undefined = undefined
-            let pnlPercent: number | undefined = undefined
-
-            if (currentTool === 'long-position') {
-              // LONG: רווח אם המחיר עלה
-              const entryPrice = prev.price
-              const exitPrice = price
-              pnl = exitPrice - entryPrice
-              pnlPercent = ((exitPrice - entryPrice) / entryPrice) * 100
-            } else if (currentTool === 'short-position') {
-              // SHORT: רווח אם המחיר ירד
-              const entryPrice = prev.price
-              const exitPrice = price
-              pnl = entryPrice - exitPrice
-              pnlPercent = ((entryPrice - exitPrice) / entryPrice) * 100
-            }
 
             const newLine: DrawnLine = {
               id: `line-${Date.now()}`,
@@ -405,8 +407,6 @@ export default function TradingChart() {
               endTime: time as number,
               startIndex: prev.candleIndex,
               endIndex: endCandleIndex !== -1 ? endCandleIndex : undefined,
-              pnl,
-              pnlPercent,
               color: toolColors[currentTool] || '#9C27B0',
               width: 2,
             }
@@ -726,126 +726,154 @@ export default function TradingChart() {
           })
         }
       }
-      // כלי Long Position - סימולציה של עסקת LONG
-      else if (line.type === 'long-position' && line.startTime && line.endTime && line.price2 !== undefined) {
-        if (line.startTime === line.endTime) {
-          console.warn('Skipping long-position with same start/end time')
-          return
-        }
-
+      // כלי Long Position - סימולציה של עסקת LONG עם SL/TP
+      else if (line.type === 'long-position' && line.startTime) {
         const isSelected = line.id === selectedLineId
         const entryPrice = line.price
-        const exitPrice = line.price2
-        const pnl = line.pnl || 0
-        const isProfitable = pnl > 0
+        const sl = line.stopLoss
+        const tp = line.takeProfit
 
-        const times = [line.startTime, line.endTime].sort((a, b) => a - b)
+        const firstCandle = gameState.candles[0]
+        const lastCandle = gameState.candles[gameState.currentIndex]
+        if (!firstCandle || !lastCandle) return
 
-        // קו עליון (exit price) - צבע לפי רווח/הפסד
-        const exitLineSeries = chartRef.current!.addLineSeries({
-          color: isProfitable ? (isSelected ? '#4ade80' : '#22c55e') : (isSelected ? '#f87171' : '#ef4444'),
-          lineWidth: 3,
-          priceLineVisible: false,
-          lastValueVisible: false,
-          lineStyle: 0, // solid
-        })
+        const times = [firstCandle.time, lastCandle.time].sort((a, b) => a - b)
 
-        exitLineSeries.setData([
-          { time: times[0] as Time, value: exitPrice },
-          { time: times[1] as Time, value: exitPrice },
-        ])
-
-        drawnLineSeriesRef.current.push(exitLineSeries)
-
-        // קו מחיר כניסה
+        // קו Entry - לבן מקווקו
         const entrySeries = chartRef.current!.addLineSeries({
-          color: '#ffffff',
-          lineWidth: 2,
+          color: isSelected ? '#ffffff' : '#d1d5db',
+          lineWidth: isSelected ? 3 : 2,
           priceLineVisible: false,
           lastValueVisible: false,
           lineStyle: 1, // dotted
         })
-
         entrySeries.setData([
           { time: times[0] as Time, value: entryPrice },
           { time: times[1] as Time, value: entryPrice },
         ])
-
         drawnLineSeriesRef.current.push(entrySeries)
 
-        // marker עם מידע
-        if (line.startIndex !== undefined && line.endIndex !== undefined) {
-          const bars = Math.abs(line.endIndex - line.startIndex)
-          const pnlPercent = line.pnlPercent?.toFixed(2) || '0.00'
+        // קו Stop Loss - אדום
+        if (sl) {
+          const slSeries = chartRef.current!.addLineSeries({
+            color: isSelected ? '#f87171' : '#ef4444',
+            lineWidth: isSelected ? 3 : 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 2, // dashed
+          })
+          slSeries.setData([
+            { time: times[0] as Time, value: sl },
+            { time: times[1] as Time, value: sl },
+          ])
+          drawnLineSeriesRef.current.push(slSeries)
+        }
 
+        // קו Take Profit - ירוק
+        if (tp) {
+          const tpSeries = chartRef.current!.addLineSeries({
+            color: isSelected ? '#4ade80' : '#22c55e',
+            lineWidth: isSelected ? 3 : 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 2, // dashed
+          })
+          tpSeries.setData([
+            { time: times[0] as Time, value: tp },
+            { time: times[1] as Time, value: tp },
+          ])
+          drawnLineSeriesRef.current.push(tpSeries)
+        }
+
+        // חישוב R:R ו-P&L
+        if (sl && tp) {
+          const risk = Math.abs(entryPrice - sl)
+          const reward = Math.abs(tp - entryPrice)
+          const rrRatio = reward / risk
+
+          // Info marker
           markers.push({
-            time: line.endTime as Time,
-            position: isProfitable ? ('aboveBar' as const) : ('belowBar' as const),
-            color: isProfitable ? '#22c55e' : '#ef4444',
+            time: line.startTime as Time,
+            position: 'aboveBar' as const,
+            color: '#22c55e',
             shape: 'circle' as const,
-            text: `LONG ${isProfitable ? '+' : ''}$${pnl.toFixed(2)} (${pnlPercent}%) | ${bars} bars`,
+            text: `LONG | R:R 1:${rrRatio.toFixed(2)} | TP: +${((reward / entryPrice) * 100).toFixed(1)}% | SL: -${((risk / entryPrice) * 100).toFixed(1)}%`,
             size: 1.4,
           })
         }
       }
-      // כלי Short Position - סימולציה של עסקת SHORT
-      else if (line.type === 'short-position' && line.startTime && line.endTime && line.price2 !== undefined) {
-        if (line.startTime === line.endTime) {
-          console.warn('Skipping short-position with same start/end time')
-          return
-        }
-
+      // כלי Short Position - סימולציה של עסקת SHORT עם SL/TP
+      else if (line.type === 'short-position' && line.startTime) {
         const isSelected = line.id === selectedLineId
         const entryPrice = line.price
-        const exitPrice = line.price2
-        const pnl = line.pnl || 0
-        const isProfitable = pnl > 0
+        const sl = line.stopLoss
+        const tp = line.takeProfit
 
-        const times = [line.startTime, line.endTime].sort((a, b) => a - b)
+        const firstCandle = gameState.candles[0]
+        const lastCandle = gameState.candles[gameState.currentIndex]
+        if (!firstCandle || !lastCandle) return
 
-        // קו exit price - צבע כחול
-        const exitLineSeries = chartRef.current!.addLineSeries({
-          color: isSelected ? '#60a5fa' : '#3b82f6',
-          lineWidth: 3,
-          priceLineVisible: false,
-          lastValueVisible: false,
-          lineStyle: 0, // solid
-        })
+        const times = [firstCandle.time, lastCandle.time].sort((a, b) => a - b)
 
-        exitLineSeries.setData([
-          { time: times[0] as Time, value: exitPrice },
-          { time: times[1] as Time, value: exitPrice },
-        ])
-
-        drawnLineSeriesRef.current.push(exitLineSeries)
-
-        // קו מחיר כניסה
+        // קו Entry - לבן מקווקו
         const entrySeries = chartRef.current!.addLineSeries({
-          color: '#ffffff',
-          lineWidth: 2,
+          color: isSelected ? '#ffffff' : '#d1d5db',
+          lineWidth: isSelected ? 3 : 2,
           priceLineVisible: false,
           lastValueVisible: false,
           lineStyle: 1, // dotted
         })
-
         entrySeries.setData([
           { time: times[0] as Time, value: entryPrice },
           { time: times[1] as Time, value: entryPrice },
         ])
-
         drawnLineSeriesRef.current.push(entrySeries)
 
-        // marker עם מידע
-        if (line.startIndex !== undefined && line.endIndex !== undefined) {
-          const bars = Math.abs(line.endIndex - line.startIndex)
-          const pnlPercent = line.pnlPercent?.toFixed(2) || '0.00'
+        // קו Stop Loss - אדום (מעל entry ב-SHORT)
+        if (sl) {
+          const slSeries = chartRef.current!.addLineSeries({
+            color: isSelected ? '#f87171' : '#ef4444',
+            lineWidth: isSelected ? 3 : 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 2, // dashed
+          })
+          slSeries.setData([
+            { time: times[0] as Time, value: sl },
+            { time: times[1] as Time, value: sl },
+          ])
+          drawnLineSeriesRef.current.push(slSeries)
+        }
 
+        // קו Take Profit - ירוק (מתחת entry ב-SHORT)
+        if (tp) {
+          const tpSeries = chartRef.current!.addLineSeries({
+            color: isSelected ? '#4ade80' : '#22c55e',
+            lineWidth: isSelected ? 3 : 2,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 2, // dashed
+          })
+          tpSeries.setData([
+            { time: times[0] as Time, value: tp },
+            { time: times[1] as Time, value: tp },
+          ])
+          drawnLineSeriesRef.current.push(tpSeries)
+        }
+
+        // חישוב R:R ו-P&L
+        if (sl && tp) {
+          const risk = Math.abs(sl - entryPrice) // SL מעל entry ב-SHORT
+          const reward = Math.abs(entryPrice - tp) // TP מתחת entry ב-SHORT
+          const rrRatio = reward / risk
+
+          // Info marker
           markers.push({
-            time: line.endTime as Time,
-            position: isProfitable ? ('aboveBar' as const) : ('belowBar' as const),
-            color: isProfitable ? '#22c55e' : '#ef4444',
+            time: line.startTime as Time,
+            position: 'belowBar' as const,
+            color: '#ef4444',
             shape: 'circle' as const,
-            text: `SHORT ${isProfitable ? '+' : ''}$${pnl.toFixed(2)} (${pnlPercent}%) | ${bars} bars`,
+            text: `SHORT | R:R 1:${rrRatio.toFixed(2)} | TP: +${((reward / entryPrice) * 100).toFixed(1)}% | SL: -${((risk / entryPrice) * 100).toFixed(1)}%`,
             size: 1.4,
           })
         }
