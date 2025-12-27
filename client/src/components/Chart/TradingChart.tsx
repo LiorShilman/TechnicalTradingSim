@@ -447,9 +447,11 @@ export default function TradingChart() {
         const lastCandle = gameState.candles[gameState.currentIndex]
 
         if (firstCandle && lastCandle) {
+          // וידוא שהזמנים ממוינים עולה
+          const times = [firstCandle.time, lastCandle.time].sort((a, b) => a - b)
           lineSeries.setData([
-            { time: firstCandle.time as Time, value: line.price },
-            { time: lastCandle.time as Time, value: line.price },
+            { time: times[0] as Time, value: line.price },
+            { time: times[1] as Time, value: line.price },
           ])
         }
       } else if (line.type === 'horizontal-ray' && line.startTime) {
@@ -457,9 +459,11 @@ export default function TradingChart() {
         const lastCandle = gameState.candles[gameState.currentIndex]
 
         if (lastCandle) {
+          // וידוא שהזמנים ממוינים עולה
+          const times = [line.startTime, lastCandle.time].sort((a, b) => a - b)
           lineSeries.setData([
-            { time: line.startTime as Time, value: line.price },
-            { time: lastCandle.time as Time, value: line.price },
+            { time: times[0] as Time, value: line.price },
+            { time: times[1] as Time, value: line.price },
           ])
         }
       }
@@ -833,7 +837,11 @@ export default function TradingChart() {
 
   return (
     <div className="w-full h-full bg-dark-panel rounded-lg overflow-hidden relative">
-      <div ref={chartContainerRef} className="w-full h-full" />
+      <div
+        ref={chartContainerRef}
+        className="w-full h-full"
+        style={{ cursor: activeTool !== 'none' ? 'crosshair' : 'default' }}
+      />
 
       {/* Indicator Controls */}
       <IndicatorControls onMASettingsChange={setMASettings} />

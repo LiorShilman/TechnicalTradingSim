@@ -44,7 +44,7 @@ export default function DrawingControls({
   }
 
   return (
-    <div className="absolute top-14 left-2 z-10 bg-dark-panel/95 border border-dark-border rounded-lg shadow-lg overflow-hidden">
+    <div className="absolute top-2 right-2 z-10 bg-dark-panel/95 border border-dark-border rounded-lg shadow-lg overflow-hidden">
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
