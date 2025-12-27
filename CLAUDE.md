@@ -77,7 +77,7 @@ Test server health: `curl http://localhost:5000/api/health`
 
 **Server:**
 - `server/src/server.ts` - Express app entry point, CORS, routes
-- `server/src/routes/gameRoutes.ts` - API endpoints (`/new`, `/:id`, `/:id/next`, `/:id/trade`)
+- `server/src/routes/gameRoutes.ts` - API endpoints (`/new`, `/:id`, `/:id/next`, `/:id/trade`, `/:id/pending-order`, `/:id/pending-order/:orderId`)
 - `server/src/controllers/gameController.ts` - Core game logic, in-memory storage
 - `server/src/services/patternGenerator.ts` - Generates Breakout/Retest/Flag patterns
 - `server/src/services/candleGenerator.ts` - Generates realistic candle data
@@ -90,6 +90,7 @@ Test server health: `curl http://localhost:5000/api/health`
 - `client/src/components/Chart/TradingChart.tsx` - Lightweight Charts integration with pattern visualization
 - `client/src/components/Trading/OrderPanel.tsx` - Buy/Sell interface with advanced SL/TP and risk management
 - `client/src/components/Trading/AccountInfo.tsx` - Real-time account balance and P&L display
+- `client/src/components/Trading/PendingOrdersList.tsx` - Displays and manages pending orders with cancel functionality
 - `client/src/components/Stats/GameStats.tsx` - End-game statistics display
 - `client/src/App.tsx` - Main app with CSV upload, filename parsing, and balance persistence
 
@@ -272,6 +273,14 @@ Lightweight Charts (TradingView) integration:
   - **Visual pending order lines**: Horizontal dashed lines drawn from creation candle to current candle
     - Green for LONG orders, red for SHORT orders
     - Lines extend with each new candle (not from chart start)
+  - **PendingOrdersList Component**: Professional UI displaying all pending orders in sidebar
+    - Shows order type (Buy Stop/Limit, Sell Stop/Limit), direction (LONG/SHORT), target price, quantity
+    - Displays distance from current price in both $ and %
+    - Shows SL/TP values if defined (color-coded green/red)
+    - Cancel button with XCircle icon to delete pending orders
+    - Color-coded by order type: green for buy orders, red for sell orders
+    - Positioned between OrderPanel and PositionsList in sidebar
+    - Scrollable if many orders exist (max-h-80)
 
 ### Balance Persistence with localStorage
 The app persists account balance across sessions using localStorage:
