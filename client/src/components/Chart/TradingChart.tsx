@@ -93,6 +93,21 @@ export default function TradingChart() {
         vertLines: { color: '#1e2442' },
         horzLines: { color: '#1e2442' },
       },
+      crosshair: {
+        mode: 0, // Normal mode (0) - no magnetism to price
+        vertLine: {
+          width: 1,
+          color: '#758696',
+          style: 3, // dashed
+          labelBackgroundColor: '#4a5568',
+        },
+        horzLine: {
+          width: 1,
+          color: '#758696',
+          style: 3, // dashed
+          labelBackgroundColor: '#4a5568',
+        },
+      },
       width: chartContainerRef.current.clientWidth,
       height: chartContainerRef.current.clientHeight,
       timeScale: {
@@ -614,6 +629,8 @@ export default function TradingChart() {
   useEffect(() => {
     if (gameState?.candles && gameState.currentIndex >= 0) {
       renderDrawnLines()
+      // עדכון markers (תבניות + כלי ציור)
+      createPatternMarkers()
     }
   }, [drawnLines, gameState?.currentIndex, gameState?.candles.length, gameState?.id])
 
