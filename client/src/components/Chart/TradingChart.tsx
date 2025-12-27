@@ -568,14 +568,22 @@ export default function TradingChart() {
           const endCandle = gameState.candles[line.endIndex]
           if (endCandle) {
             // חישוב טולרנס זמן מבוסס על משך נר אחד (timeframe)
-            // לדוגמה: 1D = 86400 שניות, 1H = 3600 שניות
             const candleDuration = gameState.candles.length > 1
               ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
-              : 86400 // default 1 day
-            const timeTolerance = candleDuration * 0.5 // חצי נר טולרנס
+              : 86400
+
+            // טולרנס של 1.5 נרות - גדול מספיק כדי לתפוס את הקו האנכי
+            const timeTolerance = candleDuration * 1.5
 
             if (Math.abs((time as number) - endCandle.time) < timeTolerance) {
-              console.log('🎯 Resize marker clicked!', { lineId: line.id, endIndex: line.endIndex, timeTolerance })
+              console.log('🎯 Resize marker clicked!', {
+                lineId: line.id,
+                endIndex: line.endIndex,
+                timeTolerance,
+                clickTime: time,
+                endTime: endCandle.time,
+                distance: Math.abs((time as number) - endCandle.time)
+              })
               setDraggingLine({ lineId: line.id, lineType: 'resize' })
               e.preventDefault()
               return
@@ -678,7 +686,7 @@ export default function TradingChart() {
                 const candleDuration = gameState.candles.length > 1
                   ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
                   : 86400
-                const timeTolerance = candleDuration * 0.5
+                const timeTolerance = candleDuration * 1.5 // טולרנס גדול יותר
 
                 if (Math.abs((time as number) - endCandle.time) < timeTolerance) {
                   isOverResizeMarker = true
