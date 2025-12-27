@@ -136,10 +136,10 @@ export const createGame = async (req: Request, res: Response) => {
     games.set(gameId, game)
 
     console.log(`Game ${gameId} created successfully`)
-    res.json({ game })
+    return res.json({ game })
   } catch (error) {
     console.error('Error creating game:', error)
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to create game',
       message: error instanceof Error ? error.message : 'Unknown error',
     })
@@ -316,9 +316,9 @@ export const getGame = async (req: Request, res: Response) => {
       })
     }
 
-    res.json({ game })
+    return res.json({ game })
   } catch (error) {
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to get game',
       message: error instanceof Error ? error.message : 'Unknown error',
     })
@@ -649,12 +649,12 @@ export const nextCandle = async (req: Request, res: Response) => {
 
     console.log(`Game ${gameId}: Advanced to candle ${newIndex}, returning ${game.candles.length} candles`)
 
-    res.json({
+    return res.json({
       game,
     })
   } catch (error) {
     console.error('Error advancing candle:', error)
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to advance candle',
       message: error instanceof Error ? error.message : 'Unknown error',
     })
@@ -922,7 +922,7 @@ export const executeTrade = async (req: Request, res: Response) => {
     })
   } catch (error) {
     console.error('Error executing trade:', error)
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to execute trade',
       message: error instanceof Error ? error.message : 'Unknown error',
     })
@@ -1028,8 +1028,71 @@ export const createPendingOrder = async (req: Request, res: Response) => {
     })
   } catch (error) {
     console.error('Error creating pending order:', error)
-    res.status(500).json({
+    return res.status(500).json({
       error: 'Failed to create pending order',
+      message: error instanceof Error ? error.message : 'Unknown error',
+    })
+  }
+}
+
+/**
+ * ביטול פקודה עתידית
+ */
+export const cancelPendingOrder = async (req: Request, res: Response) => {
+  try {
+    const { gameId, orderId } = req.params
+    const game = games.get(gameId)
+
+    if (!game) {
+      return res.status(404).json({
+        error: 'Game not found',
+        message: 'Invalid game ID',
+      })
+    }
+
+    if (!game.pendingOrders) {
+      return res.status(404).json({
+        error: 'No pending orders',
+        message: 'No pending orders found',
+      })
+    }
+
+    // מציאת הפקודה
+    const orderIndex = game.pendingOrders.findIndex(o => o.id === orderId)
+    if (orderIndex === -1) {
+      return res.status(404).json({
+        error: 'Order not found',
+        message: 'Invalid order ID',
+      })
+    }
+
+    // הסרת הפקודה
+    const canceledOrder = game.pendingOrders[orderIndex]
+    game.pendingOrders.splice(orderIndex, 1)
+
+    console.log(`Game ${gameId}: Canceled pending order ${orderId}`)
+
+    const feedback = {
+      type: 'info' as const,
+      message: `פקודה עתידית ${canceledOrder.type === 'long' ? 'LONG' : 'SHORT'} בוטלה`,
+      timestamp: Date.now(),
+      data: {
+        orderId: canceledOrder.id,
+        targetPrice: canceledOrder.targetPrice,
+      },
+    }
+
+    game.feedbackHistory.push(feedback)
+
+    return res.json({
+      success: true,
+      canceledOrder,
+      feedback,
+    })
+  } catch (error) {
+    console.error('Error canceling pending order:', error)
+    return res.status(500).json({
+      error: 'Failed to cancel pending order',
       message: error instanceof Error ? error.message : 'Unknown error',
     })
   }

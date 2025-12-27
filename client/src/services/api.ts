@@ -114,4 +114,15 @@ export const api = {
     })
     return response.data
   },
+
+  /**
+   * ביטול פקודה עתידית
+   */
+  cancelPendingOrder: async (
+    gameId: string,
+    orderId: string
+  ): Promise<{ success: boolean; canceledOrder: any; feedback: any }> => {
+    const response = await apiClient.delete(`/game/${gameId}/pending-order/${orderId}`)
+    return response.data
+  },
 }

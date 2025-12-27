@@ -35,6 +35,7 @@ interface GameStore {
     takeProfit?: number,
     orderType?: import('@/types/game.types').PendingOrderType
   ) => Promise<void>
+  cancelPendingOrder: (orderId: string) => Promise<void>
   resetGame: () => Promise<void>
   toggleAutoPlay: () => void
   setAutoPlaySpeed: (speed: number) => void
@@ -325,6 +326,44 @@ export const useGameStore = create<GameStore>((set, get) => ({
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create pending order'
+      toast.error(`שגיאה: ${errorMessage}`, {
+        icon: '❌',
+      })
+      // ⚠️ CRITICAL: לא מאפסים את gameState בשגיאה
+      set({
+        error: errorMessage,
+        isLoading: false
+      })
+    }
+  },
+
+  cancelPendingOrder: async (orderId) => {
+    const { gameState } = get()
+    if (!gameState) return
+
+    set({ isLoading: true, error: null })
+    try {
+      const response = await api.cancelPendingOrder(gameState.id, orderId)
+
+      // הסרת הפקודה מה-state
+      const updatedPendingOrders = gameState.pendingOrders?.filter(o => o.id !== orderId) || []
+
+      set({
+        gameState: {
+          ...gameState,
+          pendingOrders: updatedPendingOrders,
+          feedbackHistory: response.feedback
+            ? [...gameState.feedbackHistory, response.feedback]
+            : gameState.feedbackHistory,
+        },
+        isLoading: false
+      })
+
+      toast.success('פקודה עתידית בוטלה! 🗑️', {
+        icon: '✅',
+      })
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to cancel pending order'
       toast.error(`שגיאה: ${errorMessage}`, {
         icon: '❌',
       })

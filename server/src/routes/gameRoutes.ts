@@ -1,6 +1,6 @@
 import express from 'express'
 import multer from 'multer'
-import { createGame, createGameFromCSV, getGame, nextCandle, executeTrade, createPendingOrder } from '../controllers/gameController.js'
+import { createGame, createGameFromCSV, getGame, nextCandle, executeTrade, createPendingOrder, cancelPendingOrder } from '../controllers/gameController.js'
 
 const router = express.Router()
 
@@ -10,7 +10,7 @@ const upload = multer({
   limits: {
     fileSize: 10 * 1024 * 1024, // 10MB max
   },
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     if (file.mimetype === 'text/csv' || file.originalname.endsWith('.csv')) {
       cb(null, true)
     } else {
@@ -36,5 +36,8 @@ router.post('/:gameId/trade', executeTrade)
 
 // יצירת פקודה עתידית
 router.post('/:gameId/pending-order', createPendingOrder)
+
+// ביטול פקודה עתידית
+router.delete('/:gameId/pending-order/:orderId', cancelPendingOrder)
 
 export default router

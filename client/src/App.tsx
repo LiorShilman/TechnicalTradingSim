@@ -3,6 +3,7 @@ import TradingChart from './components/Chart/TradingChart'
 import OrderPanel from './components/Trading/OrderPanel'
 import AccountInfo from './components/Trading/AccountInfo'
 import PositionsList from './components/Trading/PositionsList'
+import PendingOrdersList from './components/Trading/PendingOrdersList'
 import ChartControls from './components/Chart/ChartControls'
 import EquityChart from './components/Chart/EquityChart'
 import GameStats from './components/Stats/GameStats'
@@ -542,9 +543,10 @@ function App() {
         </div>
 
         {/* Right sidebar */}
-        <div className="w-96 bg-dark-panel border-r border-dark-border flex flex-col">
+        <div className="w-96 bg-dark-panel border-r border-dark-border flex flex-col overflow-y-auto">
           <AccountInfo />
           <OrderPanel />
+          <PendingOrdersList />
           <PositionsList />
         </div>
       </div>
