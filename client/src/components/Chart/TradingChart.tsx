@@ -1111,6 +1111,29 @@ export default function TradingChart() {
           })
         }
 
+        // קו אנכי בקצה - ידית resize בולטת
+        // יצירת קו אנכי עם נקודות רבות (top ל-bottom של אזור)
+        const topPrice = sl && tp ? Math.max(entryPrice, tp, sl) : entryPrice * 1.05
+        const bottomPrice = sl && tp ? Math.min(entryPrice, tp, sl) : entryPrice * 0.95
+
+        for (let i = 0; i <= 20; i++) {
+          const ratio = i / 20
+          const price = bottomPrice + (topPrice - bottomPrice) * ratio
+
+          const verticalSegment = chartRef.current!.addLineSeries({
+            color: isSelected ? '#FFD700' : '#FF9800',
+            lineWidth: 4,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 0,
+          })
+
+          verticalSegment.setData([
+            { time: endCandle.time as Time, value: price }
+          ])
+          drawnLineSeriesRef.current.push(verticalSegment)
+        }
+
         // Resize marker בסוף - ידית לגרירה (תמיד מוצג)
         const endTime = endCandle.time
         markers.push({
@@ -1247,6 +1270,29 @@ export default function TradingChart() {
             text: `SHORT | R:R 1:${rrRatio.toFixed(2)} | TP: +${((reward / entryPrice) * 100).toFixed(1)}% | SL: -${((risk / entryPrice) * 100).toFixed(1)}%`,
             size: 1.4,
           })
+        }
+
+        // קו אנכי בקצה - ידית resize בולטת
+        // יצירת קו אנכי עם נקודות רבות (top ל-bottom של אזור)
+        const topPrice = sl && tp ? Math.max(entryPrice, tp, sl) : entryPrice * 1.05
+        const bottomPrice = sl && tp ? Math.min(entryPrice, tp, sl) : entryPrice * 0.95
+
+        for (let i = 0; i <= 20; i++) {
+          const ratio = i / 20
+          const price = bottomPrice + (topPrice - bottomPrice) * ratio
+
+          const verticalSegment = chartRef.current!.addLineSeries({
+            color: isSelected ? '#FFD700' : '#FF9800',
+            lineWidth: 4,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 0,
+          })
+
+          verticalSegment.setData([
+            { time: endCandle.time as Time, value: price }
+          ])
+          drawnLineSeriesRef.current.push(verticalSegment)
         }
 
         // Resize marker בסוף - ידית לגרירה (תמיד מוצג)
