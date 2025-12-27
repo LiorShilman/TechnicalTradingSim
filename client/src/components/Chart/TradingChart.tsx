@@ -957,18 +957,18 @@ export default function TradingChart() {
 
         // אזורי רווח/הפסד ויזואליים - מספר קווים דקים צבעוניים (LONG)
         if (sl && tp) {
-          const profitSteps = 5 // מספר קווים באזור הרווח
-          const lossSteps = 5 // מספר קווים באזור ההפסד
+          const profitSteps = 20 // יותר קווים = אזור יותר מלא
+          const lossSteps = 20
 
           // יצירת קווים ירוקים בין Entry ל-TP
           for (let i = 0; i <= profitSteps; i++) {
             const ratio = i / profitSteps
             const price = entryPrice + (tp - entryPrice) * ratio
-            const opacity = 0.08 // שקיפות קבועה
+            const opacity = 0.15 // שקיפות מוגברת
 
             const profitLine = chartRef.current!.addLineSeries({
               color: `rgba(34, 197, 94, ${opacity})`,
-              lineWidth: 2,
+              lineWidth: 3, // קו יותר עבה
               priceLineVisible: false,
               lastValueVisible: false,
               lineStyle: 0,
@@ -985,11 +985,11 @@ export default function TradingChart() {
           for (let i = 0; i <= lossSteps; i++) {
             const ratio = i / lossSteps
             const price = entryPrice - (entryPrice - sl) * ratio
-            const opacity = 0.08
+            const opacity = 0.15
 
             const lossLine = chartRef.current!.addLineSeries({
               color: `rgba(239, 68, 68, ${opacity})`,
-              lineWidth: 2,
+              lineWidth: 3,
               priceLineVisible: false,
               lastValueVisible: false,
               lineStyle: 0,
@@ -1081,18 +1081,18 @@ export default function TradingChart() {
 
         // אזורי רווח/הפסד ויזואליים - מספר קווים דקים צבעוניים (SHORT)
         if (sl && tp) {
-          const profitSteps = 5
-          const lossSteps = 5
+          const profitSteps = 20
+          const lossSteps = 20
 
           // יצירת קווים כחולים בין Entry ל-TP (מטה ב-SHORT)
           for (let i = 0; i <= profitSteps; i++) {
             const ratio = i / profitSteps
             const price = entryPrice - (entryPrice - tp) * ratio
-            const opacity = 0.08
+            const opacity = 0.15
 
             const profitLine = chartRef.current!.addLineSeries({
               color: `rgba(59, 130, 246, ${opacity})`, // כחול ל-SHORT
-              lineWidth: 2,
+              lineWidth: 3,
               priceLineVisible: false,
               lastValueVisible: false,
               lineStyle: 0,
@@ -1109,11 +1109,11 @@ export default function TradingChart() {
           for (let i = 0; i <= lossSteps; i++) {
             const ratio = i / lossSteps
             const price = entryPrice + (sl - entryPrice) * ratio
-            const opacity = 0.08
+            const opacity = 0.15
 
             const lossLine = chartRef.current!.addLineSeries({
               color: `rgba(239, 68, 68, ${opacity})`,
-              lineWidth: 2,
+              lineWidth: 3,
               priceLineVisible: false,
               lastValueVisible: false,
               lineStyle: 0,
