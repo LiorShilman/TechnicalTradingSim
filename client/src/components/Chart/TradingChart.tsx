@@ -557,14 +557,11 @@ export default function TradingChart() {
 
       if (price === null || price === undefined || time === null || time === undefined) return
 
-      console.log('👆 Mousedown on chart:', { price, time, positionTools: drawnLinesRef.current.filter(l => l.type === 'long-position' || l.type === 'short-position') })
-
       // Check if we clicked near a position tool's SL or TP line
       const priceTolerance = 0.02 // 2% price tolerance
 
       for (const line of drawnLinesRef.current) {
         if (line.type !== 'long-position' && line.type !== 'short-position') continue
-        console.log('🔍 Checking line:', { lineId: line.id, type: line.type, endIndex: line.endIndex })
 
         // Check for resize handle click (at endIndex time)
         if (line.endIndex !== undefined && gameState) {
@@ -579,14 +576,6 @@ export default function TradingChart() {
             const timeTolerance = candleDuration * 1.5
 
             if (Math.abs((time as number) - endCandle.time) < timeTolerance) {
-              console.log('🎯 Resize marker clicked!', {
-                lineId: line.id,
-                endIndex: line.endIndex,
-                timeTolerance,
-                clickTime: time,
-                endTime: endCandle.time,
-                distance: Math.abs((time as number) - endCandle.time)
-              })
               setDraggingLine({ lineId: line.id, lineType: 'resize' })
               e.preventDefault()
               return
@@ -647,14 +636,12 @@ export default function TradingChart() {
           }
 
           if (newEndIndex !== -1) {
-            console.log('↔️ Resizing to index:', newEndIndex)
             setDrawnLines(prev => prev.map(line => {
               if (line.id !== lineId) return line
               // Ensure endIndex is between startIndex and currentIndex
               const minEnd = line.startIndex !== undefined ? line.startIndex + 5 : 5 // minimum 5 candles
               const maxEnd = gameState.currentIndex
               const clampedEnd = Math.max(minEnd, Math.min(newEndIndex, maxEnd))
-              console.log('📏 New endIndex:', clampedEnd, '(min:', minEnd, 'max:', maxEnd, ')')
               return { ...line, endIndex: clampedEnd }
             }))
           }
