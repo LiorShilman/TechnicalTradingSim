@@ -25,7 +25,7 @@ function App() {
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null)
   const [refreshSavedGame, setRefreshSavedGame] = useState(0) // מונה לרענון מצב משחק שמור
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { gameState, isLoading, error, initializeGame, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
+  const { gameState, isLoading, initializeGame, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
 
   // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
   const savedGameInfo = useMemo(() => getSavedGameInfo(), [refreshSavedGame, getSavedGameInfo])
@@ -498,8 +498,8 @@ function App() {
     )
   }
 
-  // מסך טעינה - רק אם אין משחק בכלל
-  if (!gameState) {
+  // מסך טעינה - רק אם אין משחק בכלל ולא בטעינה
+  if (!gameState && !isLoading) {
     return (
       <div className="h-screen flex items-center justify-center bg-dark-bg">
         <div className="text-center">
@@ -510,25 +510,13 @@ function App() {
     )
   }
 
-  // מסך שגיאה
-  if (error) {
-    return (
-      <div className="h-screen flex items-center justify-center bg-dark-bg">
-        <div className="text-center">
-          <p className="text-loss mb-4">❌ שגיאה: {error}</p>
-          <button
-            onClick={handleStartGame}
-            className="px-6 py-3 bg-dark-panel rounded-lg hover:bg-dark-border"
-          >
-            נסה שוב
-          </button>
-        </div>
-      </div>
-    )
-  }
+  // ⚠️ הסרנו את מסך השגיאה המלא!
+  // שגיאות מוצגות רק ב-toast notifications (כבר מטופל ב-gameStore)
+  // זה מונע טעינה מחדש של המשחק כשיש שגיאה ושומר על כל הפוזיציות והפקודות
 
   // מסך משחק
-  return (
+  if (gameState) {
+    return (
     <div className="h-screen flex flex-col bg-dark-bg" dir="rtl">
       {/* Header */}
       <header className="h-16 bg-dark-panel border-b border-dark-border flex items-center justify-between px-6">
@@ -590,7 +578,11 @@ function App() {
         }}
       />
     </div>
-  )
+    )
+  }
+
+  // Fallback - אם אין משחק ויש טעינה
+  return null
 }
 
 export default App
