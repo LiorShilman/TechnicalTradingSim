@@ -64,7 +64,7 @@ export default function PendingOrdersList() {
   }
 
   return (
-    <div className="flex-shrink-0 p-4 bg-dark-panel border-t border-dark-border max-h-80 overflow-y-auto">
+    <div className="flex-shrink-0 p-4 bg-dark-panel border-t border-dark-border">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold flex items-center gap-2">
           <Clock size={16} className="text-blue-400" />

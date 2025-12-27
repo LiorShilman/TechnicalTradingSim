@@ -542,12 +542,16 @@ function App() {
           </div>
         </div>
 
-        {/* Right sidebar */}
-        <div className="w-96 bg-dark-panel border-r border-dark-border flex flex-col overflow-y-auto">
+        {/* Right sidebar - רשימת פוזיציות ופקודות משולבת */}
+        <div className="w-96 bg-dark-panel border-r border-dark-border flex flex-col">
           <AccountInfo />
           <OrderPanel />
-          <PendingOrdersList />
-          <PositionsList />
+
+          {/* רשימת פוזיציות ופקודות עתידיות - גלילה משותפת */}
+          <div className="flex-1 overflow-y-auto">
+            <PendingOrdersList />
+            <PositionsList />
+          </div>
         </div>
       </div>
 

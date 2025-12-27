@@ -36,7 +36,7 @@ export default function PositionsList() {
   }
 
   return (
-    <div className="flex-1 p-4 overflow-y-auto">
+    <div className="flex-shrink-0 p-4 bg-dark-panel border-t border-dark-border">
       <h3 className="font-semibold mb-4">פוזיציות פתוחות ({positions.length})</h3>
 
       {positions.length === 0 ? (

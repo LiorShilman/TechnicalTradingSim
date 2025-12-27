@@ -440,9 +440,21 @@ export default function TradingChart() {
 
         // התאמה אוטומטית כדי להציג את הנרות בצורה מיטבית
         setTimeout(() => {
-          chartRef.current?.timeScale().fitContent()
-          // ✅ וידוא שה-volume series גם מתעדכן
-          volumeSeriesRef.current?.applyOptions({})
+          if (chartRef.current) {
+            chartRef.current.timeScale().fitContent()
+
+            // ✅ וידוא שה-volume priceScale גם מתאים את עצמו
+            if (volumeSeriesRef.current) {
+              volumeSeriesRef.current.priceScale().applyOptions({
+                autoScale: true,
+              })
+            }
+            if (volumeMASeriesRef.current) {
+              volumeMASeriesRef.current.priceScale().applyOptions({
+                autoScale: true,
+              })
+            }
+          }
         }, 100)
       }
       return
