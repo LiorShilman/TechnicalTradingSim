@@ -952,6 +952,8 @@ export default function TradingChart() {
 
         // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones) - TradingView style
         if (sl && tp) {
+          console.log('🟢 Creating LONG profit/loss zones:', { entry: entryPrice, sl, tp })
+
           // יצירת מלבן רקע ירוק לרווח (Entry → TP) באמצעות HistogramSeries
           const profitZoneSeries = chartRef.current!.addHistogramSeries({
             color: 'rgba(34, 197, 94, 0.15)',
@@ -963,6 +965,7 @@ export default function TradingChart() {
             priceScaleId: '', // ציר מחירים ריק = overlay על הגרף הראשי
             priceLineVisible: false,
             lastValueVisible: false,
+            base: entryPrice, // ✨ Set baseline to entry price!
           })
 
           // נתונים למלבן רווח - גובה המלבן = המרחק מ-Entry ל-TP
@@ -989,6 +992,7 @@ export default function TradingChart() {
             priceScaleId: '', // ציר מחירים ריק = overlay על הגרף הראשי
             priceLineVisible: false,
             lastValueVisible: false,
+            base: entryPrice, // ✨ Set baseline to entry price!
           })
 
           // נתונים למלבן הפסד - גובה המלבן = המרחק מ-Entry ל-SL
@@ -1083,6 +1087,8 @@ export default function TradingChart() {
 
         // אזורי רווח/הפסד צבעוניים (Profit/Loss Zones) - SHORT (הפוך)
         if (sl && tp) {
+          console.log('🔴 Creating SHORT profit/loss zones:', { entry: entryPrice, sl, tp })
+
           // יצירת מלבן רקע כחול לרווח (Entry → TP למטה) - SHORT מרוויח כשהמחיר יורד
           const profitZoneSeries = chartRef.current!.addHistogramSeries({
             color: 'rgba(59, 130, 246, 0.15)',
@@ -1094,6 +1100,7 @@ export default function TradingChart() {
             priceScaleId: '', // ציר מחירים ריק = overlay על הגרף הראשי
             priceLineVisible: false,
             lastValueVisible: false,
+            base: entryPrice, // ✨ Set baseline to entry price!
           })
 
           // נתונים למלבן רווח SHORT - גובה שלילי כי יורד למטה
@@ -1120,6 +1127,7 @@ export default function TradingChart() {
             priceScaleId: '', // ציר מחירים ריק = overlay על הגרף הראשי
             priceLineVisible: false,
             lastValueVisible: false,
+            base: entryPrice, // ✨ Set baseline to entry price!
           })
 
           // נתונים למלבן הפסד SHORT - גובה חיובי כי עולה למעלה
