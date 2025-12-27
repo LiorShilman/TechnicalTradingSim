@@ -44,6 +44,7 @@ export default function TradingChart() {
   const [activeTool, setActiveTool] = useState<DrawingTool>('none')
   const activeToolRef = useRef<DrawingTool>('none') // ref for event listeners
   const [drawnLines, setDrawnLines] = useState<DrawnLine[]>([])
+  const drawnLinesRef = useRef<DrawnLine[]>([]) // ✅ ref for event listeners to access current drawnLines
   const drawnLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
   const drawnMarkersRef = useRef<any[]>([]) // markers from drawing tools (arrows, notes)
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null)
@@ -76,6 +77,11 @@ export default function TradingChart() {
   useEffect(() => {
     draggingLineRef.current = draggingLine
   }, [draggingLine])
+
+  // Sync drawnLines state with ref (for event listeners)
+  useEffect(() => {
+    drawnLinesRef.current = drawnLines
+  }, [drawnLines])
 
   // Load drawn lines from localStorage
   useEffect(() => {
@@ -515,9 +521,9 @@ export default function TradingChart() {
       if (price === null || price === undefined) return
 
       // Check if we double-clicked near a position tool line
-      const tolerance = 0.005 // 0.5% price tolerance for detecting clicks near lines
+      const tolerance = 0.02 // 2% price tolerance (same as drag detection)
 
-      const positionLine = drawnLines.find(line => {
+      const positionLine = drawnLinesRef.current.find(line => {
         if (line.type !== 'long-position' && line.type !== 'short-position') return false
 
         // Check if click is near entry, SL, or TP price
@@ -560,7 +566,9 @@ export default function TradingChart() {
       // Check if we clicked near a position tool's SL or TP line
       const tolerance = 0.02 // 2% price tolerance (increased for easier dragging)
 
-      for (const line of drawnLines) {
+      console.log('📋 drawnLinesRef.current has', drawnLinesRef.current.length, 'lines')
+
+      for (const line of drawnLinesRef.current) {
         if (line.type !== 'long-position' && line.type !== 'short-position') continue
 
         console.log('🔍 Checking line:', line.id, 'Entry:', line.price.toFixed(2), 'SL:', line.stopLoss?.toFixed(2), 'TP:', line.takeProfit?.toFixed(2))
@@ -616,7 +624,7 @@ export default function TradingChart() {
         const tolerance = 0.02 // 2% price tolerance (increased for easier dragging)
         let isOverDraggableLine = false
 
-        for (const line of drawnLines) {
+        for (const line of drawnLinesRef.current) {
           if (line.type !== 'long-position' && line.type !== 'short-position') continue
 
           // Check if hovering over SL or TP line
