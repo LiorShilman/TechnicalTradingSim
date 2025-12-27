@@ -254,6 +254,15 @@ export default function TradingChart() {
       },
     })
 
+    // הגדרת ציר מחירים מוסתר לאזורי position tools (profit/loss zones)
+    chart.priceScale('position-zones').applyOptions({
+      visible: false, // מוסתר לחלוטין
+      scaleMargins: {
+        top: 0.02, // אותם margins כמו הגרף הראשי
+        bottom: 0.30,
+      },
+    })
+
     // יצירת סדרות ממוצעים נעים (מוסתרות בהתחלה)
     const ma20Series = chart.addLineSeries({
       color: '#2196F3', // כחול
@@ -960,8 +969,17 @@ export default function TradingChart() {
               precision: 2,
               minMove: 0.01,
             },
+            priceScaleId: 'position-zones', // ציר מחירים ייעודי מוסתר
             priceLineVisible: false,
             lastValueVisible: false,
+          })
+
+          // הגדרת ציר המחירים כמוסתר וכך שיהיה מיושר עם הגרף הראשי
+          profitZoneSeries.priceScale().applyOptions({
+            scaleMargins: {
+              top: 0.02,
+              bottom: 0.30,
+            },
           })
 
           // נתונים למלבן רווח - גובה המלבן = המרחק מ-Entry ל-TP
@@ -985,6 +1003,7 @@ export default function TradingChart() {
               precision: 2,
               minMove: 0.01,
             },
+            priceScaleId: 'position-zones', // אותו ציר מחירים ייעודי
             priceLineVisible: false,
             lastValueVisible: false,
           })
@@ -1089,8 +1108,17 @@ export default function TradingChart() {
               precision: 2,
               minMove: 0.01,
             },
+            priceScaleId: 'position-zones', // ציר מחירים ייעודי מוסתר
             priceLineVisible: false,
             lastValueVisible: false,
+          })
+
+          // הגדרת ציר המחירים כמוסתר וכך שיהיה מיושר עם הגרף הראשי
+          profitZoneSeries.priceScale().applyOptions({
+            scaleMargins: {
+              top: 0.02,
+              bottom: 0.30,
+            },
           })
 
           // נתונים למלבן רווח SHORT - גובה שלילי כי יורד למטה
@@ -1114,6 +1142,7 @@ export default function TradingChart() {
               precision: 2,
               minMove: 0.01,
             },
+            priceScaleId: 'position-zones', // אותו ציר מחירים ייעודי
             priceLineVisible: false,
             lastValueVisible: false,
           })
