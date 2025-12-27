@@ -10,7 +10,7 @@ interface PendingOrderMenuProps {
   onClose: () => void
 }
 
-export default function PendingOrderMenu({ price, x, y, onClose }: PendingOrderMenuProps) {
+export default function PendingOrderMenu({ price, x: _x, y: _y, onClose }: PendingOrderMenuProps) {
   const { gameState, createPendingOrder } = useGameStore()
   const [quantity, setQuantity] = useState(0.01)
   const [stopLoss, setStopLoss] = useState<number | undefined>()
@@ -48,11 +48,11 @@ export default function PendingOrderMenu({ price, x, y, onClose }: PendingOrderM
 
       {/* תפריט הקונטקסט */}
       <div
-        className="fixed z-50 bg-dark-panel border border-dark-border rounded-lg shadow-2xl p-4 min-w-[280px]"
+        className="fixed z-50 bg-dark-panel border border-dark-border rounded-lg shadow-2xl p-4 min-w-[280px] max-w-[90vw]"
         style={{
-          left: `${x}px`,
-          top: `${y}px`,
-          transform: 'translate(-50%, -10px)',
+          left: '50%',
+          top: '50%',
+          transform: 'translate(-50%, -50%)',
         }}
         onClick={(e) => e.stopPropagation()}
       >
