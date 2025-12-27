@@ -617,12 +617,12 @@ export default function TradingChart() {
 
           // Check if hovering over SL or TP line
           if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < tolerance) {
-            console.log('🔥 Hovering over SL line! Price:', price, 'SL:', line.stopLoss)
+            console.log('🔥 Hovering over SL line! Price:', price.toFixed(2), 'SL:', line.stopLoss.toFixed(2), 'diff%:', ((Math.abs(price - line.stopLoss) / line.stopLoss) * 100).toFixed(3))
             isOverDraggableLine = true
             break
           }
           if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < tolerance) {
-            console.log('🔥 Hovering over TP line! Price:', price, 'TP:', line.takeProfit)
+            console.log('🔥 Hovering over TP line! Price:', price.toFixed(2), 'TP:', line.takeProfit.toFixed(2), 'diff%:', ((Math.abs(price - line.takeProfit) / line.takeProfit) * 100).toFixed(3))
             isOverDraggableLine = true
             break
           }
