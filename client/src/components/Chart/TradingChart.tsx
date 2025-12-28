@@ -723,7 +723,7 @@ export default function TradingChart() {
           previewLineSeriesRef.current.forEach(series => chartRef.current?.removeSeries(series))
           previewLineSeriesRef.current = []
 
-          // Draw preview ray
+          // Draw simple preview line between two points
           const previewSeries = chartRef.current!.addLineSeries({
             color: '#06B6D4',
             lineWidth: 2,
@@ -737,23 +737,10 @@ export default function TradingChart() {
           const endPrice = price
           const endTime = time as number
 
-          // Calculate slope and extend based on total chart time range
-          const lastCandle = gameState?.candles[gameState.currentIndex]
-          const firstCandle = gameState?.candles[0]
-          if (lastCandle && firstCandle && startTime !== endTime) {
-            const timeDiff = endTime - startTime
-            const priceDiff = endPrice - startPrice
-            const slope = priceDiff / timeDiff
-
-            // Extend the ray by the total chart time range
-            const totalTimeRange = lastCandle.time - firstCandle.time
-            const futureTime = lastCandle.time + totalTimeRange
-            const futureTimeDiff = futureTime - startTime
-            const futurePrice = startPrice + (slope * futureTimeDiff)
-
+          if (startTime !== endTime) {
             previewSeries.setData([
               { time: startTime as Time, value: startPrice },
-              { time: futureTime as Time, value: futurePrice },
+              { time: endTime as Time, value: endPrice },
             ])
           }
 
@@ -1049,26 +1036,11 @@ export default function TradingChart() {
             ])
           }
         } else if (line.type === 'ray' && line.startTime && line.endTime && line.price2 !== undefined) {
-          // קרן בזווית - מתחילה בנקודה הראשונה, עוברת דרך נקודה שנייה, וממשיכה מעבר לנר האחרון
-          const lastCandle = gameState.candles[gameState.currentIndex]
-          const firstCandle = gameState.candles[0]
-
-          if (lastCandle && firstCandle && line.startTime !== line.endTime) {
-            // חישוב שיפוע הקרן
-            const timeDiff = line.endTime - line.startTime
-            const priceDiff = line.price2 - line.price
-            const slope = priceDiff / timeDiff
-
-            // הארכה עד סוף טווח הזמן של הגרף (מהנר הראשון עד האחרון)
-            const totalTimeRange = lastCandle.time - firstCandle.time
-            // נאריך את הקרן עד כפליים מטווח הזמן הכולל של הגרף
-            const futureTime = lastCandle.time + totalTimeRange
-            const futureTimeDiff = futureTime - line.startTime
-            const futurePrice = line.price + (slope * futureTimeDiff)
-
+          // קרן בזווית - קו בין שתי נקודות (בלי הארכה עתידית)
+          if (line.startTime !== line.endTime) {
             lineSeries.setData([
               { time: line.startTime as Time, value: line.price },
-              { time: futureTime as Time, value: futurePrice },
+              { time: line.endTime as Time, value: line.price2 },
             ])
           }
         } else if (line.type === 'trend-line' && line.startTime && line.endTime && line.price2 !== undefined) {
