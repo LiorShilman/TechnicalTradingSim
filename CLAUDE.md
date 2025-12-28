@@ -11,7 +11,7 @@ This is a **technical trading simulation game** for learning pattern recognition
 **NEW: CSV Upload Feature**: The system now supports **uploading CSV files directly from the UI**! Users can export data from TradingView (with all technical indicators) and upload it through the start screen. The system automatically:
 - Parses TradingView CSV format (extracts OHLCV, ignores indicators like POC, VAH, Delta, etc.)
 - **Auto-detects asset name and timeframe** from TradingView export filenames (e.g., "SP_SPX, 1D_07c94.csv" → SP/SPX, 1D)
-  - **Read-only display**: Asset and timeframe are auto-detected and displayed as read-only (cannot be manually changed)
+  - Asset and timeframe are editable fields with auto-detected defaults
   - Asset parsed from filename or CSV content
   - Timeframe detected from filename or calculated from candle intervals
 - **Detects real patterns** (Breakout, Retest, Bull Flag) in the uploaded data using intelligent algorithms
