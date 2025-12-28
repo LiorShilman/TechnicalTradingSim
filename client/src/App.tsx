@@ -373,30 +373,32 @@ function App() {
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-amber-500/20">
                     <div>
                       <label className="block text-sm text-gray-400 mb-2">שם הנכס / מטבע</label>
-                      <input
-                        type="text"
-                        value={assetName}
-                        onChange={(e) => setAssetName(e.target.value)}
-                        className="w-full px-4 py-2 bg-dark-bg/50 border border-amber-500/30 rounded-lg focus:outline-none focus:border-amber-500 transition-colors"
-                        placeholder="BTC/USD"
-                      />
+                      <div className="w-full px-4 py-2 bg-dark-bg/30 border border-amber-500/20 rounded-lg text-white cursor-not-allowed">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">📊</span>
+                          <span className="font-semibold text-blue-400">{assetName}</span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">זוהה אוטומטית מהקובץ</div>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-400 mb-2">טווח זמן</label>
-                      <select
-                        value={timeframe}
-                        onChange={(e) => setTimeframe(e.target.value)}
-                        className="w-full px-4 py-2 bg-dark-bg/50 border border-amber-500/30 rounded-lg focus:outline-none focus:border-amber-500 transition-colors cursor-pointer"
-                      >
-                        <option value="1m">1 דקה</option>
-                        <option value="5m">5 דקות</option>
-                        <option value="15m">15 דקות</option>
-                        <option value="30m">30 דקות</option>
-                        <option value="1H">1 שעה</option>
-                        <option value="4H">4 שעות</option>
-                        <option value="1D">יום</option>
-                        <option value="1W">שבוע</option>
-                      </select>
+                      <div className="w-full px-4 py-2 bg-dark-bg/30 border border-amber-500/20 rounded-lg text-white cursor-not-allowed">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">⏱️</span>
+                          <span className="font-semibold text-purple-400">
+                            {timeframe === '1m' ? '1 דקה' :
+                             timeframe === '5m' ? '5 דקות' :
+                             timeframe === '15m' ? '15 דקות' :
+                             timeframe === '30m' ? '30 דקות' :
+                             timeframe === '1H' ? '1 שעה' :
+                             timeframe === '4H' ? '4 שעות' :
+                             timeframe === '1D' ? 'יום' :
+                             timeframe === '1W' ? 'שבוע' : timeframe}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">זוהה אוטומטית מהקובץ</div>
+                      </div>
                     </div>
                   </div>
 
