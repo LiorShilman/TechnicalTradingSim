@@ -737,17 +737,17 @@ export default function TradingChart() {
           const endPrice = price
           const endTime = time as number
 
-          // Calculate slope and extend 50 candles beyond current
+          // Calculate slope and extend based on total chart time range
           const lastCandle = gameState?.candles[gameState.currentIndex]
-          const prevCandle = gameState?.candles[Math.max(0, gameState.currentIndex - 1)]
-          if (lastCandle && prevCandle && startTime !== endTime) {
-            const candleTimeframe = lastCandle.time - prevCandle.time
+          const firstCandle = gameState?.candles[0]
+          if (lastCandle && firstCandle && startTime !== endTime) {
             const timeDiff = endTime - startTime
             const priceDiff = endPrice - startPrice
             const slope = priceDiff / timeDiff
 
-            // Extend 50 candles into the future
-            const futureTime = lastCandle.time + (candleTimeframe * 50)
+            // Extend the ray by the total chart time range
+            const totalTimeRange = lastCandle.time - firstCandle.time
+            const futureTime = lastCandle.time + totalTimeRange
             const futureTimeDiff = futureTime - startTime
             const futurePrice = startPrice + (slope * futureTimeDiff)
 
@@ -1030,19 +1030,18 @@ export default function TradingChart() {
         } else if (line.type === 'ray' && line.startTime && line.endTime && line.price2 !== undefined) {
           // קרן בזווית - מתחילה בנקודה הראשונה, עוברת דרך נקודה שנייה, וממשיכה מעבר לנר האחרון
           const lastCandle = gameState.candles[gameState.currentIndex]
-          const prevCandle = gameState.candles[Math.max(0, gameState.currentIndex - 1)]
+          const firstCandle = gameState.candles[0]
 
-          if (lastCandle && prevCandle && line.startTime !== line.endTime) {
-            // חישוב timeframe (הפרש זמן בין נרות)
-            const candleTimeframe = lastCandle.time - prevCandle.time
-
+          if (lastCandle && firstCandle && line.startTime !== line.endTime) {
             // חישוב שיפוע הקרן
             const timeDiff = line.endTime - line.startTime
             const priceDiff = line.price2 - line.price
             const slope = priceDiff / timeDiff
 
-            // הארכה של 50 נרות קדימה מהנר האחרון
-            const futureTime = lastCandle.time + (candleTimeframe * 50)
+            // הארכה עד סוף טווח הזמן של הגרף (מהנר הראשון עד האחרון)
+            const totalTimeRange = lastCandle.time - firstCandle.time
+            // נאריך את הקרן עד כפליים מטווח הזמן הכולל של הגרף
+            const futureTime = lastCandle.time + totalTimeRange
             const futureTimeDiff = futureTime - line.startTime
             const futurePrice = line.price + (slope * futureTimeDiff)
 
