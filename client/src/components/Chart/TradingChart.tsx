@@ -737,19 +737,23 @@ export default function TradingChart() {
           const endPrice = price
           const endTime = time as number
 
-          // Calculate slope and extend to last candle
+          // Calculate slope and extend 50 candles beyond current
           const lastCandle = gameState?.candles[gameState.currentIndex]
-          if (lastCandle && startTime !== endTime) {
+          const prevCandle = gameState?.candles[Math.max(0, gameState.currentIndex - 1)]
+          if (lastCandle && prevCandle && startTime !== endTime) {
+            const candleTimeframe = lastCandle.time - prevCandle.time
             const timeDiff = endTime - startTime
             const priceDiff = endPrice - startPrice
             const slope = priceDiff / timeDiff
 
-            const extendedTimeDiff = lastCandle.time - startTime
-            const extendedPrice = startPrice + (slope * extendedTimeDiff)
+            // Extend 50 candles into the future
+            const futureTime = lastCandle.time + (candleTimeframe * 50)
+            const futureTimeDiff = futureTime - startTime
+            const futurePrice = startPrice + (slope * futureTimeDiff)
 
             previewSeries.setData([
               { time: startTime as Time, value: startPrice },
-              { time: lastCandle.time as Time, value: extendedPrice },
+              { time: futureTime as Time, value: futurePrice },
             ])
           }
 
@@ -1024,23 +1028,27 @@ export default function TradingChart() {
             ])
           }
         } else if (line.type === 'ray' && line.startTime && line.endTime && line.price2 !== undefined) {
-          // קרן בזווית - מתחילה בנקודה הראשונה, עוברת דרך נקודה שנייה, וממשיכה עד סוף הגרף
+          // קרן בזווית - מתחילה בנקודה הראשונה, עוברת דרך נקודה שנייה, וממשיכה מעבר לנר האחרון
           const lastCandle = gameState.candles[gameState.currentIndex]
+          const prevCandle = gameState.candles[Math.max(0, gameState.currentIndex - 1)]
 
-          if (lastCandle && line.startTime !== line.endTime) {
+          if (lastCandle && prevCandle && line.startTime !== line.endTime) {
+            // חישוב timeframe (הפרש זמן בין נרות)
+            const candleTimeframe = lastCandle.time - prevCandle.time
+
             // חישוב שיפוע הקרן
             const timeDiff = line.endTime - line.startTime
             const priceDiff = line.price2 - line.price
             const slope = priceDiff / timeDiff
 
-            // הארכת הקרן עד סוף הגרף
-            const extendedTimeDiff = lastCandle.time - line.startTime
-            const extendedPrice = line.price + (slope * extendedTimeDiff)
+            // הארכה של 50 נרות קדימה מהנר האחרון
+            const futureTime = lastCandle.time + (candleTimeframe * 50)
+            const futureTimeDiff = futureTime - line.startTime
+            const futurePrice = line.price + (slope * futureTimeDiff)
 
-            const times = [line.startTime, lastCandle.time].sort((a, b) => a - b)
             lineSeries.setData([
-              { time: times[0] as Time, value: line.price },
-              { time: times[1] as Time, value: extendedPrice },
+              { time: line.startTime as Time, value: line.price },
+              { time: futureTime as Time, value: futurePrice },
             ])
           }
         } else if (line.type === 'trend-line' && line.startTime && line.endTime && line.price2 !== undefined) {
