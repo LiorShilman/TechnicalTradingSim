@@ -2,6 +2,7 @@ import { create } from 'zustand'
 import type { GameState, SavedGameState } from '@/types/game.types'
 import { api } from '@/services/api'
 import toast from 'react-hot-toast'
+import { telegramService } from '@/services/telegramNotifications'
 
 // שם המפתח ב-localStorage
 const SAVED_GAME_KEY = 'savedGameState'
@@ -192,11 +193,29 @@ export const useGameStore = create<GameStore>((set, get) => ({
               icon: '🛑',
               duration: 4000,
             })
+            // שליחת התראה ל-Telegram
+            telegramService.notifyStopLoss({
+              type: closedPos.type === 'long' ? 'LONG' : 'SHORT',
+              entryPrice: closedPos.entryPrice,
+              exitPrice: closedPos.exitPrice || 0,
+              quantity: closedPos.quantity,
+              pnl: pnl,
+              pnlPercent: closedPos.exitPnLPercent || 0,
+            })
           } else if (closedPos.exitReason === 'take_profit') {
             const pnl = closedPos.exitPnL || 0
             toast.success(`🎯 Take Profit הופעל! +${pnl.toFixed(2)}$ (+${closedPos.exitPnLPercent?.toFixed(2)}%)`, {
               icon: '🎯',
               duration: 4000,
+            })
+            // שליחת התראה ל-Telegram
+            telegramService.notifyTakeProfit({
+              type: closedPos.type === 'long' ? 'LONG' : 'SHORT',
+              entryPrice: closedPos.entryPrice,
+              exitPrice: closedPos.exitPrice || 0,
+              quantity: closedPos.quantity,
+              pnl: pnl,
+              pnlPercent: closedPos.exitPnLPercent || 0,
             })
           }
         }
@@ -258,6 +277,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
             icon: '😞',
           })
         }
+
+        // שליחת התראה ל-Telegram על סגירת פוזיציה ידנית
+        telegramService.notifyPositionClosed({
+          type: response.closedPosition.type === 'long' ? 'LONG' : 'SHORT',
+          entryPrice: response.closedPosition.entryPrice,
+          exitPrice: response.closedPosition.exitPrice || 0,
+          quantity: response.closedPosition.quantity,
+          pnl: pnl,
+          pnlPercent: response.closedPosition.exitPnLPercent || 0,
+        })
       }
 
       // ✅ שמירת הסכום המעודכן ל-localStorage אחרי כל עסקה

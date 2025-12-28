@@ -7,6 +7,7 @@ import PendingOrdersList from './components/Trading/PendingOrdersList'
 import ChartControls from './components/Chart/ChartControls'
 import EquityChart from './components/Chart/EquityChart'
 import GameStats from './components/Stats/GameStats'
+import AlertSettings from './components/Settings/AlertSettings'
 import { useGameStore } from './stores/gameStore'
 import { Play, Loader2, Upload } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
@@ -535,6 +536,7 @@ function App() {
         <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
           <div style={{ flex: '1 1 0', minHeight: '0' }}>
             <TradingChart />
+            <AlertSettings />
           </div>
           <div style={{ flex: '0 0 250px' }}>
             <EquityChart />
