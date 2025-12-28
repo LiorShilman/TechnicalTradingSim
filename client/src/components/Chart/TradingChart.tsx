@@ -376,8 +376,8 @@ export default function TradingChart() {
           id: `line-${Date.now()}`,
           type: currentTool,
           price: price, // entry price
-          // חצים וקווים צריכים startTime
-          startTime: (currentTool === 'arrow-up' || currentTool === 'arrow-down' || currentTool === 'long-position' || currentTool === 'short-position') ? (time as number) : undefined,
+          // חצים, קרן אופקית, וכלי פוזיציה צריכים startTime
+          startTime: (currentTool === 'horizontal-ray' || currentTool === 'arrow-up' || currentTool === 'arrow-down' || currentTool === 'long-position' || currentTool === 'short-position') ? (time as number) : undefined,
           startIndex: (currentTool === 'long-position' || currentTool === 'short-position') && candleIndex !== -1 ? candleIndex : undefined,
           endIndex: defaultEndIndex, // ✅ רוחב התחלתי
           color: toolColors[currentTool] || '#FFD700',
