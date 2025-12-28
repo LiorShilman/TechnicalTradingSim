@@ -225,8 +225,8 @@ function App() {
   // מסך התחלה
   if (isStartScreen) {
     return (
-      <div className="h-screen bg-gradient-to-br from-dark-bg via-blue-950/20 to-purple-950/20 overflow-y-scroll" dir="rtl">
-        <div className="max-w-4xl w-full mx-auto px-4 py-8 min-h-full flex flex-col justify-center">
+      <div className="min-h-screen bg-gradient-to-br from-dark-bg via-blue-950/20 to-purple-950/20 overflow-y-auto" dir="rtl">
+        <div className="max-w-4xl w-full mx-auto px-4 py-12">
           {/* כותרת ראשית */}
           <div className="text-center mb-12">
             <div className="inline-block mb-6 p-4 bg-gradient-to-r from-blue-500/20 to-purple-500/20 rounded-2xl backdrop-blur-sm border border-blue-500/30">
