@@ -51,8 +51,14 @@ export default function TradingChart() {
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null)
   const [editingLineId, setEditingLineId] = useState<string | null>(null) // For edit modal
 
-  // For multi-point tools (trend line, fibonacci)
-  const [, setDrawingInProgress] = useState<{
+  // For multi-point tools (trend line, fibonacci, ray)
+  const [drawingInProgress, setDrawingInProgress] = useState<{
+    type: DrawingTool
+    price: number
+    time: number
+    candleIndex?: number
+  } | null>(null)
+  const drawingInProgressRef = useRef<{
     type: DrawingTool
     price: number
     time: number
@@ -78,6 +84,11 @@ export default function TradingChart() {
   useEffect(() => {
     draggingLineRef.current = draggingLine
   }, [draggingLine])
+
+  // Sync drawingInProgress state with ref
+  useEffect(() => {
+    drawingInProgressRef.current = drawingInProgress
+  }, [drawingInProgress])
 
   // Sync drawnLines state with ref (for event listeners)
   useEffect(() => {
@@ -704,6 +715,49 @@ export default function TradingChart() {
               break
             }
           }
+        }
+
+        // Show preview line for ray tool
+        if (drawingInProgressRef.current && drawingInProgressRef.current.type === 'ray' && time !== null && time !== undefined) {
+          // Clear previous preview
+          previewLineSeriesRef.current.forEach(series => chartRef.current?.removeSeries(series))
+          previewLineSeriesRef.current = []
+
+          // Draw preview ray
+          const previewSeries = chartRef.current!.addLineSeries({
+            color: '#06B6D4',
+            lineWidth: 2,
+            lineStyle: 2, // dotted
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
+
+          const startPrice = drawingInProgressRef.current.price
+          const startTime = drawingInProgressRef.current.time
+          const endPrice = price
+          const endTime = time as number
+
+          // Calculate slope and extend to last candle
+          const lastCandle = gameState?.candles[gameState.currentIndex]
+          if (lastCandle && startTime !== endTime) {
+            const timeDiff = endTime - startTime
+            const priceDiff = endPrice - startPrice
+            const slope = priceDiff / timeDiff
+
+            const extendedTimeDiff = lastCandle.time - startTime
+            const extendedPrice = startPrice + (slope * extendedTimeDiff)
+
+            previewSeries.setData([
+              { time: startTime as Time, value: startPrice },
+              { time: lastCandle.time as Time, value: extendedPrice },
+            ])
+          }
+
+          previewLineSeriesRef.current.push(previewSeries)
+        } else {
+          // Clear preview if not in drawing mode
+          previewLineSeriesRef.current.forEach(series => chartRef.current?.removeSeries(series))
+          previewLineSeriesRef.current = []
         }
 
         // Change cursor style
