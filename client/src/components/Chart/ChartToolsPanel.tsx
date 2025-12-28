@@ -14,6 +14,8 @@ import {
   StickyNote,
   Ruler,
   TrendingDown,
+  Square,
+  Plus,
 } from 'lucide-react'
 import type { DrawingTool, DrawnLine } from './DrawingControls'
 import type { MASettings } from './IndicatorControls'
@@ -30,12 +32,15 @@ interface ChartToolsPanelProps {
   onSelectLine?: (lineId: string | null) => void
 }
 
-const STORAGE_KEY = 'trading-game-ma-settings'
+const STORAGE_KEY = 'trading-game-ma-settings-v3' // v3 for array-based structure
+
+const DEFAULT_MA_COLORS = ['#3b82f6', '#f97316', '#ef4444', '#22c55e', '#a855f7', '#ec4899', '#14b8a6', '#f59e0b']
 
 const DRAWING_TOOLS = [
   { id: 'horizontal-line' as DrawingTool, label: 'Horizontal Line', icon: Minus, color: '#FFD700', description: 'קו אופקי על פני כל הגרף' },
   { id: 'horizontal-ray' as DrawingTool, label: 'Horizontal Ray', icon: ArrowRight, color: '#00CED1', description: 'קרן אופקית מנקודה ימינה' },
   { id: 'trend-line' as DrawingTool, label: 'Trend Line', icon: TrendLine, color: '#9C27B0', description: 'קו מגמה בין שתי נקודות' },
+  { id: 'rectangle' as DrawingTool, label: 'Rectangle', icon: Square, color: '#8B5CF6', description: 'מלבן צבעוני עם שקיפות מתכווננת' },
   { id: 'arrow-up' as DrawingTool, label: 'Arrow Up ↑', icon: ArrowUp, color: '#4CAF50', description: 'חץ מעלה לסימון נר חשוב' },
   { id: 'arrow-down' as DrawingTool, label: 'Arrow Down ↓', icon: ArrowDown, color: '#F44336', description: 'חץ מטה לסימון נר חשוב' },
   { id: 'fibonacci' as DrawingTool, label: 'Fibonacci', icon: Activity, color: '#FF9800', description: 'רמות פיבונצ\'י בין שתי נקודות' },
@@ -74,9 +79,11 @@ export default function ChartToolsPanel({
       }
     }
     return {
-      ma20: false,
-      ma50: false,
-      ma200: false,
+      movingAverages: [
+        { id: 'ma-1', enabled: false, type: 'SMA', period: 20, color: '#3b82f6' },
+        { id: 'ma-2', enabled: false, type: 'SMA', period: 50, color: '#f97316' },
+        { id: 'ma-3', enabled: false, type: 'SMA', period: 200, color: '#ef4444' },
+      ],
       startFromCurrentIndex: true,
     }
   })
@@ -94,10 +101,43 @@ export default function ChartToolsPanel({
     }
   }, [onMASettingsChange])
 
-  const handleToggleMA = (ma: keyof MASettings) => {
+  const handleUpdateMA = (id: string, updates: Partial<{ enabled: boolean; type: 'SMA' | 'EMA'; period: number; color: string }>) => {
     const newSettings = {
       ...maSettings,
-      [ma]: !maSettings[ma],
+      movingAverages: maSettings.movingAverages.map(ma =>
+        ma.id === id ? { ...ma, ...updates } : ma
+      ),
+    }
+    setMASettings(newSettings)
+    onMASettingsChange(newSettings)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
+  }
+
+  const handleAddMA = () => {
+    const usedColors = maSettings.movingAverages.map(ma => ma.color)
+    const availableColor = DEFAULT_MA_COLORS.find(c => !usedColors.includes(c)) || DEFAULT_MA_COLORS[0]
+
+    const newMA = {
+      id: `ma-${Date.now()}`,
+      enabled: true,
+      type: 'SMA' as const,
+      period: 20,
+      color: availableColor,
+    }
+
+    const newSettings = {
+      ...maSettings,
+      movingAverages: [...maSettings.movingAverages, newMA],
+    }
+    setMASettings(newSettings)
+    onMASettingsChange(newSettings)
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
+  }
+
+  const handleRemoveMA = (id: string) => {
+    const newSettings = {
+      ...maSettings,
+      movingAverages: maSettings.movingAverages.filter(ma => ma.id !== id),
     }
     setMASettings(newSettings)
     onMASettingsChange(newSettings)
@@ -112,7 +152,7 @@ export default function ChartToolsPanel({
     }
   }
 
-  const activeCount = (maSettings.ma20 ? 1 : 0) + (maSettings.ma50 ? 1 : 0) + (maSettings.ma200 ? 1 : 0)
+  const activeCount = maSettings.movingAverages.filter(ma => ma.enabled).length
 
   return (
     <div className="absolute top-2 left-2 z-10 bg-dark-panel/95 border border-dark-border rounded-lg shadow-lg overflow-hidden min-w-[200px]">
@@ -166,47 +206,87 @@ export default function ChartToolsPanel({
 
           {/* Indicators Section */}
           {activeSection === 'indicators' && (
-            <div className="px-3 py-2 space-y-2">
-              <div className="text-xs font-semibold text-text-secondary mb-2">Moving Averages</div>
+            <div className="px-3 py-2 space-y-3">
+              {/* Header with Add button */}
+              <div className="flex items-center justify-between mb-2">
+                <div className="text-xs font-semibold text-text-secondary">Moving Averages</div>
+                <button
+                  onClick={handleAddMA}
+                  className="flex items-center gap-1 px-2 py-1 bg-blue-600 hover:bg-blue-700 rounded text-xs font-semibold transition-colors"
+                >
+                  <Plus size={12} />
+                  <span>הוסף</span>
+                </button>
+              </div>
 
-              <label className="flex items-center justify-between gap-2 cursor-pointer hover:bg-dark-bg/30 px-2 py-1 rounded transition-colors">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-0.5 bg-blue-500 rounded"></div>
-                  <span className="text-sm">MA 20</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={maSettings.ma20}
-                  onChange={() => handleToggleMA('ma20')}
-                  className="w-4 h-4 rounded border-dark-border bg-dark-bg checked:bg-blue-600 checked:border-blue-600 cursor-pointer"
-                />
-              </label>
+              {/* Moving Averages List */}
+              <div className="space-y-2 max-h-60 overflow-y-auto">
+                {maSettings.movingAverages.map((ma, index) => (
+                  <div key={ma.id} className="space-y-1">
+                    <div className="flex items-center justify-between gap-2 hover:bg-dark-bg/30 px-2 py-1 rounded transition-colors">
+                      <label className="flex items-center gap-2 flex-1 cursor-pointer">
+                        <input
+                          type="checkbox"
+                          checked={ma.enabled}
+                          onChange={(e) => handleUpdateMA(ma.id, { enabled: e.target.checked })}
+                          className="w-4 h-4 rounded border-dark-border bg-dark-bg checked:bg-blue-600 checked:border-blue-600 cursor-pointer"
+                        />
+                        <div className="w-3 h-0.5 rounded" style={{ backgroundColor: ma.color }}></div>
+                        <span className="text-sm font-semibold">MA {index + 1}</span>
+                        <span className="text-xs text-text-secondary">({ma.type} {ma.period})</span>
+                      </label>
+                      <button
+                        onClick={() => handleRemoveMA(ma.id)}
+                        className="text-text-secondary hover:text-red-400 transition-colors"
+                        title="מחק ממוצע נע"
+                      >
+                        <Trash2 size={14} />
+                      </button>
+                    </div>
 
-              <label className="flex items-center justify-between gap-2 cursor-pointer hover:bg-dark-bg/30 px-2 py-1 rounded transition-colors">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-0.5 bg-orange-500 rounded"></div>
-                  <span className="text-sm">MA 50</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={maSettings.ma50}
-                  onChange={() => handleToggleMA('ma50')}
-                  className="w-4 h-4 rounded border-dark-border bg-dark-bg checked:bg-orange-600 checked:border-orange-600 cursor-pointer"
-                />
-              </label>
+                    {ma.enabled && (
+                      <div className="ml-5 pl-2 border-l-2 border-dark-border space-y-1.5">
+                        {/* Type selector */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-text-secondary w-12">Type:</span>
+                          <select
+                            value={ma.type}
+                            onChange={(e) => handleUpdateMA(ma.id, { type: e.target.value as 'SMA' | 'EMA' })}
+                            className="flex-1 px-2 py-1 bg-dark-bg border border-dark-border rounded text-xs focus:outline-none focus:border-blue-500"
+                          >
+                            <option value="SMA">SMA</option>
+                            <option value="EMA">EMA</option>
+                          </select>
+                        </div>
 
-              <label className="flex items-center justify-between gap-2 cursor-pointer hover:bg-dark-bg/30 px-2 py-1 rounded transition-colors">
-                <div className="flex items-center gap-2">
-                  <div className="w-3 h-0.5 bg-red-500 rounded"></div>
-                  <span className="text-sm">MA 200</span>
-                </div>
-                <input
-                  type="checkbox"
-                  checked={maSettings.ma200}
-                  onChange={() => handleToggleMA('ma200')}
-                  className="w-4 h-4 rounded border-dark-border bg-dark-bg checked:bg-red-600 checked:border-red-600 cursor-pointer"
-                />
-              </label>
+                        {/* Period input */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-text-secondary w-12">Period:</span>
+                          <input
+                            type="number"
+                            value={ma.period}
+                            onChange={(e) => handleUpdateMA(ma.id, { period: parseInt(e.target.value) || 1 })}
+                            min="1"
+                            max="500"
+                            className="flex-1 px-2 py-1 bg-dark-bg border border-dark-border rounded text-xs focus:outline-none focus:border-blue-500"
+                          />
+                        </div>
+
+                        {/* Color picker */}
+                        <div className="flex items-center gap-2">
+                          <span className="text-xs text-text-secondary w-12">Color:</span>
+                          <input
+                            type="color"
+                            value={ma.color}
+                            onChange={(e) => handleUpdateMA(ma.id, { color: e.target.value })}
+                            className="flex-1 h-7 bg-dark-bg border border-dark-border rounded cursor-pointer"
+                          />
+                        </div>
+                      </div>
+                    )}
+                  </div>
+                ))}
+              </div>
 
               {/* Calculation mode */}
               <div className="pt-2 mt-2 border-t border-dark-border">
@@ -214,13 +294,21 @@ export default function ChartToolsPanel({
                   <input
                     type="checkbox"
                     checked={maSettings.startFromCurrentIndex}
-                    onChange={() => handleToggleMA('startFromCurrentIndex')}
+                    onChange={() => {
+                      const newSettings = {
+                        ...maSettings,
+                        startFromCurrentIndex: !maSettings.startFromCurrentIndex,
+                      }
+                      setMASettings(newSettings)
+                      onMASettingsChange(newSettings)
+                      localStorage.setItem(STORAGE_KEY, JSON.stringify(newSettings))
+                    }}
                     className="w-4 h-4 mt-0.5 rounded border-dark-border bg-dark-bg checked:bg-green-600 checked:border-green-600 cursor-pointer"
                   />
                   <div className="flex-1">
-                    <div className="text-xs font-semibold">מאוזן מנקודה נוכחית</div>
-                    <div className="text-[10px] text-text-secondary mt-0.5">
-                      חישוב רק מהנרות הגלויים (מדמה זמן אמת)
+                    <div className="text-xs font-semibold">חישוב מהנר הנוכחי</div>
+                    <div className="text-[10px] text-text-secondary leading-tight">
+                      סימולציה מציאותית - ממוצע מחושב מהנקודה הנוכחית בלבד
                     </div>
                   </div>
                 </label>
@@ -299,6 +387,7 @@ export default function ChartToolsPanel({
                                   'horizontal-line': 'H-Line',
                                   'horizontal-ray': 'H-Ray',
                                   'trend-line': 'Trend',
+                                  'rectangle': 'Rectangle',
                                   'arrow-up': 'Arrow ↑',
                                   'arrow-down': 'Arrow ↓',
                                   'fibonacci': 'Fib',

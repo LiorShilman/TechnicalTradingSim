@@ -87,8 +87,9 @@ Test server health: `curl http://localhost:5000/api/health`
 - `client/src/stores/gameStore.ts` - Zustand state management with localStorage persistence
 - `client/src/services/api.ts` - Axios API client with interceptors
 - `client/src/types/game.types.ts` - Shared TypeScript types (duplicate of server types)
-- `client/src/components/Chart/TradingChart.tsx` - Lightweight Charts integration with pattern visualization and drawing tools
-- `client/src/components/Chart/ChartToolsPanel.tsx` - Unified panel for indicators (MA) and drawing tools with selection
+- `client/src/components/Chart/TradingChart.tsx` - Lightweight Charts integration with pattern visualization, drawing tools, and dynamic MA series management
+- `client/src/components/Chart/ChartToolsPanel.tsx` - Unified panel for indicators (unlimited MAs) and drawing tools with selection
+- `client/src/components/Chart/IndicatorControls.tsx` - MA settings panel with Add/Remove functionality and color customization
 - `client/src/components/Trading/OrderPanel.tsx` - Buy/Sell interface with advanced SL/TP and risk management
 - `client/src/components/Trading/AccountInfo.tsx` - Real-time account balance and P&L display
 - `client/src/components/Trading/PositionsList.tsx` - Displays open positions with edit and close functionality
@@ -206,6 +207,7 @@ The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
 ## Configuration
 
 ### Default Game Settings
+- **CSV Upload Required**: Game MUST start with a CSV file upload (random/synthetic data option removed)
 - Asset: BTC/USD (auto-detected from CSV filename if uploaded)
 - Timeframe: 1H (auto-detected from CSV filename if uploaded)
 - Initial balance: $10,000 (adjustable in start screen, persists via localStorage)
@@ -272,19 +274,34 @@ Lightweight Charts (TradingView) integration:
   - Integrated with pattern markers and drawing tools, sorted by time
 - **Drawing Tools System** (ChartToolsPanel + TradingChart):
   - **Unified panel** combining indicators and drawing tools with tabbed interface
-  - **Moving Averages**: MA 20, 50, 200 with option to calculate from current index (real-time simulation mode)
-  - **Ten drawing tools** for technical analysis:
+  - **Moving Averages**: Dynamic unlimited MAs with Add/Remove functionality:
+    - **Unlimited MAs**: Users can add as many moving averages as needed (no fixed limit)
+    - **Add/Remove**: "הוסף" (Add) button to create new MAs, trash icon to delete each MA
+    - Type selection: SMA (Simple Moving Average) or EMA (Exponential Moving Average)
+    - Custom period: Any value from 1 to 500
+    - **Color customization**: Each MA has unique color with color picker for customization
+    - Automatic color assignment from predefined palette (8 colors)
+    - Default settings: 3 MAs (20, 50, 200 SMA, all disabled by default)
+    - Option to calculate from current index only (real-time simulation mode)
+    - localStorage persistence with key 'trading-game-ma-settings-v3'
+    - **Dynamic chart series management**: Series automatically created/removed based on MA list
+  - **Eleven drawing tools** for technical analysis:
     1. **Horizontal Line**: Full-width line across entire chart (#FFD700 gold)
     2. **Horizontal Ray**: Line extending right from click point (#00CED1 cyan)
     3. **Trend Line**: Two-point line between candles (#9C27B0 purple)
-    4. **Arrow Up ↑**: Marker below candle for bullish signals (#4CAF50 green)
-    5. **Arrow Down ↓**: Marker above candle for bearish signals (#F44336 red)
-    6. **Fibonacci Retracement**: 7 levels (0, 23.6%, 38.2%, 50%, 61.8%, 78.6%, 100%) between two points
-    7. **Text Note**: Custom text marker on chart (#03A9F4 blue)
-    8. **Measure Tool**: Two-point measurement showing price change ($), percentage (%), and number of bars (#FFD700 gold)
+    4. **Rectangle**: Two-point colored rectangle with adjustable opacity (#8B5CF6 purple)
+       - Click twice to define corners (diagonal points)
+       - Filled with semi-transparent color (default opacity: 0.3)
+       - Border frame highlights selected rectangles
+       - Useful for marking support/resistance zones, consolidation areas
+    5. **Arrow Up ↑**: Marker below candle for bullish signals (#4CAF50 green)
+    6. **Arrow Down ↓**: Marker above candle for bearish signals (#F44336 red)
+    7. **Fibonacci Retracement**: 7 levels (0, 23.6%, 38.2%, 50%, 61.8%, 78.6%, 100%) between two points
+    8. **Text Note**: Custom text marker on chart (#03A9F4 blue)
+    9. **Measure Tool**: Two-point measurement showing price change ($), percentage (%), and number of bars (#FFD700 gold)
        - Displays: `Δ $XX.XX (±X.X%) | N bars`
        - Marker positioned at midpoint of measurement line
-    9. **Long Position Simulator**: Interactive LONG trade planning tool with automatic SL/TP and visual profit/loss zones
+    10. **Long Position Simulator**: Interactive LONG trade planning tool with automatic SL/TP and visual profit/loss zones
        - Single-click on chart to place entry point
        - **Smart default SL/TP**: Automatically calculates SL/TP based on small percentage of entry price with 1:2 R:R ratio
          - SL distance = 0.5% of entry price (very small, relative to price)
@@ -309,7 +326,7 @@ Lightweight Charts (TradingView) integration:
          - Modal allows precise editing of SL and TP values
          - Real-time R:R ratio display in modal
          - Zones automatically update after saving changes
-    10. **Short Position Simulator**: Interactive SHORT trade planning tool with automatic SL/TP and visual profit/loss zones
+    11. **Short Position Simulator**: Interactive SHORT trade planning tool with automatic SL/TP and visual profit/loss zones
         - Single-click on chart to place entry point
         - **Smart default SL/TP**: Automatically calculates SL/TP based on small percentage of entry price with 1:2 R:R ratio (inverted for SHORT)
           - SL distance = 0.5% of entry price (very small, relative to price)
@@ -375,6 +392,54 @@ The app persists account balance across sessions using localStorage:
 - Saved balance carried over to new games
 - Reset button available to clear balance and restart with default $10,000
 - Implementation in `gameStore.ts`: saves `account.equity` to `localStorage.carryOverBalance`
+
+### Dynamic Moving Averages Architecture
+The MA system supports unlimited moving averages with dynamic management:
+
+**Data Structure:**
+```typescript
+interface MovingAverage {
+  id: string        // unique identifier (e.g., "ma-1734567890")
+  enabled: boolean  // visibility toggle
+  type: 'SMA' | 'EMA'
+  period: number
+  color: string     // hex color for this MA
+}
+
+interface MASettings {
+  movingAverages: MovingAverage[]
+  startFromCurrentIndex: boolean
+}
+```
+
+**Key Files:**
+- `IndicatorControls.tsx`: MA settings panel with Add/Remove UI
+  - `handleAddMA()`: Creates new MA with unique ID and auto-assigned color
+  - `handleRemoveMA(id)`: Removes MA from array
+  - `handleUpdateMA(id, updates)`: Updates specific MA properties
+  - Default 3 MAs: 20, 50, 200 (SMA, disabled)
+  - 8-color palette for auto-assignment
+  - localStorage key: `trading-game-ma-settings-v3`
+
+- `TradingChart.tsx`: Dynamic chart series management
+  - `maSeriesRefs = useRef<Map<string, ISeriesApi<'Line'>>>(new Map())`
+  - `updateMASeriesVisibility()`: Core function that:
+    - Creates new series for added MAs
+    - Removes series for deleted MAs
+    - Updates colors if changed
+    - Recalculates data when enabled/disabled
+  - Each MA series has unique color and visibility state
+
+- `ChartToolsPanel.tsx`: Unified panel with indicators tab
+  - Displays dynamic MA list with map() over movingAverages array
+  - Shows color indicator, type/period summary
+  - Expandable settings for each MA
+  - Calculation mode checkbox
+
+**Migration:**
+- Previous versions (v1, v2) used fixed `ma1`, `ma2`, `ma3` properties
+- v3 uses array-based structure for unlimited MAs
+- No automatic migration - old settings ignored, defaults to 3 MAs
 
 ### Save/Load Game State
 Complete game state is saved to localStorage and can be resumed:

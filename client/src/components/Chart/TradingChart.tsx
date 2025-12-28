@@ -18,10 +18,8 @@ export default function TradingChart() {
   const initialIndexRef = useRef<number>(-1) // האינדקס ההתחלתי של המשחק
   const lastGameIdRef = useRef<string | null>(null) // מעקב אחרי gameId כדי לזהות משחק חדש/טעון
 
-  // Moving Average series refs
-  const ma20SeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
-  const ma50SeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
-  const ma200SeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
+  // Moving Average series refs - dynamic array
+  const maSeriesRefs = useRef<Map<string, ISeriesApi<'Line'>>>(new Map())
 
   const { gameState, setChartControls } = useGameStore()
 
@@ -34,9 +32,11 @@ export default function TradingChart() {
 
   // State for MA settings
   const [maSettings, setMASettings] = useState<MASettings>({
-    ma20: false,
-    ma50: false,
-    ma200: false,
+    movingAverages: [
+      { id: 'ma-1', enabled: false, type: 'SMA', period: 20, color: '#3b82f6' },
+      { id: 'ma-2', enabled: false, type: 'SMA', period: 50, color: '#f97316' },
+      { id: 'ma-3', enabled: false, type: 'SMA', period: 200, color: '#ef4444' },
+    ],
     startFromCurrentIndex: true,
   })
 
@@ -269,38 +269,12 @@ export default function TradingChart() {
       },
     })
 
-    // יצירת סדרות ממוצעים נעים (מוסתרות בהתחלה)
-    const ma20Series = chart.addLineSeries({
-      color: '#2196F3', // כחול
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      visible: false, // מוסתר בהתחלה
-    })
-
-    const ma50Series = chart.addLineSeries({
-      color: '#FF9800', // כתום
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      visible: false, // מוסתר בהתחלה
-    })
-
-    const ma200Series = chart.addLineSeries({
-      color: '#F44336', // אדום
-      lineWidth: 2,
-      priceLineVisible: false,
-      lastValueVisible: false,
-      visible: false, // מוסתר בהתחלה
-    })
+    // Note: MA series will be created dynamically in updateMASeriesVisibility
 
     chartRef.current = chart
     candlestickSeriesRef.current = candlestickSeries
     volumeSeriesRef.current = volumeSeries
     volumeMASeriesRef.current = volumeMASeries
-    ma20SeriesRef.current = ma20Series
-    ma50SeriesRef.current = ma50Series
-    ma200SeriesRef.current = ma200Series
 
     // Resize handler
     const handleResize = () => {
@@ -417,8 +391,8 @@ export default function TradingChart() {
         activeToolRef.current = 'none' // ✅ עדכון ישיר של ref כדי למנוע race condition
         e.preventDefault() // מניעת mousedown מיד אחרי ה-click
       }
-      // כלים שצריכים שתי נקודות (trend line, fibonacci, measure)
-      else if (currentTool === 'trend-line' || currentTool === 'fibonacci' || currentTool === 'measure') {
+      // כלים שצריכים שתי נקודות (trend line, fibonacci, measure, rectangle)
+      else if (currentTool === 'trend-line' || currentTool === 'fibonacci' || currentTool === 'measure' || currentTool === 'rectangle') {
         setDrawingInProgress((prev) => {
           if (!prev) {
             // נקודה ראשונה - שמירה
@@ -436,6 +410,7 @@ export default function TradingChart() {
               'trend-line': '#9C27B0',
               'fibonacci': '#FF9800',
               'measure': '#FFD700',
+              'rectangle': '#8B5CF6',
             }
 
             // מציאת אינדקס הנר של הנקודה השנייה
@@ -452,6 +427,8 @@ export default function TradingChart() {
               endIndex: endCandleIndex !== -1 ? endCandleIndex : undefined,
               color: toolColors[currentTool] || '#9C27B0',
               width: 2,
+              // ברירת מחדל לשקיפות של מלבנים
+              ...(currentTool === 'rectangle' && { opacity: 0.3 }),
             }
 
             setDrawnLines((lines) => [...lines, newLine])
@@ -801,39 +778,103 @@ export default function TradingChart() {
     return smaData
   }
 
-  // פונקציה לעדכון סדרות ממוצעים נעים
+  // פונקציה לחישוב ממוצע נע אקספוננציאלי (EMA)
+  const calculateEMA = (candles: any[], period: number, startIndex: number = 0) => {
+    if (!candles || candles.length < period) return []
+
+    const emaData: { time: Time; value: number }[] = []
+    const multiplier = 2 / (period + 1)
+
+    // אם startFromCurrentIndex=true, מתחילים מהאינדקס הנוכחי
+    const effectiveStartIndex = Math.max(startIndex, period - 1)
+
+    // חישוב SMA ראשוני עבור נקודת התחלה
+    let sum = 0
+    for (let j = 0; j < period; j++) {
+      sum += candles[effectiveStartIndex - j].close
+    }
+    let ema = sum / period
+
+    // הוספת ה-EMA הראשון
+    emaData.push({
+      time: candles[effectiveStartIndex].time as Time,
+      value: ema,
+    })
+
+    // חישוב EMA עבור שאר הנרות
+    for (let i = effectiveStartIndex + 1; i < candles.length; i++) {
+      ema = (candles[i].close - ema) * multiplier + ema
+      emaData.push({
+        time: candles[i].time as Time,
+        value: ema,
+      })
+    }
+
+    return emaData
+  }
+
+  // פונקציה לעדכון סדרות ממוצעים נעים (דינמי)
   const updateMASeriesVisibility = () => {
-    if (!gameState?.candles || !ma20SeriesRef.current || !ma50SeriesRef.current || !ma200SeriesRef.current) return
+    if (!gameState?.candles || !chartRef.current) return
 
     const visibleCandles = gameState.candles.slice(0, gameState.currentIndex + 1)
-    const startIndex = maSettings.startFromCurrentIndex ? Math.max(0, gameState.currentIndex - 200) : 0
 
-    // MA 20
-    if (maSettings.ma20) {
-      const ma20Data = calculateSMA(visibleCandles, 20, startIndex)
-      ma20SeriesRef.current.setData(ma20Data)
-      ma20SeriesRef.current.applyOptions({ visible: true })
-    } else {
-      ma20SeriesRef.current.applyOptions({ visible: false })
-    }
+    // חישוב startIndex מבוסס על התקופה הארוכה ביותר
+    const maxPeriod = maSettings.movingAverages.length > 0
+      ? Math.max(...maSettings.movingAverages.map(ma => ma.period))
+      : 200
+    const startIndex = maSettings.startFromCurrentIndex ? Math.max(0, gameState.currentIndex - maxPeriod) : 0
 
-    // MA 50
-    if (maSettings.ma50) {
-      const ma50Data = calculateSMA(visibleCandles, 50, startIndex)
-      ma50SeriesRef.current.setData(ma50Data)
-      ma50SeriesRef.current.applyOptions({ visible: true })
-    } else {
-      ma50SeriesRef.current.applyOptions({ visible: false })
-    }
+    // Get current MA IDs
+    const currentMAIds = new Set(maSettings.movingAverages.map(ma => ma.id))
 
-    // MA 200
-    if (maSettings.ma200) {
-      const ma200Data = calculateSMA(visibleCandles, 200, startIndex)
-      ma200SeriesRef.current.setData(ma200Data)
-      ma200SeriesRef.current.applyOptions({ visible: true })
-    } else {
-      ma200SeriesRef.current.applyOptions({ visible: false })
-    }
+    // Remove series that are no longer in settings
+    const seriesToRemove: string[] = []
+    maSeriesRefs.current.forEach((series, id) => {
+      if (!currentMAIds.has(id)) {
+        try {
+          chartRef.current?.removeSeries(series)
+        } catch (e) {
+          // Series might already be removed
+        }
+        seriesToRemove.push(id)
+      }
+    })
+    seriesToRemove.forEach(id => maSeriesRefs.current.delete(id))
+
+    // Update or create series for each MA
+    maSettings.movingAverages.forEach(ma => {
+      let series = maSeriesRefs.current.get(ma.id)
+
+      // Create series if it doesn't exist
+      if (!series && chartRef.current) {
+        series = chartRef.current.addLineSeries({
+          color: ma.color,
+          lineWidth: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          visible: false,
+        })
+        maSeriesRefs.current.set(ma.id, series)
+      }
+
+      if (series) {
+        if (ma.enabled) {
+          // Calculate MA data
+          const maData = ma.type === 'EMA'
+            ? calculateEMA(visibleCandles, ma.period, startIndex)
+            : calculateSMA(visibleCandles, ma.period, startIndex)
+
+          series.setData(maData)
+          series.applyOptions({
+            visible: true,
+            color: ma.color, // Update color in case it changed
+          })
+        } else {
+          series.applyOptions({ visible: false })
+        }
+      }
+    })
   }
 
   // useEffect לעדכון ממוצעים כאשר ההגדרות או הנרות משתנים
@@ -1354,6 +1395,112 @@ export default function TradingChart() {
           text: '⇔', // סמל resize
           size: 2, // גדול יותר לזיהוי קל
         })
+      }
+      // כלי Rectangle - מלבן צבעוני עם שקיפות
+      else if (line.type === 'rectangle' && line.startTime && line.endTime && line.price2 !== undefined) {
+        if (line.startTime === line.endTime) {
+          console.warn('Skipping rectangle with same start/end time')
+          return
+        }
+
+        const isSelected = line.id === selectedLineId
+        const opacity = line.opacity !== undefined ? line.opacity : 0.3
+        const steps = 30 // מספר קווים למילוי
+
+        const times = [line.startTime, line.endTime].sort((a, b) => a - b)
+        const prices = [line.price, line.price2].sort((a, b) => a - b)
+        const minPrice = prices[0]
+        const maxPrice = prices[1]
+
+        // המרת hex color ל-RGB
+        const hex = line.color.replace('#', '')
+        const r = parseInt(hex.substring(0, 2), 16)
+        const g = parseInt(hex.substring(2, 4), 16)
+        const b = parseInt(hex.substring(4, 6), 16)
+
+        // הבהרה אם נבחר
+        const finalR = isSelected ? Math.min(255, r + 40) : r
+        const finalG = isSelected ? Math.min(255, g + 40) : g
+        const finalB = isSelected ? Math.min(255, b + 40) : b
+
+        // מילוי המלבן עם קווים אופקיים רבים
+        for (let i = 0; i <= steps; i++) {
+          const ratio = i / steps
+          const price = minPrice + (maxPrice - minPrice) * ratio
+
+          const rectangleFillLine = chartRef.current!.addLineSeries({
+            color: `rgba(${finalR}, ${finalG}, ${finalB}, ${opacity})`,
+            lineWidth: 3,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 0, // solid
+          })
+
+          rectangleFillLine.setData([
+            { time: times[0] as Time, value: price },
+            { time: times[1] as Time, value: price },
+          ])
+          drawnLineSeriesRef.current.push(rectangleFillLine)
+        }
+
+        // מסגרת המלבן - 4 קווים (top, bottom, left, right)
+        const borderWidth = isSelected ? 3 : 2
+
+        // קו עליון
+        const topBorder = chartRef.current!.addLineSeries({
+          color: `rgb(${finalR}, ${finalG}, ${finalB})`,
+          lineWidth: borderWidth,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          lineStyle: 0,
+        })
+        topBorder.setData([
+          { time: times[0] as Time, value: maxPrice },
+          { time: times[1] as Time, value: maxPrice },
+        ])
+        drawnLineSeriesRef.current.push(topBorder)
+
+        // קו תחתון
+        const bottomBorder = chartRef.current!.addLineSeries({
+          color: `rgb(${finalR}, ${finalG}, ${finalB})`,
+          lineWidth: borderWidth,
+          priceLineVisible: false,
+          lastValueVisible: false,
+          lineStyle: 0,
+        })
+        bottomBorder.setData([
+          { time: times[0] as Time, value: minPrice },
+          { time: times[1] as Time, value: minPrice },
+        ])
+        drawnLineSeriesRef.current.push(bottomBorder)
+
+        // קווים אנכיים (שמאל וימין) - באמצעות נקודות רבות
+        for (let i = 0; i <= 20; i++) {
+          const ratio = i / 20
+          const price = minPrice + (maxPrice - minPrice) * ratio
+
+          // קו שמאל
+          const leftBorder = chartRef.current!.addLineSeries({
+            color: `rgb(${finalR}, ${finalG}, ${finalB})`,
+            lineWidth: borderWidth,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 0,
+          })
+          leftBorder.setData([{ time: times[0] as Time, value: price }])
+          drawnLineSeriesRef.current.push(leftBorder)
+
+          // קו ימין
+          const rightBorder = chartRef.current!.addLineSeries({
+            color: `rgb(${finalR}, ${finalG}, ${finalB})`,
+            lineWidth: borderWidth,
+            priceLineVisible: false,
+            lastValueVisible: false,
+            lineStyle: 0,
+          })
+          rightBorder.setData([{ time: times[1] as Time, value: price }])
+          drawnLineSeriesRef.current.push(rightBorder)
+        }
       }
       // חצים והערות - markers
       else if (line.type === 'arrow-up' || line.type === 'arrow-down' || line.type === 'note') {
