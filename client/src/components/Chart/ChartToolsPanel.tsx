@@ -324,7 +324,7 @@ export default function ChartToolsPanel({
           {activeSection === 'drawing' && (
             <div className="px-3 py-2 space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
               {/* Drawing tools */}
-              <div className="space-y-1">
+              <div className="space-y-1 max-h-96 overflow-y-auto">
                 {DRAWING_TOOLS.map((tool) => {
                   const Icon = tool.icon
                   const isActive = activeTool === tool.id
