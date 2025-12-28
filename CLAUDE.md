@@ -235,6 +235,13 @@ Client uses Vite proxy in development (configured in `vite.config.ts`) to avoid 
 - ES modules with `.js` extensions in imports (TypeScript requirement for ES modules)
 - Server uses `tsx watch` for hot-reload during development
 
+### CSS and Scrolling
+- **Global body overflow**: `client/src/index.css` sets `body { overflow: auto }` to enable page scrolling
+  - **IMPORTANT**: Never set `overflow: hidden` on body - this prevents all scrolling in the app
+  - Start screen and other full-page views rely on body scroll for accessibility
+- **Component-level scrolling**: Individual panels (ChartToolsPanel, IndicatorControls) use `overflow-y-auto` with max-height constraints
+- **Custom scrollbar**: Defined in index.css with dark theme styling (8px width, dark colors)
+
 ### State Synchronization
 Client state is derived from server responses. Never modify state locally without server call:
 - Candles: Server controls revelation (client just displays)
@@ -277,6 +284,10 @@ Lightweight Charts (TradingView) integration:
   - Integrated with pattern markers and drawing tools, sorted by time
 - **Drawing Tools System** (ChartToolsPanel + TradingChart):
   - **Unified panel** combining indicators and drawing tools with tabbed interface
+  - **Scrollable sections**: Both indicators and drawing tools sections have overflow-y-auto with max-height constraints
+    - Panel container: `max-h-[calc(100vh-20px)]` to prevent exceeding viewport
+    - Inner sections: `max-h-[calc(100vh-140px)]` for scrollable content areas
+    - Drawing tools list: `max-h-48` to ensure drawn lines list remains visible below
   - **Moving Averages**: Dynamic unlimited MAs with Add/Remove functionality:
     - **Unlimited MAs**: Users can add as many moving averages as needed (no fixed limit)
     - **Add/Remove**: "הוסף" (Add) button to create new MAs, trash icon to delete each MA
