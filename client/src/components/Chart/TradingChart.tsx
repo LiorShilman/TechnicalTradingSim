@@ -959,43 +959,31 @@ export default function TradingChart() {
             ])
           }
         } else if (line.type === 'horizontal-ray' && line.startTime) {
-          // קרן אופקית - קו אופקי מנקודת התחלה + 10 נרות קדימה
+          // קרן אופקית - קו אופקי מנקודת התחלה עד סוף הגרף
           const lastCandle = gameState.candles[gameState.currentIndex]
-          const prevCandle = gameState.candles[Math.max(0, gameState.currentIndex - 1)]
 
-          if (lastCandle && prevCandle) {
-            // חישוב timeframe (הפרש זמן בין נרות)
-            const timeframe = lastCandle.time - prevCandle.time
-            // הארכה של 10 נרות קדימה
-            const extendedTime = lastCandle.time + (timeframe * 10)
-
-            const times = [line.startTime, extendedTime].sort((a, b) => a - b)
+          if (lastCandle) {
+            const times = [line.startTime, lastCandle.time].sort((a, b) => a - b)
             lineSeries.setData([
               { time: times[0] as Time, value: line.price },
               { time: times[1] as Time, value: line.price },
             ])
           }
         } else if (line.type === 'ray' && line.startTime && line.endTime && line.price2 !== undefined) {
-          // קרן בזווית - מתחילה בנקודה הראשונה, עוברת דרך נקודה שנייה + 10 נרות קדימה
+          // קרן בזווית - מתחילה בנקודה הראשונה, עוברת דרך נקודה שנייה, וממשיכה עד סוף הגרף
           const lastCandle = gameState.candles[gameState.currentIndex]
-          const prevCandle = gameState.candles[Math.max(0, gameState.currentIndex - 1)]
 
-          if (lastCandle && prevCandle && line.startTime !== line.endTime) {
-            // חישוב timeframe (הפרש זמן בין נרות)
-            const timeframe = lastCandle.time - prevCandle.time
-            // הארכה של 10 נרות קדימה
-            const extendedTime = lastCandle.time + (timeframe * 10)
-
+          if (lastCandle && line.startTime !== line.endTime) {
             // חישוב שיפוע הקרן
             const timeDiff = line.endTime - line.startTime
             const priceDiff = line.price2 - line.price
             const slope = priceDiff / timeDiff
 
-            // חישוב המחיר בנקודה המורחבת
-            const extendedTimeDiff = extendedTime - line.startTime
+            // הארכת הקרן עד סוף הגרף
+            const extendedTimeDiff = lastCandle.time - line.startTime
             const extendedPrice = line.price + (slope * extendedTimeDiff)
 
-            const times = [line.startTime, extendedTime].sort((a, b) => a - b)
+            const times = [line.startTime, lastCandle.time].sort((a, b) => a - b)
             lineSeries.setData([
               { time: times[0] as Time, value: line.price },
               { time: times[1] as Time, value: extendedPrice },
