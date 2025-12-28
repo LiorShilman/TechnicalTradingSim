@@ -8,7 +8,9 @@ import ChartControls from './components/Chart/ChartControls'
 import EquityChart from './components/Chart/EquityChart'
 import GameStats from './components/Stats/GameStats'
 import AlertSettings from './components/Settings/AlertSettings'
+import PriceAlertsPanel from './components/Settings/PriceAlertsPanel'
 import { useGameStore } from './stores/gameStore'
+import { priceAlertsService } from './services/priceAlertsService'
 import { Play, Loader2, Upload } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 import toast from 'react-hot-toast'
@@ -26,11 +28,28 @@ function App() {
   const [availableDateRange, setAvailableDateRange] = useState<{ start: string; end: string } | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null)
   const [refreshSavedGame, setRefreshSavedGame] = useState(0) // מונה לרענון מצב משחק שמור
+  const [priceAlerts, setPriceAlerts] = useState(() => priceAlertsService.getAlerts())
   const fileInputRef = useRef<HTMLInputElement>(null)
   const { gameState, isLoading, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
 
   // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
   const savedGameInfo = useMemo(() => getSavedGameInfo(), [refreshSavedGame, getSavedGameInfo])
+
+  // Price Alerts handlers
+  const handleAddAlert = (alert: Omit<import('./types/game.types').PriceAlert, 'id' | 'createdAt'>) => {
+    priceAlertsService.addAlert(alert)
+    setPriceAlerts(priceAlertsService.getAlerts())
+  }
+
+  const handleRemoveAlert = (id: string) => {
+    priceAlertsService.removeAlert(id)
+    setPriceAlerts(priceAlertsService.getAlerts())
+  }
+
+  const handleToggleAlert = (id: string) => {
+    priceAlertsService.toggleAlert(id)
+    setPriceAlerts(priceAlertsService.getAlerts())
+  }
 
   const handleStartGame = async (forceNewGame = false) => {
     // ⭐ CRITICAL: אל תעדכן את setIsStartScreen לפני שהמשחק נטען!
@@ -537,6 +556,15 @@ function App() {
           <div style={{ flex: '1 1 0', minHeight: '0' }}>
             <TradingChart />
             <AlertSettings />
+            {gameState && (
+              <PriceAlertsPanel
+                priceAlerts={priceAlerts}
+                onAddAlert={handleAddAlert}
+                onRemoveAlert={handleRemoveAlert}
+                onToggleAlert={handleToggleAlert}
+                currentPrice={gameState.candles[gameState.currentIndex]?.close || 0}
+              />
+            )}
           </div>
           <div style={{ flex: '0 0 250px' }}>
             <EquityChart />

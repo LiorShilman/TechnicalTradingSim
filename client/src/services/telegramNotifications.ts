@@ -196,10 +196,34 @@ Quantity: ${params.quantity.toFixed(3)} BTC
   }
 
   /**
+   * התראה על פריצת רמת מחיר (Price Alert)
+   */
+  async notifyPriceAlert(params: {
+    direction: 'above' | 'below'
+    targetPrice: number
+    currentPrice: number
+    asset?: string
+  }) {
+    const emoji = params.direction === 'above' ? '📈' : '📉'
+    const directionText = params.direction === 'above' ? 'עלה מעל' : 'ירד מתחת'
+    const assetText = params.asset || 'BTC/USD'
+
+    const message = `
+${emoji} <b>Price Alert Hit!</b>
+
+${assetText} ${directionText} $${params.targetPrice.toFixed(2)}
+
+<b>Current Price: $${params.currentPrice.toFixed(2)}</b>
+    `.trim()
+
+    return this.sendMessage(message)
+  }
+
+  /**
    * בדיקת חיבור - שליחת הודעת test
    */
   async testConnection(): Promise<boolean> {
-    return this.sendMessage('🎮 <b>Trading Simulator Connected!</b>\n\nYou will receive alerts for:\n• Stop Loss hits\n• Take Profit hits\n• Position closures\n• Pending order fills')
+    return this.sendMessage('🎮 <b>Trading Simulator Connected!</b>\n\nYou will receive alerts for:\n• Stop Loss hits\n• Take Profit hits\n• Position closures\n• Pending order fills\n• Price alerts')
   }
 }
 

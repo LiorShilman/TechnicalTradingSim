@@ -211,6 +211,19 @@ export interface PendingOrder {
 }
 
 /**
+ * התראת מחיר - נשלחת כשהמחיר עובר רמה מסוימת
+ */
+export interface PriceAlert {
+  id: string;
+  targetPrice: number;        // המחיר שעליו להתריע
+  direction: 'above' | 'below'; // התראה כשעובר מעל או מתחת
+  enabled: boolean;           // האם ההתראה פעילה
+  createdAt: number;
+  createdAtPrice: number;     // המחיר שבו ההתראה נוצרה
+  note?: string;              // הערה אופציונלית
+}
+
+/**
  * בקשה ליצירת משחק חדש
  */
 export interface CreateGameRequest {

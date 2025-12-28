@@ -3,6 +3,7 @@ import type { GameState, SavedGameState } from '@/types/game.types'
 import { api } from '@/services/api'
 import toast from 'react-hot-toast'
 import { telegramService } from '@/services/telegramNotifications'
+import { priceAlertsService } from '@/services/priceAlertsService'
 
 // שם המפתח ב-localStorage
 const SAVED_GAME_KEY = 'savedGameState'
@@ -224,6 +225,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // ✅ שמירת הסכום המעודכן ל-localStorage
       if (newGame.account.equity) {
         localStorage.setItem('carryOverBalance', newGame.account.equity.toString())
+      }
+
+      // בדיקת Price Alerts
+      const currentCandle = newGame.candles[newGame.currentIndex]
+      const previousCandle = newGame.currentIndex > 0 ? newGame.candles[newGame.currentIndex - 1] : null
+
+      if (currentCandle && previousCandle) {
+        const triggeredAlerts = priceAlertsService.checkAlerts(currentCandle.close, previousCandle.close)
+
+        for (const alert of triggeredAlerts) {
+          const directionText = alert.direction === 'above' ? 'עלה מעל' : 'ירד מתחת'
+          toast.success(`🔔 התראת מחיר! המחיר ${directionText} $${alert.targetPrice.toFixed(2)}`, {
+            icon: '🔔',
+            duration: 5000,
+          })
+
+          // שליחת התראה ל-Telegram
+          telegramService.notifyPriceAlert({
+            direction: alert.direction,
+            targetPrice: alert.targetPrice,
+            currentPrice: currentCandle.close,
+            asset: newGame.asset,
+          })
+        }
       }
 
       // Server returns { game: GameState }, not individual fields
