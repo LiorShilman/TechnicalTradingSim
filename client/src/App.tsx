@@ -26,7 +26,7 @@ function App() {
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null)
   const [refreshSavedGame, setRefreshSavedGame] = useState(0) // מונה לרענון מצב משחק שמור
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { gameState, isLoading, initializeGame, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
+  const { gameState, isLoading, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
 
   // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
   const savedGameInfo = useMemo(() => getSavedGameInfo(), [refreshSavedGame, getSavedGameInfo])
@@ -45,15 +45,14 @@ function App() {
       }
     }
 
-    // אחרת, יצירת משחק חדש
+    // אחרת, יצירת משחק חדש (רק עם CSV!)
     if (uploadedFile) {
       await initializeGameWithCSV(uploadedFile, assetName, timeframe, initialBalance, selectedDateRange)
+      // ✅ עדכון מסך רק אחרי שהמשחק נטען
+      setIsStartScreen(false)
     } else {
-      await initializeGame({ initialBalance })
+      toast.error('נא להעלות קובץ CSV לפני התחלת המשחק')
     }
-
-    // ✅ עדכון מסך רק אחרי שהמשחק נטען
-    setIsStartScreen(false)
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -399,30 +398,32 @@ function App() {
                   <div className="grid grid-cols-2 gap-4 pt-4 border-t border-amber-500/20">
                     <div>
                       <label className="block text-sm text-gray-400 mb-2">שם הנכס / מטבע</label>
-                      <input
-                        type="text"
-                        value={assetName}
-                        onChange={(e) => setAssetName(e.target.value)}
-                        placeholder="BTC/USD, ETH/USD..."
-                        className="w-full px-4 py-2 bg-dark-bg/50 border border-amber-500/30 rounded-lg text-white placeholder-gray-500 focus:outline-none focus:border-amber-500 transition-colors"
-                      />
+                      <div className="w-full px-4 py-2 bg-dark-bg/30 border border-amber-500/20 rounded-lg text-white">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">📊</span>
+                          <span className="font-semibold text-blue-400">{assetName}</span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">זוהה אוטומטית מהקובץ</div>
+                      </div>
                     </div>
                     <div>
                       <label className="block text-sm text-gray-400 mb-2">טווח זמן</label>
-                      <select
-                        value={timeframe}
-                        onChange={(e) => setTimeframe(e.target.value)}
-                        className="w-full px-4 py-2 bg-dark-bg/50 border border-amber-500/30 rounded-lg text-white focus:outline-none focus:border-amber-500 transition-colors"
-                      >
-                        <option value="1m">1 דקה</option>
-                        <option value="5m">5 דקות</option>
-                        <option value="15m">15 דקות</option>
-                        <option value="30m">30 דקות</option>
-                        <option value="1H">1 שעה</option>
-                        <option value="4H">4 שעות</option>
-                        <option value="1D">יום</option>
-                        <option value="1W">שבוע</option>
-                      </select>
+                      <div className="w-full px-4 py-2 bg-dark-bg/30 border border-amber-500/20 rounded-lg text-white">
+                        <div className="flex items-center gap-2">
+                          <span className="text-lg">⏱️</span>
+                          <span className="font-semibold text-purple-400">
+                            {timeframe === '1m' ? '1 דקה' :
+                             timeframe === '5m' ? '5 דקות' :
+                             timeframe === '15m' ? '15 דקות' :
+                             timeframe === '30m' ? '30 דקות' :
+                             timeframe === '1H' ? '1 שעה' :
+                             timeframe === '4H' ? '4 שעות' :
+                             timeframe === '1D' ? 'יום' :
+                             timeframe === '1W' ? 'שבוע' : timeframe}
+                          </span>
+                        </div>
+                        <div className="text-[10px] text-gray-500 mt-0.5">זוהה אוטומטית מהקובץ</div>
+                      </div>
                     </div>
                   </div>
 
@@ -492,7 +493,7 @@ function App() {
                 // כפיית משחק חדש (לא לטעון שמור)
                 handleStartGame(true)
               }}
-              disabled={isLoading}
+              disabled={isLoading || !uploadedFile}
               className="group relative px-12 py-5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl font-bold text-2xl hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-2xl shadow-blue-500/50 hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="flex items-center gap-3 justify-center">
@@ -506,9 +507,16 @@ function App() {
               <div className="absolute inset-0 rounded-2xl bg-gradient-to-r from-blue-400 to-purple-500 opacity-0 group-hover:opacity-20 blur-xl transition-opacity"></div>
             </button>
 
-            <p className="mt-6 text-gray-400 text-sm">
-              ⚡ {uploadedFile ? `${availableDateRange?.start || ''} - ${availableDateRange?.end || ''}` : '500 נרות'} • {uploadedFile ? 'זיהוי דפוסים אוטומטי' : '8 תבניות טכניות'} • משוב בזמן אמת
-            </p>
+            {uploadedFile && (
+              <p className="mt-6 text-gray-400 text-sm">
+                ⚡ {availableDateRange?.start || ''} - {availableDateRange?.end || ''} • זיהוי דפוסים אוטומטי • משוב בזמן אמת
+              </p>
+            )}
+            {!uploadedFile && (
+              <p className="mt-6 text-yellow-400 text-sm font-semibold">
+                📁 נא להעלות קובץ CSV מ-TradingView כדי להתחיל
+              </p>
+            )}
           </div>
         </div>
       </div>
