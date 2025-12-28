@@ -5,6 +5,7 @@ export type DrawingTool =
   | 'none'
   | 'horizontal-line'
   | 'horizontal-ray'
+  | 'ray'
   | 'trend-line'
   | 'arrow-up'
   | 'arrow-down'

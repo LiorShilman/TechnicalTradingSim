@@ -330,7 +330,7 @@ export default function TradingChart() {
       const currentTool = activeToolRef.current
 
       // כלים שצריכים נקודה אחת
-      if (currentTool === 'horizontal-line' || currentTool === 'arrow-up' || currentTool === 'arrow-down' || currentTool === 'long-position' || currentTool === 'short-position') {
+      if (currentTool === 'horizontal-line' || currentTool === 'horizontal-ray' || currentTool === 'arrow-up' || currentTool === 'arrow-down' || currentTool === 'long-position' || currentTool === 'short-position') {
         const toolColors: Record<string, string> = {
           'horizontal-line': '#FFD700',
           'horizontal-ray': '#00CED1',
@@ -392,8 +392,8 @@ export default function TradingChart() {
         activeToolRef.current = 'none' // ✅ עדכון ישיר של ref כדי למנוע race condition
         e.preventDefault() // מניעת mousedown מיד אחרי ה-click
       }
-      // כלים שצריכים שתי נקודות (horizontal-ray, trend line, fibonacci, measure, rectangle)
-      else if (currentTool === 'horizontal-ray' || currentTool === 'trend-line' || currentTool === 'fibonacci' || currentTool === 'measure' || currentTool === 'rectangle') {
+      // כלים שצריכים שתי נקודות (ray, trend line, fibonacci, measure, rectangle)
+      else if (currentTool === 'ray' || currentTool === 'trend-line' || currentTool === 'fibonacci' || currentTool === 'measure' || currentTool === 'rectangle') {
         setDrawingInProgress((prev) => {
           if (!prev) {
             // נקודה ראשונה - שמירה
@@ -408,7 +408,7 @@ export default function TradingChart() {
           } else {
             // נקודה שנייה - יצירת הקו
             const toolColors: Record<string, string> = {
-              'horizontal-ray': '#00CED1',
+              'ray': '#06B6D4',
               'trend-line': '#9C27B0',
               'fibonacci': '#FF9800',
               'measure': '#FFD700',
@@ -925,7 +925,7 @@ export default function TradingChart() {
     drawnLines.forEach((line) => {
       const isSelected = line.id === selectedLineId
 
-      if (line.type === 'horizontal-line' || line.type === 'horizontal-ray' || line.type === 'trend-line') {
+      if (line.type === 'horizontal-line' || line.type === 'horizontal-ray' || line.type === 'ray' || line.type === 'trend-line') {
         // פונקציה להבהרת צבע - מקצועי ועדין יותר
         const brightenColor = (color: string) => {
           const hex = color.replace('#', '')
@@ -958,18 +958,35 @@ export default function TradingChart() {
               { time: times[1] as Time, value: line.price },
             ])
           }
-        } else if (line.type === 'horizontal-ray' && line.startTime && line.endTime && line.price2 !== undefined) {
-          // קרן אופקית - מתחילה בנקודה הראשונה, משתמשת במחיר מהנקודה השנייה, וממשיכה עד סוף הגרף
+        } else if (line.type === 'horizontal-ray' && line.startTime) {
+          // קרן אופקית - קו אופקי מנקודת התחלה עד סוף הגרף
           const lastCandle = gameState.candles[gameState.currentIndex]
 
           if (lastCandle) {
-            // השתמש במחיר של הנקודה השנייה (price2)
-            const rayPrice = line.price2
-            // התחל מהנקודה השנייה והמשך עד הנר האחרון
-            const times = [line.endTime, lastCandle.time].sort((a, b) => a - b)
+            const times = [line.startTime, lastCandle.time].sort((a, b) => a - b)
             lineSeries.setData([
-              { time: times[0] as Time, value: rayPrice },
-              { time: times[1] as Time, value: rayPrice },
+              { time: times[0] as Time, value: line.price },
+              { time: times[1] as Time, value: line.price },
+            ])
+          }
+        } else if (line.type === 'ray' && line.startTime && line.endTime && line.price2 !== undefined) {
+          // קרן בזווית - מתחילה בנקודה הראשונה, עוברת דרך נקודה שנייה, וממשיכה עד סוף הגרף
+          const lastCandle = gameState.candles[gameState.currentIndex]
+
+          if (lastCandle && line.startTime !== line.endTime) {
+            // חישוב שיפוע הקרן
+            const timeDiff = line.endTime - line.startTime
+            const priceDiff = line.price2 - line.price
+            const slope = priceDiff / timeDiff
+
+            // הארכת הקרן עד סוף הגרף
+            const extendedTimeDiff = lastCandle.time - line.startTime
+            const extendedPrice = line.price + (slope * extendedTimeDiff)
+
+            const times = [line.startTime, lastCandle.time].sort((a, b) => a - b)
+            lineSeries.setData([
+              { time: times[0] as Time, value: line.price },
+              { time: times[1] as Time, value: extendedPrice },
             ])
           }
         } else if (line.type === 'trend-line' && line.startTime && line.endTime && line.price2 !== undefined) {
@@ -1606,9 +1623,8 @@ export default function TradingChart() {
         return
       }
 
-      // עבור horizontal-ray, השתמש ב-price2 (הנקודה השנייה)
-      // עבור horizontal-line, השתמש ב-price (הנקודה היחידה)
-      const linePrice = line.type === 'horizontal-ray' && line.price2 !== undefined ? line.price2 : line.price
+      // עבור horizontal-line ו-horizontal-ray, השתמש ב-price (המחיר הקבוע)
+      const linePrice = line.price
       const prevClose = previousCandle.close
       const currClose = currentCandle.close
 

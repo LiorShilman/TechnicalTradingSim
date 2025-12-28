@@ -3,6 +3,7 @@ import {
   TrendingUp,
   Minus,
   ArrowRight,
+  MoveRight,
   Trash2,
   ChevronDown,
   ChevronUp,
@@ -41,7 +42,8 @@ const DEFAULT_MA_COLORS = ['#3b82f6', '#f97316', '#ef4444', '#22c55e', '#a855f7'
 
 const DRAWING_TOOLS = [
   { id: 'horizontal-line' as DrawingTool, label: 'Horizontal Line', icon: Minus, color: '#FFD700', description: 'קו אופקי על פני כל הגרף' },
-  { id: 'horizontal-ray' as DrawingTool, label: 'Horizontal Ray', icon: ArrowRight, color: '#00CED1', description: 'קרן אופקית - 2 לחיצות: התחלה + כיוון' },
+  { id: 'horizontal-ray' as DrawingTool, label: 'Horizontal Ray', icon: ArrowRight, color: '#00CED1', description: 'קרן אופקית - לחיצה אחת לקביעת מחיר' },
+  { id: 'ray' as DrawingTool, label: 'Ray', icon: MoveRight, color: '#06B6D4', description: 'קרן בזווית - 2 לחיצות לקביעת כיוון' },
   { id: 'trend-line' as DrawingTool, label: 'Trend Line', icon: TrendLine, color: '#9C27B0', description: 'קו מגמה בין שתי נקודות' },
   { id: 'rectangle' as DrawingTool, label: 'Rectangle', icon: Square, color: '#8B5CF6', description: 'מלבן צבעוני עם שקיפות מתכווננת' },
   { id: 'arrow-up' as DrawingTool, label: 'Arrow Up ↑', icon: ArrowUp, color: '#4CAF50', description: 'חץ מעלה לסימון נר חשוב' },
