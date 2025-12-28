@@ -103,7 +103,7 @@ export default function IndicatorControls({ onMASettingsChange }: IndicatorContr
   }
 
   return (
-    <div className="absolute top-2 left-2 z-10 bg-dark-panel/95 border border-dark-border rounded-lg shadow-lg overflow-hidden">
+    <div className="absolute top-2 left-2 z-10 bg-dark-panel/95 border border-dark-border rounded-lg shadow-lg overflow-hidden w-[280px]">
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}

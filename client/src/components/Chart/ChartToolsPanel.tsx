@@ -161,7 +161,7 @@ export default function ChartToolsPanel({
   const activeCount = maSettings.movingAverages.filter(ma => ma.enabled).length
 
   return (
-    <div className="absolute top-2 left-2 z-10 bg-dark-panel/95 border border-dark-border rounded-lg shadow-lg overflow-hidden min-w-[200px] max-h-[calc(100vh-20px)]">
+    <div className="absolute top-2 left-2 z-10 bg-dark-panel/95 border border-dark-border rounded-lg shadow-lg overflow-hidden w-[280px] max-h-[calc(100vh-20px)]">
       {/* Header */}
       <button
         onClick={() => setIsExpanded(!isExpanded)}
@@ -212,7 +212,7 @@ export default function ChartToolsPanel({
 
           {/* Indicators Section */}
           {activeSection === 'indicators' && (
-            <div className="px-3 py-2 space-y-3 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+            <div className="px-3 py-2 space-y-3 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 100px)' }}>
               {/* Header with Add button */}
               <div className="flex items-center justify-between mb-2">
                 <div className="text-xs font-semibold text-text-secondary">Moving Averages</div>
@@ -324,9 +324,9 @@ export default function ChartToolsPanel({
 
           {/* Drawing Tools Section */}
           {activeSection === 'drawing' && (
-            <div className="px-3 py-2 space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 140px)' }}>
+            <div className="px-3 py-2 space-y-2 overflow-y-auto" style={{ maxHeight: 'calc(100vh - 100px)' }}>
               {/* Drawing tools */}
-              <div className="space-y-1 max-h-48 overflow-y-auto">
+              <div className="space-y-1 max-h-96 overflow-y-auto">
                 {DRAWING_TOOLS.map((tool) => {
                   const Icon = tool.icon
                   const isActive = activeTool === tool.id
