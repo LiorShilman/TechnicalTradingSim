@@ -789,13 +789,34 @@ export default function TradingChart() {
       }
     }
 
+    // Mouse leave handler - cancel drawing operations (like TradingView)
+    const handleMouseLeave = () => {
+      // Cancel any drawing in progress
+      if (drawingInProgressRef.current) {
+        setDrawingInProgress(null)
+      }
+
+      // Clear preview lines
+      previewLineSeriesRef.current.forEach(series => chartRef.current?.removeSeries(series))
+      previewLineSeriesRef.current = []
+
+      // End dragging if active
+      if (draggingLineRef.current) {
+        chartRef.current?.applyOptions({
+          handleScroll: true,
+          handleScale: true,
+        })
+        setDraggingLine(null)
+      }
+    }
+
     chartContainerRef.current.addEventListener('click', handleChartClick)
     chartContainerRef.current.addEventListener('dblclick', handleChartDoubleClick)
     chartContainerRef.current.addEventListener('contextmenu', handleContextMenu)
     chartContainerRef.current.addEventListener('mousedown', handleMouseDown)
     chartContainerRef.current.addEventListener('mousemove', handleMouseMove)
     chartContainerRef.current.addEventListener('mouseup', handleMouseUp)
-    chartContainerRef.current.addEventListener('mouseleave', handleMouseUp) // Also end drag if mouse leaves chart
+    chartContainerRef.current.addEventListener('mouseleave', handleMouseLeave) // Cancel drawing if mouse leaves chart
 
     return () => {
       console.log('TradingChart: Unmounting chart component')
@@ -807,7 +828,7 @@ export default function TradingChart() {
       chartContainerRef.current?.removeEventListener('mousedown', handleMouseDown)
       chartContainerRef.current?.removeEventListener('mousemove', handleMouseMove)
       chartContainerRef.current?.removeEventListener('mouseup', handleMouseUp)
-      chartContainerRef.current?.removeEventListener('mouseleave', handleMouseUp)
+      chartContainerRef.current?.removeEventListener('mouseleave', handleMouseLeave)
       chart.remove()
     }
   }, [])
