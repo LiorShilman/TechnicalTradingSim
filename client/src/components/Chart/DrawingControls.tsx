@@ -13,6 +13,7 @@ export type DrawingTool =
   | 'measure'
   | 'long-position'
   | 'short-position'
+  | 'rectangle'
 
 export interface DrawnLine {
   id: string
@@ -24,6 +25,7 @@ export interface DrawnLine {
   text?: string // For notes
   color: string
   width: number
+  opacity?: number // For rectangle (0-1)
   // Additional data for measure/position tools
   startIndex?: number // Candle index for start point
   endIndex?: number // Candle index for end point
@@ -31,6 +33,11 @@ export interface DrawnLine {
   pnlPercent?: number // Calculated percentages
   stopLoss?: number // SL price for position tools
   takeProfit?: number // TP price for position tools
+  // Alert settings for horizontal lines
+  alertEnabled?: boolean // Enable/disable alert for this line
+  alertDirection?: 'above' | 'below' | 'both' // Alert when price crosses from above/below/both
+  alertTriggered?: boolean // Track if alert was already triggered
+  lastPriceAbove?: boolean // Track last price position relative to line
 }
 
 interface DrawingControlsProps {

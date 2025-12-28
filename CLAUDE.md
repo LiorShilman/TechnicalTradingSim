@@ -290,7 +290,12 @@ Lightweight Charts (TradingView) integration:
     - **Dynamic chart series management**: Series automatically created/removed based on MA list
   - **Eleven drawing tools** for technical analysis:
     1. **Horizontal Line**: Full-width line across entire chart (#FFD700 gold)
+       - **Price alerts**: Bell icon (🔔) for enabling alerts when price crosses the line
+       - Alert directions: Above (cross from above to below), Below (cross from below to above), Both
+       - Visual notification: Toast message with gold border when alert triggers
+       - One-time trigger: Alert disables after triggering (can be reset by changing direction)
     2. **Horizontal Ray**: Line extending right from click point (#00CED1 cyan)
+       - **Price alerts**: Same alert functionality as Horizontal Line
     3. **Trend Line**: Two-point line between candles (#9C27B0 purple)
     4. **Rectangle**: Two-point colored rectangle with adjustable opacity (#8B5CF6 purple)
        - Click twice to define corners (diagonal points)

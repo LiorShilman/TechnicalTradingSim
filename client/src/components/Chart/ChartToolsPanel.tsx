@@ -16,6 +16,8 @@ import {
   TrendingDown,
   Square,
   Plus,
+  Bell,
+  BellOff,
 } from 'lucide-react'
 import type { DrawingTool, DrawnLine } from './DrawingControls'
 import type { MASettings } from './IndicatorControls'
@@ -30,6 +32,7 @@ interface ChartToolsPanelProps {
   onDeleteLine: (id: string) => void
   onClearAll: () => void
   onSelectLine?: (lineId: string | null) => void
+  onUpdateLine?: (id: string, updates: Partial<DrawnLine>) => void
 }
 
 const STORAGE_KEY = 'trading-game-ma-settings-v3' // v3 for array-based structure
@@ -58,6 +61,7 @@ export default function ChartToolsPanel({
   onDeleteLine,
   onClearAll,
   onSelectLine,
+  onUpdateLine,
 }: ChartToolsPanelProps) {
   const [isExpanded, setIsExpanded] = useState(false)
   const [activeSection, setActiveSection] = useState<'indicators' | 'drawing'>('indicators')
@@ -365,52 +369,113 @@ export default function ChartToolsPanel({
                   <div className="space-y-1 max-h-40 overflow-y-auto">
                     {drawnLines.map((line) => {
                       const isSelected = selectedLineId === line.id
+                      const isHorizontalLine = line.type === 'horizontal-line' || line.type === 'horizontal-ray'
                       return (
-                        <div
-                          key={line.id}
-                          onClick={() => handleSelectLine(isSelected ? null : line.id)}
-                          className={`flex items-center justify-between px-3 py-2 rounded-md transition-all duration-200 cursor-pointer ${
-                            isSelected
-                              ? 'bg-gradient-to-r from-blue-600/20 to-blue-500/20 border-l-4 border-blue-400 shadow-md'
-                              : 'bg-dark-bg/40 hover:bg-dark-bg/60 border-l-4 border-transparent'
-                          }`}
-                        >
-                          <div className="flex items-center gap-2 flex-1">
-                            <div
-                              className="w-6 h-0.5 rounded"
-                              style={{ backgroundColor: line.color }}
-                            />
-                            <span className="text-xs">${line.price.toFixed(2)}</span>
-                            <span className="text-[10px] text-text-secondary">
-                              {(() => {
-                                const labels: Record<string, string> = {
-                                  'horizontal-line': 'H-Line',
-                                  'horizontal-ray': 'H-Ray',
-                                  'trend-line': 'Trend',
-                                  'rectangle': 'Rectangle',
-                                  'arrow-up': 'Arrow ↑',
-                                  'arrow-down': 'Arrow ↓',
-                                  'fibonacci': 'Fib',
-                                  'note': 'Note',
-                                  'measure': 'Measure',
-                                  'long-position': 'Long',
-                                  'short-position': 'Short',
-                                }
-                                return labels[line.type] || line.type
-                              })()}
-                            </span>
+                        <div key={line.id} className="space-y-1">
+                          <div
+                            onClick={() => handleSelectLine(isSelected ? null : line.id)}
+                            className={`flex items-center justify-between px-3 py-2 rounded-md transition-all duration-200 cursor-pointer ${
+                              isSelected
+                                ? 'bg-gradient-to-r from-blue-600/20 to-blue-500/20 border-l-4 border-blue-400 shadow-md'
+                                : 'bg-dark-bg/40 hover:bg-dark-bg/60 border-l-4 border-transparent'
+                            }`}
+                          >
+                            <div className="flex items-center gap-2 flex-1">
+                              <div
+                                className="w-6 h-0.5 rounded"
+                                style={{ backgroundColor: line.color }}
+                              />
+                              <span className="text-xs">${line.price.toFixed(2)}</span>
+                              <span className="text-[10px] text-text-secondary">
+                                {(() => {
+                                  const labels: Record<string, string> = {
+                                    'horizontal-line': 'H-Line',
+                                    'horizontal-ray': 'H-Ray',
+                                    'trend-line': 'Trend',
+                                    'rectangle': 'Rectangle',
+                                    'arrow-up': 'Arrow ↑',
+                                    'arrow-down': 'Arrow ↓',
+                                    'fibonacci': 'Fib',
+                                    'note': 'Note',
+                                    'measure': 'Measure',
+                                    'long-position': 'Long',
+                                    'short-position': 'Short',
+                                  }
+                                  return labels[line.type] || line.type
+                                })()}
+                              </span>
+                              {isHorizontalLine && (
+                                <button
+                                  onClick={(e) => {
+                                    e.stopPropagation()
+                                    if (onUpdateLine) {
+                                      onUpdateLine(line.id, { alertEnabled: !line.alertEnabled })
+                                    }
+                                  }}
+                                  className={`transition-colors ${
+                                    line.alertEnabled
+                                      ? 'text-yellow-400 hover:text-yellow-300'
+                                      : 'text-gray-500 hover:text-gray-400'
+                                  }`}
+                                  title={line.alertEnabled ? 'התראה פעילה' : 'הפעל התראה'}
+                                >
+                                  {line.alertEnabled ? <Bell size={12} /> : <BellOff size={12} />}
+                                </button>
+                              )}
+                            </div>
+                            {isSelected && (
+                              <button
+                                onClick={(e) => {
+                                  e.stopPropagation()
+                                  onDeleteLine(line.id)
+                                  handleSelectLine(null)
+                                }}
+                                className="text-red-400 hover:text-red-300 transition-colors font-semibold"
+                              >
+                                <Trash2 size={14} />
+                              </button>
+                            )}
                           </div>
-                          {isSelected && (
-                            <button
-                              onClick={(e) => {
-                                e.stopPropagation()
-                                onDeleteLine(line.id)
-                                handleSelectLine(null)
-                              }}
-                              className="text-red-400 hover:text-red-300 transition-colors font-semibold"
-                            >
-                              <Trash2 size={14} />
-                            </button>
+
+                          {/* Alert settings dropdown - shown when alert is enabled */}
+                          {isHorizontalLine && line.alertEnabled && isSelected && (
+                            <div className="mr-4 px-3 py-2 bg-dark-bg/60 border border-yellow-500/30 rounded-md">
+                              <div className="text-[10px] text-yellow-400 font-semibold mb-1.5">⚠️ הגדרות התראה</div>
+                              <div className="space-y-1">
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    checked={line.alertDirection === 'above'}
+                                    onChange={() => onUpdateLine?.(line.id, { alertDirection: 'above', alertTriggered: false })}
+                                    className="w-3 h-3"
+                                  />
+                                  <span className="text-[10px]">חציה מלמעלה למטה</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    checked={line.alertDirection === 'below'}
+                                    onChange={() => onUpdateLine?.(line.id, { alertDirection: 'below', alertTriggered: false })}
+                                    className="w-3 h-3"
+                                  />
+                                  <span className="text-[10px]">חציה מלמטה למעלה</span>
+                                </label>
+                                <label className="flex items-center gap-2 cursor-pointer">
+                                  <input
+                                    type="radio"
+                                    checked={line.alertDirection === 'both'}
+                                    onChange={() => onUpdateLine?.(line.id, { alertDirection: 'both', alertTriggered: false })}
+                                    className="w-3 h-3"
+                                  />
+                                  <span className="text-[10px]">חציה משני הכיוונים</span>
+                                </label>
+                              </div>
+                              {line.alertTriggered && (
+                                <div className="mt-2 text-[9px] text-orange-400">
+                                  ✅ התראה הופעלה - לאיפוס שנה כיוון
+                                </div>
+                              )}
+                            </div>
                           )}
                         </div>
                       )

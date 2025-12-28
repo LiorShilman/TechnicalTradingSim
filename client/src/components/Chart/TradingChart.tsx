@@ -5,6 +5,7 @@ import PendingOrderMenu from './PendingOrderMenu'
 import ChartToolsPanel from './ChartToolsPanel'
 import { type MASettings } from './IndicatorControls'
 import { type DrawingTool, type DrawnLine } from './DrawingControls'
+import toast from 'react-hot-toast'
 
 export default function TradingChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -1579,6 +1580,72 @@ export default function TradingChart() {
     localStorage.removeItem('trading-game-drawings')
   }
 
+  const handleUpdateLine = (id: string, updates: Partial<DrawnLine>) => {
+    setDrawnLines((prev) =>
+      prev.map((line) => (line.id === id ? { ...line, ...updates } : line))
+    )
+  }
+
+  // בדיקת התראות בעת מעבר נר חדש
+  const checkLineAlerts = (currentCandle: any, previousCandle: any) => {
+    if (!currentCandle || !previousCandle) return
+
+    drawnLinesRef.current.forEach((line) => {
+      // רק לקווים אופקיים עם התראה פעילה
+      if ((line.type !== 'horizontal-line' && line.type !== 'horizontal-ray') || !line.alertEnabled) {
+        return
+      }
+
+      // אם ההתראה כבר הופעלה, דלג
+      if (line.alertTriggered) {
+        return
+      }
+
+      const linePrice = line.price
+      const prevClose = previousCandle.close
+      const currClose = currentCandle.close
+
+      // בדיקה האם המחיר חצה את הקו
+      const wasPriceAbove = prevClose > linePrice
+      const isPriceAbove = currClose > linePrice
+
+      let shouldTrigger = false
+
+      if (line.alertDirection === 'above' && wasPriceAbove && !isPriceAbove) {
+        // חציה מלמעלה למטה
+        shouldTrigger = true
+      } else if (line.alertDirection === 'below' && !wasPriceAbove && isPriceAbove) {
+        // חציה מלמטה למעלה
+        shouldTrigger = true
+      } else if (line.alertDirection === 'both' && wasPriceAbove !== isPriceAbove) {
+        // חציה משני הכיוונים
+        shouldTrigger = true
+      }
+
+      if (shouldTrigger) {
+        // הפעלת התראה ויזואלית
+        const direction = isPriceAbove ? '↑' : '↓'
+        const message = `⚠️ התראת קו: ${direction} המחיר חצה את $${linePrice.toFixed(2)}`
+
+        // שימוש ב-toast מהמערכת הקיימת
+        toast.success(message, {
+          duration: 5000,
+          icon: '🔔',
+          style: {
+            background: '#1a1a2e',
+            color: '#fff',
+            border: '2px solid #FFD700',
+          },
+        })
+
+        // סימון שההתראה הופעלה
+        handleUpdateLine(line.id, { alertTriggered: true, lastPriceAbove: isPriceAbove })
+
+        console.log('🔔 Alert triggered:', message, { line, prevClose, currClose })
+      }
+    })
+  }
+
   // פונקציה ליצירת סימון עסקאות סגורות
   const createClosedTradeMarkers = (): any[] => {
     if (!gameState?.closedPositions || !gameState?.candles) return []
@@ -2019,6 +2086,12 @@ export default function TradingChart() {
           color: newCandle.close >= newCandle.open ? '#00c85380' : '#ff174480',
         })
 
+        // בדיקת התראות לקווים אופקיים
+        const previousCandle = gameState.candles[currentIndex - 1]
+        if (previousCandle) {
+          checkLineAlerts(newCandle, previousCandle)
+        }
+
         // עדכון MA 20 של Volume - רק אחרי שהמשתמש התקדם 20 נרות מהאינדקס ההתחלתי!
         if (candlesProgressed >= 20) {
           // חישוב אחורה: 20 נרות אחרונים כולל הנוכחי
@@ -2077,6 +2150,7 @@ export default function TradingChart() {
         onDeleteLine={handleDeleteLine}
         onClearAll={handleClearAllLines}
         onSelectLine={setSelectedLineId}
+        onUpdateLine={handleUpdateLine}
       />
 
       {/* Pending Order Menu */}
