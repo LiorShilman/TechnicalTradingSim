@@ -47,7 +47,7 @@ export default function TradingChart() {
   const activeToolRef = useRef<DrawingTool>('none') // ref for event listeners
   const [drawnLines, setDrawnLines] = useState<DrawnLine[]>([])
   const drawnLinesRef = useRef<DrawnLine[]>([]) // ✅ ref for event listeners to access current drawnLines
-  const drawnLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
+  const drawnLineSeriesRef = useRef<any[]>([]) // Can hold Line, Histogram, or any other series type
   const drawnMarkersRef = useRef<any[]>([]) // markers from drawing tools (arrows, notes)
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null)
   const [editingLineId, setEditingLineId] = useState<string | null>(null) // For edit modal
@@ -1227,12 +1227,12 @@ export default function TradingChart() {
           })
         }
       }
-      // כלי Long Position - סימולציה של עסקת LONG עם SL/TP
+      // כלי Long Position - סימולציה של עסקת LONG עם SL/TP כמלבנים מלאים
       else if (line.type === 'long-position' && line.startTime && line.startIndex !== undefined) {
         const isSelected = line.id === selectedLineId
-        const entryPrice = line.price
-        const sl = line.stopLoss
-        const tp = line.takeProfit
+        const entryPrice = Number(line.price)
+        const sl = line.stopLoss ? Number(line.stopLoss) : undefined
+        const tp = line.takeProfit ? Number(line.takeProfit) : undefined
 
         // חישוב זמן התחלה וסיום לפי startIndex ו-endIndex
         const startCandle = gameState.candles[line.startIndex]
@@ -1243,10 +1243,63 @@ export default function TradingChart() {
 
         const times = [startCandle.time, endCandle.time].sort((a, b) => a - b)
 
-        // קו Entry - לבן מקווקו
+        // יצירת המלבנים כ-HistogramSeries
+        if (sl && tp) {
+          // מלבן ירוק (profit zone) - בין Entry ל-TP
+          const profitZoneSeries = chartRef.current!.addHistogramSeries({
+            color: isSelected ? 'rgba(74, 222, 128, 0.3)' : 'rgba(34, 197, 94, 0.25)',
+            priceFormat: {
+              type: 'price',
+              precision: 2,
+              minMove: 0.01,
+            },
+            priceLineVisible: false,
+            lastValueVisible: false,
+            base: entryPrice, // בסיס במחיר Entry
+          })
+
+          // יצירת נתונים למלבן הירוק
+          const profitData = []
+          for (let i = line.startIndex; i <= endIndex; i++) {
+            profitData.push({
+              time: gameState.candles[i].time as Time,
+              value: tp, // גובה המלבן הוא TP
+              color: isSelected ? 'rgba(74, 222, 128, 0.3)' : 'rgba(34, 197, 94, 0.25)',
+            })
+          }
+          profitZoneSeries.setData(profitData)
+          drawnLineSeriesRef.current.push(profitZoneSeries)
+
+          // מלבן אדום (loss zone) - בין Entry ל-SL
+          const lossZoneSeries = chartRef.current!.addHistogramSeries({
+            color: isSelected ? 'rgba(248, 113, 113, 0.3)' : 'rgba(239, 68, 68, 0.25)',
+            priceFormat: {
+              type: 'price',
+              precision: 2,
+              minMove: 0.01,
+            },
+            priceLineVisible: false,
+            lastValueVisible: false,
+            base: entryPrice, // בסיס במחיר Entry
+          })
+
+          // יצירת נתונים למלבן האדום
+          const lossData = []
+          for (let i = line.startIndex; i <= endIndex; i++) {
+            lossData.push({
+              time: gameState.candles[i].time as Time,
+              value: sl, // גובה המלבן הוא SL (יהיה שלילי יחסית ל-Entry)
+              color: isSelected ? 'rgba(248, 113, 113, 0.3)' : 'rgba(239, 68, 68, 0.25)',
+            })
+          }
+          lossZoneSeries.setData(lossData)
+          drawnLineSeriesRef.current.push(lossZoneSeries)
+        }
+
+        // קו Entry - לבן מקווקו (ציר אמצע)
         const entrySeries = chartRef.current!.addLineSeries({
           color: isSelected ? '#ffffff' : '#d1d5db',
-          lineWidth: isSelected ? 3 : 2,
+          lineWidth: isSelected ? 2 : 1,
           priceLineVisible: false,
           lastValueVisible: false,
           lineStyle: 1, // dotted
@@ -1256,86 +1309,6 @@ export default function TradingChart() {
           { time: times[1] as Time, value: entryPrice },
         ])
         drawnLineSeriesRef.current.push(entrySeries)
-
-        // קו Stop Loss - אדום
-        if (sl) {
-          const slSeries = chartRef.current!.addLineSeries({
-            color: isSelected ? '#f87171' : '#ef4444',
-            lineWidth: isSelected ? 3 : 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            lineStyle: 2, // dashed
-          })
-          slSeries.setData([
-            { time: times[0] as Time, value: sl },
-            { time: times[1] as Time, value: sl },
-          ])
-          drawnLineSeriesRef.current.push(slSeries)
-        }
-
-        // קו Take Profit - ירוק
-        if (tp) {
-          const tpSeries = chartRef.current!.addLineSeries({
-            color: isSelected ? '#4ade80' : '#22c55e',
-            lineWidth: isSelected ? 3 : 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            lineStyle: 2, // dashed
-          })
-          tpSeries.setData([
-            { time: times[0] as Time, value: tp },
-            { time: times[1] as Time, value: tp },
-          ])
-          drawnLineSeriesRef.current.push(tpSeries)
-        }
-
-        // אזורי רווח/הפסד ויזואליים - מספר קווים דקים צבעוניים (LONG)
-        if (sl && tp) {
-          const profitSteps = 20 // יותר קווים = אזור יותר מלא
-          const lossSteps = 20
-
-          // יצירת קווים ירוקים בין Entry ל-TP
-          for (let i = 0; i <= profitSteps; i++) {
-            const ratio = i / profitSteps
-            const price = entryPrice + (tp - entryPrice) * ratio
-            const opacity = 0.15 // שקיפות מוגברת
-
-            const profitLine = chartRef.current!.addLineSeries({
-              color: `rgba(34, 197, 94, ${opacity})`,
-              lineWidth: 3, // קו יותר עבה
-              priceLineVisible: false,
-              lastValueVisible: false,
-              lineStyle: 0,
-            })
-
-            profitLine.setData([
-              { time: times[0] as Time, value: price },
-              { time: times[1] as Time, value: price },
-            ])
-            drawnLineSeriesRef.current.push(profitLine)
-          }
-
-          // יצירת קווים אדומים בין Entry ל-SL
-          for (let i = 0; i <= lossSteps; i++) {
-            const ratio = i / lossSteps
-            const price = entryPrice - (entryPrice - sl) * ratio
-            const opacity = 0.15
-
-            const lossLine = chartRef.current!.addLineSeries({
-              color: `rgba(239, 68, 68, ${opacity})`,
-              lineWidth: 3,
-              priceLineVisible: false,
-              lastValueVisible: false,
-              lineStyle: 0,
-            })
-
-            lossLine.setData([
-              { time: times[0] as Time, value: price },
-              { time: times[1] as Time, value: price },
-            ])
-            drawnLineSeriesRef.current.push(lossLine)
-          }
-        }
 
         // חישוב R:R ו-P&L
         if (sl && tp) {
@@ -1354,46 +1327,23 @@ export default function TradingChart() {
           })
         }
 
-        // קו אנכי בקצה - ידית resize בולטת
-        // יצירת קו אנכי עם נקודות רבות (top ל-bottom של אזור)
-        const topPrice = sl && tp ? Math.max(entryPrice, tp, sl) : entryPrice * 1.05
-        const bottomPrice = sl && tp ? Math.min(entryPrice, tp, sl) : entryPrice * 0.95
-
-        for (let i = 0; i <= 20; i++) {
-          const ratio = i / 20
-          const price = bottomPrice + (topPrice - bottomPrice) * ratio
-
-          const verticalSegment = chartRef.current!.addLineSeries({
-            color: isSelected ? '#FFD700' : '#FF9800',
-            lineWidth: 4,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            lineStyle: 0,
-          })
-
-          verticalSegment.setData([
-            { time: endCandle.time as Time, value: price }
-          ])
-          drawnLineSeriesRef.current.push(verticalSegment)
-        }
-
-        // Resize marker בסוף - ידית לגרירה (תמיד מוצג)
+        // Resize marker בסוף - ידית לגרירה
         const endTime = endCandle.time
         markers.push({
           time: endTime as Time,
-          position: 'inBar' as const, // ממוקם על הנר במקום מעל
-          color: isSelected ? '#FFD700' : '#FF9800', // כתום בהיר או זהב אם נבחר
+          position: 'inBar' as const,
+          color: isSelected ? '#FFD700' : '#FF9800',
           shape: 'square' as const,
-          text: '⇔', // סמל resize
-          size: 2, // גדול יותר לזיהוי קל
+          text: '⇔',
+          size: 2,
         })
       }
-      // כלי Short Position - סימולציה של עסקת SHORT עם SL/TP
+      // כלי Short Position - סימולציה של עסקת SHORT עם SL/TP כמלבנים מלאים
       else if (line.type === 'short-position' && line.startTime && line.startIndex !== undefined) {
         const isSelected = line.id === selectedLineId
-        const entryPrice = line.price
-        const sl = line.stopLoss
-        const tp = line.takeProfit
+        const entryPrice = Number(line.price)
+        const sl = line.stopLoss ? Number(line.stopLoss) : undefined
+        const tp = line.takeProfit ? Number(line.takeProfit) : undefined
 
         // חישוב זמן התחלה וסיום לפי startIndex ו-endIndex
         const startCandle = gameState.candles[line.startIndex]
@@ -1404,10 +1354,63 @@ export default function TradingChart() {
 
         const times = [startCandle.time, endCandle.time].sort((a, b) => a - b)
 
-        // קו Entry - לבן מקווקו
+        // יצירת המלבנים כ-HistogramSeries
+        if (sl && tp) {
+          // מלבן כחול (profit zone) - בין Entry ל-TP (מטה ב-SHORT)
+          const profitZoneSeries = chartRef.current!.addHistogramSeries({
+            color: isSelected ? 'rgba(96, 165, 250, 0.3)' : 'rgba(59, 130, 246, 0.25)',
+            priceFormat: {
+              type: 'price',
+              precision: 2,
+              minMove: 0.01,
+            },
+            priceLineVisible: false,
+            lastValueVisible: false,
+            base: entryPrice, // בסיס במחיר Entry
+          })
+
+          // יצירת נתונים למלבן הכחול (TP מתחת Entry)
+          const profitData = []
+          for (let i = line.startIndex; i <= endIndex; i++) {
+            profitData.push({
+              time: gameState.candles[i].time as Time,
+              value: tp, // גובה המלבן הוא TP (שלילי יחסית ל-Entry)
+              color: isSelected ? 'rgba(96, 165, 250, 0.3)' : 'rgba(59, 130, 246, 0.25)',
+            })
+          }
+          profitZoneSeries.setData(profitData)
+          drawnLineSeriesRef.current.push(profitZoneSeries)
+
+          // מלבן אדום (loss zone) - בין Entry ל-SL (מעלה ב-SHORT)
+          const lossZoneSeries = chartRef.current!.addHistogramSeries({
+            color: isSelected ? 'rgba(248, 113, 113, 0.3)' : 'rgba(239, 68, 68, 0.25)',
+            priceFormat: {
+              type: 'price',
+              precision: 2,
+              minMove: 0.01,
+            },
+            priceLineVisible: false,
+            lastValueVisible: false,
+            base: entryPrice, // בסיס במחיר Entry
+          })
+
+          // יצירת נתונים למלבן האדום (SL מעל Entry)
+          const lossData = []
+          for (let i = line.startIndex; i <= endIndex; i++) {
+            lossData.push({
+              time: gameState.candles[i].time as Time,
+              value: sl, // גובה המלבן הוא SL (חיובי יחסית ל-Entry)
+              color: isSelected ? 'rgba(248, 113, 113, 0.3)' : 'rgba(239, 68, 68, 0.25)',
+            })
+          }
+          lossZoneSeries.setData(lossData)
+          drawnLineSeriesRef.current.push(lossZoneSeries)
+        }
+
+        // קו Entry - לבן מקווקו (ציר אמצע)
         const entrySeries = chartRef.current!.addLineSeries({
           color: isSelected ? '#ffffff' : '#d1d5db',
-          lineWidth: isSelected ? 3 : 2,
+          lineWidth: isSelected ? 2 : 1,
           priceLineVisible: false,
           lastValueVisible: false,
           lineStyle: 1, // dotted
@@ -1417,86 +1420,6 @@ export default function TradingChart() {
           { time: times[1] as Time, value: entryPrice },
         ])
         drawnLineSeriesRef.current.push(entrySeries)
-
-        // קו Stop Loss - אדום (מעל entry ב-SHORT)
-        if (sl) {
-          const slSeries = chartRef.current!.addLineSeries({
-            color: isSelected ? '#f87171' : '#ef4444',
-            lineWidth: isSelected ? 3 : 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            lineStyle: 2, // dashed
-          })
-          slSeries.setData([
-            { time: times[0] as Time, value: sl },
-            { time: times[1] as Time, value: sl },
-          ])
-          drawnLineSeriesRef.current.push(slSeries)
-        }
-
-        // קו Take Profit - ירוק (מתחת entry ב-SHORT)
-        if (tp) {
-          const tpSeries = chartRef.current!.addLineSeries({
-            color: isSelected ? '#4ade80' : '#22c55e',
-            lineWidth: isSelected ? 3 : 2,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            lineStyle: 2, // dashed
-          })
-          tpSeries.setData([
-            { time: times[0] as Time, value: tp },
-            { time: times[1] as Time, value: tp },
-          ])
-          drawnLineSeriesRef.current.push(tpSeries)
-        }
-
-        // אזורי רווח/הפסד ויזואליים - מספר קווים דקים צבעוניים (SHORT)
-        if (sl && tp) {
-          const profitSteps = 20
-          const lossSteps = 20
-
-          // יצירת קווים כחולים בין Entry ל-TP (מטה ב-SHORT)
-          for (let i = 0; i <= profitSteps; i++) {
-            const ratio = i / profitSteps
-            const price = entryPrice - (entryPrice - tp) * ratio
-            const opacity = 0.15
-
-            const profitLine = chartRef.current!.addLineSeries({
-              color: `rgba(59, 130, 246, ${opacity})`, // כחול ל-SHORT
-              lineWidth: 3,
-              priceLineVisible: false,
-              lastValueVisible: false,
-              lineStyle: 0,
-            })
-
-            profitLine.setData([
-              { time: times[0] as Time, value: price },
-              { time: times[1] as Time, value: price },
-            ])
-            drawnLineSeriesRef.current.push(profitLine)
-          }
-
-          // יצירת קווים אדומים בין Entry ל-SL (מעלה ב-SHORT)
-          for (let i = 0; i <= lossSteps; i++) {
-            const ratio = i / lossSteps
-            const price = entryPrice + (sl - entryPrice) * ratio
-            const opacity = 0.15
-
-            const lossLine = chartRef.current!.addLineSeries({
-              color: `rgba(239, 68, 68, ${opacity})`,
-              lineWidth: 3,
-              priceLineVisible: false,
-              lastValueVisible: false,
-              lineStyle: 0,
-            })
-
-            lossLine.setData([
-              { time: times[0] as Time, value: price },
-              { time: times[1] as Time, value: price },
-            ])
-            drawnLineSeriesRef.current.push(lossLine)
-          }
-        }
 
         // חישוב R:R ו-P&L
         if (sl && tp) {
@@ -1515,38 +1438,15 @@ export default function TradingChart() {
           })
         }
 
-        // קו אנכי בקצה - ידית resize בולטת
-        // יצירת קו אנכי עם נקודות רבות (top ל-bottom של אזור)
-        const topPrice = sl && tp ? Math.max(entryPrice, tp, sl) : entryPrice * 1.05
-        const bottomPrice = sl && tp ? Math.min(entryPrice, tp, sl) : entryPrice * 0.95
-
-        for (let i = 0; i <= 20; i++) {
-          const ratio = i / 20
-          const price = bottomPrice + (topPrice - bottomPrice) * ratio
-
-          const verticalSegment = chartRef.current!.addLineSeries({
-            color: isSelected ? '#FFD700' : '#FF9800',
-            lineWidth: 4,
-            priceLineVisible: false,
-            lastValueVisible: false,
-            lineStyle: 0,
-          })
-
-          verticalSegment.setData([
-            { time: endCandle.time as Time, value: price }
-          ])
-          drawnLineSeriesRef.current.push(verticalSegment)
-        }
-
-        // Resize marker בסוף - ידית לגרירה (תמיד מוצג)
+        // Resize marker בסוף - ידית לגרירה
         const endTime = endCandle.time
         markers.push({
           time: endTime as Time,
-          position: 'inBar' as const, // ממוקם על הנר במקום מתחת
-          color: isSelected ? '#FFD700' : '#FF9800', // כתום בהיר או זהב אם נבחר
+          position: 'inBar' as const,
+          color: isSelected ? '#FFD700' : '#FF9800',
           shape: 'square' as const,
-          text: '⇔', // סמל resize
-          size: 2, // גדול יותר לזיהוי קל
+          text: '⇔',
+          size: 2,
         })
       }
       // כלי Rectangle - מלבן צבעוני עם שקיפות
