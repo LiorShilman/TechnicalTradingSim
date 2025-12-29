@@ -34,6 +34,7 @@ export default function TradingChart() {
   const volumeMASeriesRef = useRef<ISeriesApi<'Line'> | null>(null)
   const patternLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
   const pendingOrderLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([])
+  const closedPositionLineSeriesRef = useRef<LineSeriesApi<'Line'>[]>([]) // קווי חיבור לפוזיציות סגורות
   const lastCandleIndexRef = useRef<number>(-1)
   const initialIndexRef = useRef<number>(-1) // האינדקס ההתחלתי של המשחק
   const lastGameIdRef = useRef<string | null>(null) // מעקב אחרי gameId כדי לזהות משחק חדש/טעון
@@ -2134,6 +2135,54 @@ if (sl && tp) {
     })
   }
 
+  // פונקציה ליצירת קווי חיבור לפוזיציות סגורות
+  const createClosedPositionLines = () => {
+    if (!chartRef.current || !gameState?.closedPositions || !gameState?.candles) return
+
+    // הסרת קווים ישנים
+    closedPositionLineSeriesRef.current.forEach((series: ISeriesApi<'Line'>) => {
+      try {
+        chartRef.current?.removeSeries(series)
+      } catch (e) {
+        // Series might already be removed, ignore error
+      }
+    })
+    closedPositionLineSeriesRef.current = []
+
+    // יצירת קו חיבור לכל פוזיציה סגורה (אם גם הכניסה וגם היציאה כבר התרחשו)
+    gameState.closedPositions.forEach((position) => {
+      // וידוא שגם הכניסה וגם היציאה כבר התרחשו
+      if (position.exitIndex === undefined ||
+          position.entryIndex > gameState.currentIndex ||
+          position.exitIndex > gameState.currentIndex) {
+        return // לא מציגים את הקו אם היציאה עדיין לא התרחשה
+      }
+
+      const isProfitable = (position.exitPnL || 0) > 0
+      const color = isProfitable ? '#22c55e' : '#ef4444' // ירוק לרווח, אדום להפסד
+
+      // יצירת קו חיבור מנקודת כניסה לנקודת יציאה
+      const connectionLine = chartRef.current!.addLineSeries({
+        color,
+        lineWidth: 2,
+        lineStyle: 0, // solid line
+        priceLineVisible: false,
+        lastValueVisible: false,
+      })
+
+      // נתוני הקו - מכניסה ליציאה
+      const lineData = [
+        { time: position.entryTime as Time, value: position.entryPrice },
+        { time: position.exitTime as Time, value: position.exitPrice },
+      ]
+
+      connectionLine.setData(lineData)
+      closedPositionLineSeriesRef.current.push(connectionLine)
+    })
+
+    console.log(`📊 Created ${closedPositionLineSeriesRef.current.length} closed position connection lines`)
+  }
+
   // פונקציה להצגת קו תצוגה מקדימה לפקודה עתידית
   const showPreviewLine = (targetPrice: number, orderType: 'long' | 'short', stopLoss?: number, takeProfit?: number) => {
     if (!chartRef.current || !gameState?.candles) return
@@ -2283,6 +2332,9 @@ if (sl && tp) {
       // יצירת סימון פקודות עתידיות
       createPendingOrderLines()
 
+      // יצירת קווי חיבור לפוזיציות סגורות
+      createClosedPositionLines()
+
       if (chartRef.current && visibleCandles.length > 0) {
         // תמיד הצג את כל הנרות עד האינדקס הנוכחי
         console.log(`📊 Displaying ${visibleCandles.length} candles (0 to ${currentIndex})`)
@@ -2341,6 +2393,7 @@ if (sl && tp) {
       lastCandleIndexRef.current = currentIndex
       createPatternMarkers()
       createPendingOrderLines()
+      createClosedPositionLines()
 
       if (chartRef.current) {
         chartRef.current.timeScale().scrollToPosition(3, true)
@@ -2407,6 +2460,9 @@ if (sl && tp) {
 
         // עדכון סימון פקודות עתידיות (צריך להתעדכן בכל נר כי הקו מתארך)
         createPendingOrderLines()
+
+        // עדכון קווי חיבור לפוזיציות סגורות (צריך להתעדכן כאשר פוזיציה נסגרת)
+        createClosedPositionLines()
 
         // גלילה אוטומטית חלקה לנר החדש
         if (chartRef.current) {
