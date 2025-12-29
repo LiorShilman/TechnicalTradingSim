@@ -558,8 +558,6 @@ export default function TradingChart() {
       if (price === null || price === undefined || time === null || time === undefined) return
 
       // Check if we clicked near a position tool's SL or TP line
-      const priceTolerance = 0.02 // 2% price tolerance
-
       for (const line of drawnLinesRef.current) {
         if (line.type !== 'long-position' && line.type !== 'short-position') continue
 
@@ -588,28 +586,34 @@ export default function TradingChart() {
           }
         }
 
-        // Check SL line
-        if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < priceTolerance) {
-          // השבתת גרירת הגרף בזמן drag של הקו
-          chartRef.current?.applyOptions({
-            handleScroll: false,
-            handleScale: false,
-          })
-          setDraggingLine({ lineId: line.id, lineType: 'stopLoss' })
-          e.preventDefault()
-          return
+        // Check SL line - using relative tolerance (2% of SL price)
+        if (line.stopLoss) {
+          const slTolerance = line.stopLoss * 0.02 // 2% of SL price
+          if (Math.abs(price - line.stopLoss) < slTolerance) {
+            // השבתת גרירת הגרף בזמן drag של הקו
+            chartRef.current?.applyOptions({
+              handleScroll: false,
+              handleScale: false,
+            })
+            setDraggingLine({ lineId: line.id, lineType: 'stopLoss' })
+            e.preventDefault()
+            return
+          }
         }
 
-        // Check TP line
-        if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < priceTolerance) {
-          // השבתת גרירת הגרף בזמן drag של הקו
-          chartRef.current?.applyOptions({
-            handleScroll: false,
-            handleScale: false,
-          })
-          setDraggingLine({ lineId: line.id, lineType: 'takeProfit' })
-          e.preventDefault()
-          return
+        // Check TP line - using relative tolerance (2% of TP price)
+        if (line.takeProfit) {
+          const tpTolerance = line.takeProfit * 0.02 // 2% of TP price
+          if (Math.abs(price - line.takeProfit) < tpTolerance) {
+            // השבתת גרירת הגרף בזמן drag של הקו
+            chartRef.current?.applyOptions({
+              handleScroll: false,
+              handleScale: false,
+            })
+            setDraggingLine({ lineId: line.id, lineType: 'takeProfit' })
+            e.preventDefault()
+            return
+          }
         }
       }
     }
@@ -657,31 +661,59 @@ export default function TradingChart() {
           }
 
           if (newEndIndex !== -1) {
-            setDrawnLines(prev => prev.map(line => {
-              if (line.id !== lineId) return line
-              // Ensure endIndex is between startIndex and currentIndex
-              const minEnd = line.startIndex !== undefined ? line.startIndex + 5 : 5 // minimum 5 candles
-              const maxEnd = gameState.currentIndex
-              const clampedEnd = Math.max(minEnd, Math.min(newEndIndex, maxEnd))
-              return { ...line, endIndex: clampedEnd }
-            }))
+            setDrawnLines(prev => {
+              const updated = prev.map(line => {
+                if (line.id !== lineId) return line
+                // Ensure endIndex is between startIndex and currentIndex
+                const minEnd = line.startIndex !== undefined ? line.startIndex + 5 : 5 // minimum 5 candles
+                const maxEnd = gameState.currentIndex
+                const clampedEnd = Math.max(minEnd, Math.min(newEndIndex, maxEnd))
+                return { ...line, endIndex: clampedEnd }
+              })
+              // ✅ עדכון מיידי של ref כדי שהגרירה תעבוד חלק
+              drawnLinesRef.current = updated
+              return updated
+            })
           }
         } else if (lineType === 'stopLoss') {
-          // Update SL price
-          setDrawnLines(prev => prev.map(line => {
-            if (line.id !== lineId) return line
-            return { ...line, stopLoss: price }
-          }))
+          // Update SL price with constraints
+          setDrawnLines(prev => {
+            const updated = prev.map(line => {
+              if (line.id !== lineId) return line
+
+              // הגבלה: SL לא יכול לחצות את Entry
+              const entryPrice = Number(line.price)
+              const minSL = line.type === 'long-position' ? entryPrice * 0.999 : 0
+              const maxSL = line.type === 'short-position' ? entryPrice * 1.001 : Infinity
+              const newSL = Math.max(minSL, Math.min(price, maxSL))
+
+              return { ...line, stopLoss: newSL }
+            })
+            // ✅ עדכון מיידי של ref כדי שהגרירה תעבוד חלק
+            drawnLinesRef.current = updated
+            return updated
+          })
         } else if (lineType === 'takeProfit') {
-          // Update TP price
-          setDrawnLines(prev => prev.map(line => {
-            if (line.id !== lineId) return line
-            return { ...line, takeProfit: price }
-          }))
+          // Update TP price with constraints
+          setDrawnLines(prev => {
+            const updated = prev.map(line => {
+              if (line.id !== lineId) return line
+
+              // הגבלה: TP לא יכול לחצות את Entry
+              const entryPrice = Number(line.price)
+              const minTP = line.type === 'short-position' ? 0 : entryPrice * 1.001
+              const maxTP = line.type === 'long-position' ? Infinity : entryPrice * 0.999
+              const newTP = Math.max(minTP, Math.min(price, maxTP))
+
+              return { ...line, takeProfit: newTP }
+            })
+            // ✅ עדכון מיידי של ref כדי שהגרירה תעבוד חלק
+            drawnLinesRef.current = updated
+            return updated
+          })
         }
       } else {
         // Not dragging - check if we're hovering over a draggable line/marker and change cursor
-        const priceTolerance = 0.02
         let isOverDraggableLine = false
         let isOverResizeMarker = false
 
@@ -706,14 +738,22 @@ export default function TradingChart() {
               }
             }
 
-            // Check if hovering over SL or TP line
-            if (line.stopLoss && Math.abs((price - line.stopLoss) / line.stopLoss) < priceTolerance) {
-              isOverDraggableLine = true
-              break
+            // Check if hovering over SL line - using relative tolerance (2% of SL price)
+            if (line.stopLoss) {
+              const slTolerance = line.stopLoss * 0.02
+              if (Math.abs(price - line.stopLoss) < slTolerance) {
+                isOverDraggableLine = true
+                break
+              }
             }
-            if (line.takeProfit && Math.abs((price - line.takeProfit) / line.takeProfit) < priceTolerance) {
-              isOverDraggableLine = true
-              break
+
+            // Check if hovering over TP line - using relative tolerance (2% of TP price)
+            if (line.takeProfit) {
+              const tpTolerance = line.takeProfit * 0.02
+              if (Math.abs(price - line.takeProfit) < tpTolerance) {
+                isOverDraggableLine = true
+                break
+              }
             }
           }
         }
