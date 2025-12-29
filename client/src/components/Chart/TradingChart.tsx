@@ -559,8 +559,12 @@ export default function TradingChart() {
       if (price === null || price === undefined || time === null || time === undefined) return
 
       // Check if we clicked near a position tool's SL or TP line
+      // ✅ רק אם הפוזיציה נבחרה מראש ברשימה
       for (const line of drawnLinesRef.current) {
         if (line.type !== 'long-position' && line.type !== 'short-position') continue
+
+        // ✅ גרירה מותרת רק לפוזיציה שנבחרה
+        if (line.id !== selectedLineId) continue
 
         // Check for resize handle click (at endIndex time)
         if (line.endIndex !== undefined && gameState) {
