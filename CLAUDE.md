@@ -381,7 +381,11 @@ Lightweight Charts (TradingView) integration:
     - Delete button appears only for selected items (prevents accidental deletion)
   - **Crosshair behavior**: Mode 0 (normal) - smooth continuous movement without magnetism to candles
   - **Marker time ordering**: All markers (patterns + drawings) sorted by time before passing to lightweight-charts API
-  - **localStorage persistence**: All drawn lines saved and restored across sessions
+  - **localStorage persistence by file**: All drawn lines saved and restored across sessions
+    - Storage key: `trading-game-drawings-${sourceFileName}` (per CSV file, not per game)
+    - Drawings persist when loading same CSV file multiple times
+    - Survives game resets and page refreshes
+    - Debug logging: `💾 Saved N drawings`, `📐 Loaded N drawings`, `➕ Added tool`, `🗑️ Deleted line`
   - **Hebrew descriptions**: Each tool has Hebrew tooltip explaining its use
 - **Pending Orders**: Right-click on chart to create pending order at exact price
   - Uses `candlestickSeriesRef.current.coordinateToPrice(relativeY)` for accurate price detection
@@ -469,6 +473,35 @@ The app persists account balance across sessions using localStorage:
 - Saved balance carried over to new games
 - Reset button available to clear balance and restart with default $10,000
 - Implementation in `gameStore.ts`: saves `account.equity` to `localStorage.carryOverBalance`
+
+### Save and Exit with Stats Display
+The "שמור וצא" (Save and Exit) button provides comprehensive game statistics before returning to menu:
+
+**Flow:**
+1. User clicks "שמור וצא" button in ChartControls
+2. `saveAndExit()` in gameStore saves game state to localStorage
+3. After 500ms delay (for toast notification), sets `showStats: true`
+4. GameStats modal appears with full statistics
+
+**GameStats Modal Behavior:**
+- **When game is complete** (`isComplete === true`):
+  - Shows only "שחק שוב" (Play Again) button
+  - Clicking it calls `resetGame()` and returns to start screen
+
+- **When saved mid-game** (`showStats === true` but not `isComplete`):
+  - Shows TWO buttons side-by-side:
+    - "המשך לשחק" (Continue Playing): Sets `showStats: false`, returns to game
+    - "שחק שוב" (Play Again): Calls `resetGame()`, starts fresh game
+
+**State Management:**
+- `showStats: boolean` in gameStore controls modal visibility
+- `resetGame()` explicitly sets `showStats: false` to clear state
+- Both `isComplete` and `showStats` trigger stats display: `{(gameState?.isComplete || showStats) && <GameStats />}`
+
+**User Experience:**
+- Allows reviewing performance mid-game without losing progress
+- Clear choice between continuing current game or starting new one
+- Toast confirmation ("משחק נשמר בהצלחה! 💾") before stats appear
 
 ### Dynamic Moving Averages Architecture
 The MA system supports unlimited moving averages with dynamic management:

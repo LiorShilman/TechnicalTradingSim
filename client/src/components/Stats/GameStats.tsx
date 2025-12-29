@@ -2,9 +2,11 @@ import { Trophy, TrendingUp, Target, Award } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
 
 export default function GameStats() {
-  const { gameState, resetGame } = useGameStore()
+  const { gameState, showStats, resetGame } = useGameStore()
 
-  if (!gameState?.isComplete) return null
+  // הצג את הסטטיסטיקות אם המשחק הסתיים או אם המשתמש ביקש (שמור ויציאה)
+  if (!gameState?.isComplete && !showStats) return null
+  if (!gameState) return null
 
   const { stats, account } = gameState
   const totalReturn = ((account.equity - account.initialBalance) / account.initialBalance) * 100
@@ -180,12 +182,31 @@ export default function GameStats() {
 
         {/* Action */}
         <div className="p-6 border-t border-dark-border">
-          <button
-            onClick={resetGame}
-            className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all"
-          >
-            שחק שוב
-          </button>
+          {showStats && !gameState.isComplete ? (
+            // אם המשתמש שמר ויצא (אבל המשחק לא הסתיים) - הצע לחזור או להתחיל משחק חדש
+            <div className="flex gap-3">
+              <button
+                onClick={() => useGameStore.setState({ showStats: false })}
+                className="flex-1 px-6 py-3 bg-green-600 hover:bg-green-700 rounded-lg font-semibold transition-all"
+              >
+                המשך לשחק
+              </button>
+              <button
+                onClick={resetGame}
+                className="flex-1 px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all"
+              >
+                שחק שוב
+              </button>
+            </div>
+          ) : (
+            // אם המשחק הסתיים - רק כפתור "שחק שוב"
+            <button
+              onClick={resetGame}
+              className="w-full px-6 py-3 bg-gradient-to-r from-blue-500 to-purple-600 rounded-lg font-semibold hover:from-blue-600 hover:to-purple-700 transition-all"
+            >
+              שחק שוב
+            </button>
+          )}
         </div>
       </div>
     </div>

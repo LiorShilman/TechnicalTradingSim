@@ -1,5 +1,6 @@
-import { useEffect, useRef, useState } from 'react'
-import { createChart, IChartApi, ISeriesApi, ISeriesApi as LineSeriesApi, Time, BarPrice } from 'lightweight-charts'
+import { useEffect, useRef, useState, type MouseEvent as ReactMouseEvent } from 'react'
+import { createChart, type IChartApi, type ISeriesApi, type Time, type BarPrice } from 'lightweight-charts'
+import type { ISeriesApi as LineSeriesApi } from 'lightweight-charts'
 import { useGameStore } from '@/stores/gameStore'
 import PendingOrderMenu from './PendingOrderMenu'
 import ChartToolsPanel from './ChartToolsPanel'
@@ -8,6 +9,23 @@ import { type DrawingTool, type DrawnLine } from './DrawingControls'
 import toast from 'react-hot-toast'
 import { telegramService } from '@/services/telegramNotifications'
 
+
+// --- Risk/Reward Zone overlay (DOM-based rectangles) ---
+// Lightweight-Charts v4 doesn't provide solid draggable rectangles out of the box.
+// We render two filled rectangles (profit/loss) as absolutely positioned DIV overlays.
+// Dragging is done via small TP/SL handles and reuses the existing stopLoss/takeProfit drag logic.
+
+type ZoneOverlay = {
+  lineId: string
+  positionType: 'long-position' | 'short-position'
+  profit: { left: number; top: number; width: number; height: number; fill: string }
+  loss: { left: number; top: number; width: number; height: number; fill: string }
+  // handle positions (near right edge)
+  tpHandle?: { x: number; y: number }
+  slHandle?: { x: number; y: number }
+  startHandle?: { x: number; y: number }
+  endHandle?: { x: number; y: number }
+}
 export default function TradingChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null)
   const chartRef = useRef<IChartApi | null>(null)
@@ -50,6 +68,17 @@ export default function TradingChart() {
   const drawnLineSeriesRef = useRef<any[]>([]) // Can hold Line, Histogram, or any other series type
   const drawnMarkersRef = useRef<any[]>([]) // markers from drawing tools (arrows, notes)
   const [selectedLineId, setSelectedLineId] = useState<string | null>(null)
+  const selectedLineIdRef = useRef<string | null>(null)
+  useEffect(() => {
+    selectedLineIdRef.current = selectedLineId
+  }, [selectedLineId])
+
+  const [zoneOverlays, setZoneOverlays] = useState<ZoneOverlay[]>([])
+  const zoneDragRef = useRef<
+    | { lineId: string; kind: 'sl' | 'tp' }
+    | null
+  >(null)
+
   const [editingLineId, setEditingLineId] = useState<string | null>(null) // For edit modal
 
   // For multi-point tools (trend line, fibonacci, ray)
@@ -69,10 +98,10 @@ export default function TradingChart() {
   // State for dragging SL/TP lines or resizing position width
   const [draggingLine, setDraggingLine] = useState<{
     lineId: string
-    lineType: 'stopLoss' | 'takeProfit' | 'entry' | 'resize'
+    lineType: 'stopLoss' | 'takeProfit' | 'entry' | 'resizeStart' | 'resizeEnd'
     originalPrice?: number // המחיר המקורי של הקו שנלחץ - לזיהוי ייחודי
   } | null>(null)
-  const draggingLineRef = useRef<{ lineId: string; lineType: 'stopLoss' | 'takeProfit' | 'entry' | 'resize'; originalPrice?: number } | null>(null)
+  const draggingLineRef = useRef<{ lineId: string; lineType: 'stopLoss' | 'takeProfit' | 'entry' | 'resizeStart' | 'resizeEnd'; originalPrice?: number } | null>(null)
 
   // Preview lines for pending order (shown while menu is open)
   const previewLineSeriesRef = useRef<ISeriesApi<'Line'>[]>([])
@@ -97,34 +126,179 @@ export default function TradingChart() {
     drawnLinesRef.current = drawnLines
   }, [drawnLines])
 
-  // Load drawn lines from localStorage (per game)
-  useEffect(() => {
-    if (!gameState?.id) return
+  
+  // --- Zone overlays recalculation ---
+  const recalcZoneOverlays = () => {
+    const chart = chartRef.current
+    const series = candlestickSeriesRef.current
+    const container = chartContainerRef.current
+    const candles = gameState?.candles
 
-    const saved = localStorage.getItem(`trading-game-drawings-${gameState.id}`)
+    if (!chart || !series || !container || !candles || candles.length === 0) {
+      setZoneOverlays([])
+      return
+    }
+
+    const timeScale = chart.timeScale()
+    const overlays: ZoneOverlay[] = []
+
+    const currentIndex = Math.min(gameState?.currentIndex ?? candles.length - 1, candles.length - 1)
+
+    for (const line of drawnLinesRef.current) {
+      if (line.type !== 'long-position' && line.type !== 'short-position') continue
+
+      const entry = Number((line as any).price)
+      const sl = (line as any).stopLoss as number | undefined
+      const tp = (line as any).takeProfit as number | undefined
+      if (!Number.isFinite(entry) || !Number.isFinite(sl) || !Number.isFinite(tp)) continue
+
+      const startIdx = Math.max(0, Math.min((line as any).startIndex ?? currentIndex, candles.length - 1))
+      const endIdx = Math.max(0, Math.min((line as any).endIndex ?? currentIndex, candles.length - 1))
+      const a = candles[Math.min(startIdx, endIdx)]
+      const b = candles[Math.max(startIdx, endIdx)]
+      if (!a || !b) continue
+
+      const x1 = timeScale.timeToCoordinate(a.time as any)
+      const x2 = timeScale.timeToCoordinate(b.time as any)
+      if (x1 == null || x2 == null) continue
+
+      const left = Math.min(x1, x2)
+      const right = Math.max(x1, x2)
+      const width = right - left
+      if (width <= 1) continue
+
+      const yEntry = series.priceToCoordinate(entry as any)
+      const ySL = series.priceToCoordinate(sl as any)
+      const yTP = series.priceToCoordinate(tp as any)
+      if (yEntry == null || ySL == null || yTP == null) continue
+
+      const profitTop = Math.min(yEntry, yTP)
+      const profitBottom = Math.max(yEntry, yTP)
+      const lossTop = Math.min(yEntry, ySL)
+      const lossBottom = Math.max(yEntry, ySL)
+
+      const isSelected = selectedLineIdRef.current === (line as any).id
+
+      const profitFill = isSelected ? 'rgba(74, 222, 128, 0.30)' : 'rgba(34, 197, 94, 0.28)'
+      const lossFill = isSelected ? 'rgba(248, 113, 113, 0.30)' : 'rgba(239, 68, 68, 0.28)'
+
+      // enforce correct meaning (profit zone is always green, loss zone always red)
+      const profit = {
+        left,
+        top: profitTop,
+        width,
+        height: Math.max(0, profitBottom - profitTop),
+        fill: profitFill,
+      }
+      const loss = {
+        left,
+        top: lossTop,
+        width,
+        height: Math.max(0, lossBottom - lossTop),
+        fill: lossFill,
+      }
+
+      // handles on the right edge, centered on SL/TP line
+      const handleX = left + width - 6
+      overlays.push({
+        lineId: (line as any).id,
+        positionType: line.type,
+        profit,
+        loss,
+        tpHandle: { x: handleX, y: yTP },
+        slHandle: { x: handleX, y: ySL },
+        // width resize handles (drag left/right to change candle span)
+        startHandle: { x: Math.max(0, left - 6), y: yEntry },
+        endHandle: { x: Math.max(0, left + width - 6), y: yEntry },
+      })
+    }
+
+    setZoneOverlays(overlays)
+  }
+
+
+  const beginZoneHandleDrag = (e: ReactMouseEvent, lineId: string, kind: 'sl' | 'tp') => {
+    e.preventDefault()
+    e.stopPropagation()
+
+    setSelectedLineId(lineId)
+
+    const line = drawnLinesRef.current.find((l: any) => l.id === lineId) as any
+    if (!line) return
+
+    const originalPrice = kind === 'tp' ? Number(line.takeProfit) : Number(line.stopLoss)
+    if (!Number.isFinite(originalPrice)) return
+
+    setDraggingLine({
+      lineId,
+      lineType: kind === 'tp' ? 'takeProfit' : 'stopLoss',
+      originalPrice,
+    })
+  }
+
+  const onZoneBodyMouseDown = (e: ReactMouseEvent, lineId: string) => {
+    e.preventDefault()
+    e.stopPropagation()
+    setSelectedLineId(lineId)
+  }
+
+  useEffect(() => {
+    // recalc after each render-affecting change
+    const id = requestAnimationFrame(recalcZoneOverlays)
+    return () => cancelAnimationFrame(id)
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState?.currentIndex, gameState?.candles.length, drawnLines, selectedLineId])
+
+  // keep overlays aligned when zoom/scroll changes
+  useEffect(() => {
+    const chart = chartRef.current
+    if (!chart) return
+
+    const ts = chart.timeScale()
+    const onChange = () => {
+      requestAnimationFrame(recalcZoneOverlays)
+    }
+    ts.subscribeVisibleTimeRangeChange(onChange)
+    ts.subscribeVisibleLogicalRangeChange(onChange)
+    window.addEventListener('resize', onChange)
+
+    return () => {
+      ts.unsubscribeVisibleTimeRangeChange(onChange)
+      ts.unsubscribeVisibleLogicalRangeChange(onChange)
+      window.removeEventListener('resize', onChange)
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [])
+// Load drawn lines from localStorage (per game file)
+  useEffect(() => {
+    if (!gameState?.sourceFileName) return
+
+    const storageKey = `trading-game-drawings-${gameState.sourceFileName}`
+    const saved = localStorage.getItem(storageKey)
     if (saved) {
       try {
         const parsed = JSON.parse(saved)
         setDrawnLines(parsed)
-        console.log(`📐 Loaded ${parsed.length} drawings for game ${gameState.id}`)
+        console.log(`📐 Loaded ${parsed.length} drawings for file "${gameState.sourceFileName}"`)
       } catch (e) {
         console.error('Failed to parse drawings from localStorage', e)
       }
     } else {
-      // משחק חדש - נקה קווים
+      // קובץ חדש - נקה קווים
       setDrawnLines([])
-      console.log(`🆕 New game ${gameState.id} - no drawings`)
+      console.log(`🆕 New file "${gameState.sourceFileName}" - no drawings`)
     }
-  }, [gameState?.id])
+  }, [gameState?.sourceFileName])
 
-  // Save drawn lines to localStorage (per game)
+  // Save drawn lines to localStorage (per game file)
   useEffect(() => {
-    if (!gameState?.id) return
+    if (!gameState?.sourceFileName) return
 
-    if (drawnLines.length > 0) {
-      localStorage.setItem(`trading-game-drawings-${gameState.id}`, JSON.stringify(drawnLines))
-    }
-  }, [drawnLines, gameState?.id])
+    // Always save, even if empty (to clear old drawings)
+    const storageKey = `trading-game-drawings-${gameState.sourceFileName}`
+    localStorage.setItem(storageKey, JSON.stringify(drawnLines))
+    console.log(`💾 Saved ${drawnLines.length} drawings for file "${gameState.sourceFileName}"`)
+  }, [drawnLines, gameState?.sourceFileName])
 
   useEffect(() => {
     console.log('TradingChart: Mounting chart component')
@@ -400,7 +574,11 @@ export default function TradingChart() {
           ...(defaultTP && { takeProfit: defaultTP }),
         }
 
-        setDrawnLines((prev) => [...prev, newLine])
+        setDrawnLines((prev) => {
+          const updated = [...prev, newLine]
+          console.log(`➕ Added ${newLine.type} tool (id: ${newLine.id}), total: ${updated.length}`)
+          return updated
+        })
         setActiveTool('none')
         activeToolRef.current = 'none' // ✅ עדכון ישיר של ref כדי למנוע race condition
         e.preventDefault() // מניעת mousedown מיד אחרי ה-click
@@ -446,7 +624,11 @@ export default function TradingChart() {
               ...(currentTool === 'rectangle' && { opacity: 0.3 }),
             }
 
-            setDrawnLines((lines) => [...lines, newLine])
+            setDrawnLines((lines) => {
+              const updated = [...lines, newLine]
+              console.log(`➕ Added ${newLine.type} tool (id: ${newLine.id}), total: ${updated.length}`)
+              return updated
+            })
             setActiveTool('none')
             activeToolRef.current = 'none' // ✅ עדכון ישיר של ref
             return null
@@ -467,7 +649,11 @@ export default function TradingChart() {
             width: 2,
           }
 
-          setDrawnLines((prev) => [...prev, newLine])
+          setDrawnLines((prev) => {
+            const updated = [...prev, newLine]
+            console.log(`➕ Added ${newLine.type} tool (id: ${newLine.id}), total: ${updated.length}`)
+            return updated
+          })
         }
         setActiveTool('none')
         activeToolRef.current = 'none' // ✅ עדכון ישיר של ref
@@ -566,6 +752,59 @@ export default function TradingChart() {
         // ✅ גרירה מותרת רק לפוזיציה שנבחרה
         if (line.id !== selectedLineId) continue
 
+
+// ✅ Click בתוך האזור הירוק/אדום (המלבן) מפעיל גרירה של TP/SL
+if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
+  const isBetween = (v: number, a: number, b: number) => v >= Math.min(a, b) && v <= Math.max(a, b)
+
+  // מציאת candle index קרוב ל-time הנוכחי
+  const candleDuration = gameState.candles.length > 1
+    ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
+    : 86400
+  const timeTolerance = candleDuration * 0.5
+
+  let idx = -1
+  let best = Infinity
+  for (let i = 0; i <= gameState.currentIndex; i++) {
+    const d = Math.abs(gameState.candles[i].time - (time as number))
+    if (d < best && d < timeTolerance) {
+      best = d
+      idx = i
+    }
+  }
+
+  if (idx !== -1 && idx >= line.startIndex && idx <= line.endIndex) {
+    const entry = Number(line.price)
+    const sl = line.stopLoss ? Number(line.stopLoss) : undefined
+    const tp = line.takeProfit ? Number(line.takeProfit) : undefined
+
+    if (sl && tp) {
+      const inProfit = line.type === 'long-position'
+        ? isBetween(price, entry, tp) // LONG: Entry..TP
+        : isBetween(price, tp, entry) // SHORT: TP..Entry
+
+      const inLoss = line.type === 'long-position'
+        ? isBetween(price, sl, entry) // LONG: SL..Entry
+        : isBetween(price, entry, sl) // SHORT: Entry..SL
+
+      if (inProfit) {
+        chartRef.current?.applyOptions({ handleScroll: false, handleScale: false })
+        setDraggingLine({ lineId: line.id, lineType: 'takeProfit', originalPrice: Number(line.takeProfit) })
+        e.preventDefault()
+        return
+      }
+
+      if (inLoss) {
+        chartRef.current?.applyOptions({ handleScroll: false, handleScale: false })
+        setDraggingLine({ lineId: line.id, lineType: 'stopLoss', originalPrice: Number(line.stopLoss) })
+        e.preventDefault()
+        return
+      }
+    }
+  }
+}
+
+
         // Check for resize handle click (at endIndex time)
         if (line.endIndex !== undefined && gameState) {
           const endCandle = gameState.candles[line.endIndex]
@@ -584,7 +823,7 @@ export default function TradingChart() {
                 handleScroll: false,
                 handleScale: false,
               })
-              setDraggingLine({ lineId: line.id, lineType: 'resize' })
+              setDraggingLine({ lineId: line.id, lineType: 'resizeEnd' })
               e.preventDefault()
               return
             }
@@ -646,40 +885,36 @@ export default function TradingChart() {
       if (draggingLineRef.current) {
         const { lineId, lineType } = draggingLineRef.current
 
-        if (lineType === 'resize' && time !== null && time !== undefined && gameState) {
-          // Resize: update endIndex based on time
-          // חישוב טולרנס זמן מבוסס על משך נר אחד
-          const candleDuration = gameState.candles.length > 1
-            ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
-            : 86400
-          const timeTolerance = candleDuration * 0.5
+        if ((lineType === 'resizeStart' || lineType === 'resizeEnd') && chartRef.current && gameState) {
+          // Resize candle span by dragging left/right handle.
+          // Use logical index from x coordinate and clamp to [0..currentIndex]
+          const logical = chartRef.current.timeScale().coordinateToLogical(relativeX)
+          if (logical === null || logical === undefined) return
+          const idx = Math.max(0, Math.min(gameState.currentIndex, Math.round(Number(logical))))
+          const MIN_SPAN = 5
 
-          // מציאת הנר הקרוב ביותר לזמן הנוכחי
-          let newEndIndex = -1
-          let minDistance = Infinity
-          for (let i = 0; i <= gameState.currentIndex; i++) {
-            const distance = Math.abs(gameState.candles[i].time - (time as number))
-            if (distance < minDistance && distance < timeTolerance) {
-              minDistance = distance
-              newEndIndex = i
-            }
-          }
+          setDrawnLines(prev => {
+            const updated = prev.map(line => {
+              if (line.id !== lineId) return line
 
-          if (newEndIndex !== -1) {
-            setDrawnLines(prev => {
-              const updated = prev.map(line => {
-                if (line.id !== lineId) return line
-                // Ensure endIndex is between startIndex and currentIndex
-                const minEnd = line.startIndex !== undefined ? line.startIndex + 5 : 5 // minimum 5 candles
+              const start = Number.isFinite(line.startIndex) ? Number(line.startIndex) : 0
+              const end = Number.isFinite(line.endIndex) ? Number(line.endIndex) : gameState.currentIndex
+
+              if (lineType === 'resizeEnd') {
+                const minEnd = start + MIN_SPAN
                 const maxEnd = gameState.currentIndex
-                const clampedEnd = Math.max(minEnd, Math.min(newEndIndex, maxEnd))
+                const clampedEnd = Math.max(minEnd, Math.min(idx, maxEnd))
                 return { ...line, endIndex: clampedEnd }
-              })
-              // ✅ עדכון מיידי של ref כדי שהגרירה תעבוד חלק
-              drawnLinesRef.current = updated
-              return updated
+              } else {
+                // resizeStart
+                const maxStart = end - MIN_SPAN
+                const clampedStart = Math.max(0, Math.min(idx, maxStart))
+                return { ...line, startIndex: clampedStart }
+              }
             })
-          }
+            drawnLinesRef.current = updated
+            return updated
+          })
         } else if (lineType === 'stopLoss') {
           // Update SL price with constraints
           const originalPrice = draggingLineRef.current?.originalPrice
@@ -688,11 +923,6 @@ export default function TradingChart() {
             const updated = prev.map(line => {
               // ✅ זיהוי ייחודי: רק אם זה ה-lineId הנכון וגם המחיר המקורי תואם
               if (line.id !== lineId) return line
-              if (originalPrice !== undefined && line.stopLoss !== undefined) {
-                // בדיקה שזה אותו SL בדיוק (ולא SL של פוזיציה אחרת עם אותו lineId)
-                const priceDiff = Math.abs(Number(line.stopLoss) - originalPrice)
-                if (priceDiff > 0.01) return line // לא אותו קו
-              }
 
               const entryPrice = Number(line.price)
               let newSL: number
@@ -723,11 +953,6 @@ export default function TradingChart() {
             const updated = prev.map(line => {
               // ✅ זיהוי ייחודי: רק אם זה ה-lineId הנכון וגם המחיר המקורי תואם
               if (line.id !== lineId) return line
-              if (originalPrice !== undefined && line.takeProfit !== undefined) {
-                // בדיקה שזה אותו TP בדיוק (ולא TP של פוזיציה אחרת עם אותו lineId)
-                const priceDiff = Math.abs(Number(line.takeProfit) - originalPrice)
-                if (priceDiff > 0.01) return line // לא אותו קו
-              }
 
               const entryPrice = Number(line.price)
               let newTP: number
@@ -1247,60 +1472,52 @@ export default function TradingChart() {
 
         const times = [startCandle.time, endCandle.time].sort((a, b) => a - b)
 
-        // יצירת המלבנים כ-HistogramSeries
-        if (sl && tp) {
-          // מלבן ירוק (profit zone) - בין Entry ל-TP
-          const profitZoneSeries = chartRef.current!.addHistogramSeries({
-            color: isSelected ? 'rgba(74, 222, 128, 0.3)' : 'rgba(34, 197, 94, 0.25)',
-            priceFormat: {
-              type: 'price',
-              precision: 2,
-              minMove: 0.01,
-            },
-            priceLineVisible: false,
-            lastValueVisible: false,
-            base: entryPrice, // בסיס במחיר Entry
-          })
+// ציור zones כ"מלבנים" אמיתיים באמצעות הרבה קווי-מילוי (פתרון יציב ב-LWC)
+if (sl && tp) {
+  const steps = 60 // ככל שגבוה יותר, המילוי נראה יותר "solid"
 
-          // יצירת נתונים למלבן הירוק
-          const profitData = []
-          for (let i = line.startIndex; i <= endIndex; i++) {
-            profitData.push({
-              time: gameState.candles[i].time as Time,
-              value: tp, // גובה המלבן הוא TP
-              color: isSelected ? 'rgba(74, 222, 128, 0.3)' : 'rgba(34, 197, 94, 0.25)',
-            })
-          }
-          profitZoneSeries.setData(profitData)
-          drawnLineSeriesRef.current.push(profitZoneSeries)
+  // PROFIT (ירוק): Entry -> TP
+  const minP = Math.min(entryPrice, tp)
+  const maxP = Math.max(entryPrice, tp)
+  for (let i = 0; i <= steps; i++) {
+    const ratio = i / steps
+    const priceLevel = minP + (maxP - minP) * ratio
+    const profitFillLine = chartRef.current!.addLineSeries({
+      color: isSelected ? 'rgba(74, 222, 128, 0.30)' : 'rgba(34, 197, 94, 0.28)',
+      lineWidth: 3,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      lineStyle: 0,
+    })
+    profitFillLine.setData([
+      { time: times[0] as Time, value: priceLevel },
+      { time: times[1] as Time, value: priceLevel },
+    ])
+    drawnLineSeriesRef.current.push(profitFillLine)
+  }
 
-          // מלבן אדום (loss zone) - בין Entry ל-SL
-          const lossZoneSeries = chartRef.current!.addHistogramSeries({
-            color: isSelected ? 'rgba(248, 113, 113, 0.3)' : 'rgba(239, 68, 68, 0.25)',
-            priceFormat: {
-              type: 'price',
-              precision: 2,
-              minMove: 0.01,
-            },
-            priceLineVisible: false,
-            lastValueVisible: false,
-            base: entryPrice, // בסיס במחיר Entry
-          })
+  // LOSS (אדום): SL -> Entry
+  const minL = Math.min(sl, entryPrice)
+  const maxL = Math.max(sl, entryPrice)
+  for (let i = 0; i <= steps; i++) {
+    const ratio = i / steps
+    const priceLevel = minL + (maxL - minL) * ratio
+    const lossFillLine = chartRef.current!.addLineSeries({
+      color: isSelected ? 'rgba(248, 113, 113, 0.30)' : 'rgba(239, 68, 68, 0.28)',
+      lineWidth: 3,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      lineStyle: 0,
+    })
+    lossFillLine.setData([
+      { time: times[0] as Time, value: priceLevel },
+      { time: times[1] as Time, value: priceLevel },
+    ])
+    drawnLineSeriesRef.current.push(lossFillLine)
+  }
+}
 
-          // יצירת נתונים למלבן האדום
-          const lossData = []
-          for (let i = line.startIndex; i <= endIndex; i++) {
-            lossData.push({
-              time: gameState.candles[i].time as Time,
-              value: sl, // גובה המלבן הוא SL (יהיה שלילי יחסית ל-Entry)
-              color: isSelected ? 'rgba(248, 113, 113, 0.3)' : 'rgba(239, 68, 68, 0.25)',
-            })
-          }
-          lossZoneSeries.setData(lossData)
-          drawnLineSeriesRef.current.push(lossZoneSeries)
-        }
-
-        // קו Entry - לבן מקווקו (ציר אמצע)
+// קו Entry - לבן מקווקו (ציר אמצע)
         const entrySeries = chartRef.current!.addLineSeries({
           color: isSelected ? '#ffffff' : '#d1d5db',
           lineWidth: isSelected ? 2 : 1,
@@ -1358,60 +1575,52 @@ export default function TradingChart() {
 
         const times = [startCandle.time, endCandle.time].sort((a, b) => a - b)
 
-        // יצירת המלבנים כ-HistogramSeries
-        if (sl && tp) {
-          // מלבן כחול (profit zone) - בין Entry ל-TP (מטה ב-SHORT)
-          const profitZoneSeries = chartRef.current!.addHistogramSeries({
-            color: isSelected ? 'rgba(96, 165, 250, 0.3)' : 'rgba(59, 130, 246, 0.25)',
-            priceFormat: {
-              type: 'price',
-              precision: 2,
-              minMove: 0.01,
-            },
-            priceLineVisible: false,
-            lastValueVisible: false,
-            base: entryPrice, // בסיס במחיר Entry
-          })
+// ציור zones כ"מלבנים" אמיתיים באמצעות הרבה קווי-מילוי (פתרון יציב ב-LWC)
+if (sl && tp) {
+  const steps = 60
 
-          // יצירת נתונים למלבן הכחול (TP מתחת Entry)
-          const profitData = []
-          for (let i = line.startIndex; i <= endIndex; i++) {
-            profitData.push({
-              time: gameState.candles[i].time as Time,
-              value: tp, // גובה המלבן הוא TP (שלילי יחסית ל-Entry)
-              color: isSelected ? 'rgba(96, 165, 250, 0.3)' : 'rgba(59, 130, 246, 0.25)',
-            })
-          }
-          profitZoneSeries.setData(profitData)
-          drawnLineSeriesRef.current.push(profitZoneSeries)
+  // PROFIT (ירוק): TP -> Entry (ב-SHORT זה למטה)
+  const minP = Math.min(tp, entryPrice)
+  const maxP = Math.max(tp, entryPrice)
+  for (let i = 0; i <= steps; i++) {
+    const ratio = i / steps
+    const priceLevel = minP + (maxP - minP) * ratio
+    const profitFillLine = chartRef.current!.addLineSeries({
+      color: isSelected ? 'rgba(74, 222, 128, 0.30)' : 'rgba(34, 197, 94, 0.28)',
+      lineWidth: 3,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      lineStyle: 0,
+    })
+    profitFillLine.setData([
+      { time: times[0] as Time, value: priceLevel },
+      { time: times[1] as Time, value: priceLevel },
+    ])
+    drawnLineSeriesRef.current.push(profitFillLine)
+  }
 
-          // מלבן אדום (loss zone) - בין Entry ל-SL (מעלה ב-SHORT)
-          const lossZoneSeries = chartRef.current!.addHistogramSeries({
-            color: isSelected ? 'rgba(248, 113, 113, 0.3)' : 'rgba(239, 68, 68, 0.25)',
-            priceFormat: {
-              type: 'price',
-              precision: 2,
-              minMove: 0.01,
-            },
-            priceLineVisible: false,
-            lastValueVisible: false,
-            base: entryPrice, // בסיס במחיר Entry
-          })
+  // LOSS (אדום): Entry -> SL (ב-SHORT זה למעלה)
+  const minL = Math.min(entryPrice, sl)
+  const maxL = Math.max(entryPrice, sl)
+  for (let i = 0; i <= steps; i++) {
+    const ratio = i / steps
+    const priceLevel = minL + (maxL - minL) * ratio
+    const lossFillLine = chartRef.current!.addLineSeries({
+      color: isSelected ? 'rgba(248, 113, 113, 0.30)' : 'rgba(239, 68, 68, 0.28)',
+      lineWidth: 3,
+      priceLineVisible: false,
+      lastValueVisible: false,
+      lineStyle: 0,
+    })
+    lossFillLine.setData([
+      { time: times[0] as Time, value: priceLevel },
+      { time: times[1] as Time, value: priceLevel },
+    ])
+    drawnLineSeriesRef.current.push(lossFillLine)
+  }
+}
 
-          // יצירת נתונים למלבן האדום (SL מעל Entry)
-          const lossData = []
-          for (let i = line.startIndex; i <= endIndex; i++) {
-            lossData.push({
-              time: gameState.candles[i].time as Time,
-              value: sl, // גובה המלבן הוא SL (חיובי יחסית ל-Entry)
-              color: isSelected ? 'rgba(248, 113, 113, 0.3)' : 'rgba(239, 68, 68, 0.25)',
-            })
-          }
-          lossZoneSeries.setData(lossData)
-          drawnLineSeriesRef.current.push(lossZoneSeries)
-        }
-
-        // קו Entry - לבן מקווקו (ציר אמצע)
+// קו Entry - לבן מקווקו (ציר אמצע)
         const entrySeries = chartRef.current!.addLineSeries({
           color: isSelected ? '#ffffff' : '#d1d5db',
           lineWidth: isSelected ? 2 : 1,
@@ -1628,12 +1837,20 @@ export default function TradingChart() {
 
   // פונקציות לניהול קווים
   const handleDeleteLine = (id: string) => {
-    setDrawnLines((prev) => prev.filter((line) => line.id !== id))
+    setDrawnLines((prev) => {
+      const updated = prev.filter((line) => line.id !== id)
+      console.log(`🗑️ Deleted line ${id}, remaining: ${updated.length}`)
+      return updated
+    })
   }
 
   const handleClearAllLines = () => {
     setDrawnLines([])
-    localStorage.removeItem('trading-game-drawings')
+    if (gameState?.sourceFileName) {
+      const storageKey = `trading-game-drawings-${gameState.sourceFileName}`
+      localStorage.removeItem(storageKey)
+      console.log(`🗑️ Cleared all drawings for file "${gameState.sourceFileName}"`)
+    }
   }
 
   const handleUpdateLine = (id: string, updates: Partial<DrawnLine>) => {
@@ -2206,6 +2423,125 @@ export default function TradingChart() {
         className="w-full h-full"
         style={{ cursor: activeTool !== 'none' ? 'crosshair' : 'default' }}
       />
+
+      {/* Risk/Reward Zones (DOM overlay) */}
+      <div className="absolute inset-0 pointer-events-none">
+        {zoneOverlays.map((z) => (
+          <div key={z.lineId} className="absolute inset-0 pointer-events-none">
+            {/* Profit zone */}
+            <div
+              className="absolute pointer-events-auto"
+              style={{
+                left: z.profit.left,
+                top: z.profit.top,
+                width: z.profit.width,
+                height: z.profit.height,
+                background: z.profit.fill,
+              }}
+              onMouseDown={(e) => onZoneBodyMouseDown(e, z.lineId)}
+            />
+            {/* Loss zone */}
+            <div
+              className="absolute pointer-events-auto"
+              style={{
+                left: z.loss.left,
+                top: z.loss.top,
+                width: z.loss.width,
+                height: z.loss.height,
+                background: z.loss.fill,
+              }}
+              onMouseDown={(e) => onZoneBodyMouseDown(e, z.lineId)}
+            />
+
+            {/* TP handle */}
+            {z.tpHandle && (
+              <div
+                className="absolute pointer-events-auto"
+                style={{
+                  left: z.tpHandle.x,
+                  top: z.tpHandle.y - 6,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 3,
+                  background: 'rgba(34, 197, 94, 0.9)',
+                  border: '1px solid rgba(0,0,0,0.35)',
+                  cursor: 'ns-resize',
+                }}
+                onMouseDown={(e) => beginZoneHandleDrag(e, z.lineId, 'tp')}
+                title="Drag TP"
+              />
+            )}
+
+            {/* SL handle */}
+            {z.slHandle && (
+              <div
+                className="absolute pointer-events-auto"
+                style={{
+                  left: z.slHandle.x,
+                  top: z.slHandle.y - 6,
+                  width: 12,
+                  height: 12,
+                  borderRadius: 3,
+                  background: 'rgba(239, 68, 68, 0.9)',
+                  border: '1px solid rgba(0,0,0,0.35)',
+                  cursor: 'ns-resize',
+                }}
+                onMouseDown={(e) => beginZoneHandleDrag(e, z.lineId, 'sl')}
+                title="Drag SL"
+              />
+            )}
+
+            {/* Width resize handles (drag to change candle span) */}
+            {z.startHandle && (
+              <div
+                className="absolute pointer-events-auto"
+                style={{
+                  left: z.startHandle.x,
+                  top: z.startHandle.y - 10,
+                  width: 12,
+                  height: 20,
+                  borderRadius: 3,
+                  background: 'rgba(148, 163, 184, 0.95)',
+                  border: '1px solid rgba(0,0,0,0.35)',
+                  cursor: 'ew-resize',
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setSelectedLineId(z.lineId)
+                  chartRef.current?.applyOptions({ handleScroll: false, handleScale: false })
+                  setDraggingLine({ lineId: z.lineId, lineType: 'resizeStart' })
+                }}
+                title="Drag to resize (start)"
+              />
+            )}
+
+            {z.endHandle && (
+              <div
+                className="absolute pointer-events-auto"
+                style={{
+                  left: z.endHandle.x,
+                  top: z.endHandle.y - 10,
+                  width: 12,
+                  height: 20,
+                  borderRadius: 3,
+                  background: 'rgba(148, 163, 184, 0.95)',
+                  border: '1px solid rgba(0,0,0,0.35)',
+                  cursor: 'ew-resize',
+                }}
+                onMouseDown={(e) => {
+                  e.preventDefault()
+                  e.stopPropagation()
+                  setSelectedLineId(z.lineId)
+                  chartRef.current?.applyOptions({ handleScroll: false, handleScale: false })
+                  setDraggingLine({ lineId: z.lineId, lineType: 'resizeEnd' })
+                }}
+                title="Drag to resize (end)"
+              />
+            )}
+          </div>
+        ))}
+      </div>
 
       {/* Chart Tools Panel (unified) */}
       <ChartToolsPanel

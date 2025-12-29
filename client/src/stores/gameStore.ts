@@ -16,6 +16,7 @@ interface GameStore {
   autoPlaySpeed: number // מילישניות בין נרות
   chartFitContent: (() => void) | null
   chartResetZoom: (() => void) | null
+  showStats: boolean // הצגת מסך סטטיסטיקות (למשל בשמירה ויציאה)
 
   // Actions
   initializeGame: (config?: { initialBalance?: number }) => Promise<void>
@@ -64,6 +65,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   autoPlaySpeed: 1000, // 1 שנייה ברירת מחדל
   chartFitContent: null,
   chartResetZoom: null,
+  showStats: false,
 
   initializeGame: async (config) => {
     console.log('initializeGame: Starting...', config)
@@ -441,7 +443,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     // איפוס מצב המשחק בלבד - לא יוצר משחק חדש
-    set({ gameState: null, isLoading: false, error: null, isAutoPlaying: false })
+    set({ gameState: null, isLoading: false, error: null, isAutoPlaying: false, showStats: false })
   },
 
   toggleAutoPlay: () => {
@@ -498,14 +500,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     })
   },
 
-  // שמירה ויציאה - שומר את המשחק וחוזר למסך ההתחלה
+  // שמירה ויציאה - שומר את המשחק ומציג סטטיסטיקות
   saveAndExit: () => {
-    const { saveGameState, resetGame } = get()
+    const { saveGameState } = get()
     saveGameState()
 
-    // המתנה קצרה כדי שה-toast יופיע לפני האיפוס
+    // המתנה קצרה כדי שה-toast יופיע ואז הצגת סטטיסטיקות
     setTimeout(() => {
-      resetGame()
+      set({ showStats: true })
     }, 500)
   },
 

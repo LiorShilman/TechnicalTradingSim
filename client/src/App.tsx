@@ -29,7 +29,7 @@ function App() {
   const [refreshSavedGame, setRefreshSavedGame] = useState(0) // מונה לרענון מצב משחק שמור
   const [priceAlerts, setPriceAlerts] = useState(() => priceAlertsService.getAlerts())
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { gameState, isLoading, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
+  const { gameState, isLoading, showStats, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
 
   // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
   const savedGameInfo = useMemo(() => getSavedGameInfo(), [refreshSavedGame, getSavedGameInfo])
@@ -580,8 +580,8 @@ function App() {
         </div>
       </div>
 
-      {/* Stats modal (shown when game is complete) */}
-      {gameState?.isComplete && <GameStats />}
+      {/* Stats modal (shown when game is complete or when user saves and exits) */}
+      {(gameState?.isComplete || showStats) && <GameStats />}
 
       {/* Toast notifications */}
       <Toaster
