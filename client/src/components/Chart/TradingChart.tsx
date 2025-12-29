@@ -1,5 +1,5 @@
 import { useEffect, useRef, useState } from 'react'
-import { createChart, IChartApi, ISeriesApi, ISeriesApi as LineSeriesApi, Time } from 'lightweight-charts'
+import { createChart, IChartApi, ISeriesApi, ISeriesApi as LineSeriesApi, Time, BarPrice } from 'lightweight-charts'
 import { useGameStore } from '@/stores/gameStore'
 import PendingOrderMenu from './PendingOrderMenu'
 import ChartToolsPanel from './ChartToolsPanel'
@@ -681,13 +681,22 @@ export default function TradingChart() {
             const updated = prev.map(line => {
               if (line.id !== lineId) return line
 
-              // הגבלה: SL לא יכול לחצות את Entry
               const entryPrice = Number(line.price)
-              const minSL = line.type === 'long-position' ? entryPrice * 0.999 : 0
-              const maxSL = line.type === 'short-position' ? entryPrice * 1.001 : Infinity
-              const newSL = Math.max(minSL, Math.min(price, maxSL))
+              let newSL: number
 
-              return { ...line, stopLoss: newSL }
+              if (line.type === 'long-position') {
+                // LONG: SL (אדום) ניתן לגרירה רק מתחת ל-Entry
+                // אם ניסה לגרור מעל Entry, נעצור ב-Entry
+                newSL = Math.min(price, entryPrice)
+              } else if (line.type === 'short-position') {
+                // SHORT: SL (אדום) ניתן לגרירה רק מעל ל-Entry
+                // אם ניסה לגרור מתחת Entry, נעצור ב-Entry
+                newSL = Math.max(price, entryPrice)
+              } else {
+                newSL = price
+              }
+
+              return { ...line, stopLoss: newSL as BarPrice }
             })
             // ✅ עדכון מיידי של ref כדי שהגרירה תעבוד חלק
             drawnLinesRef.current = updated
@@ -699,13 +708,22 @@ export default function TradingChart() {
             const updated = prev.map(line => {
               if (line.id !== lineId) return line
 
-              // הגבלה: TP לא יכול לחצות את Entry
               const entryPrice = Number(line.price)
-              const minTP = line.type === 'short-position' ? 0 : entryPrice * 1.001
-              const maxTP = line.type === 'long-position' ? Infinity : entryPrice * 0.999
-              const newTP = Math.max(minTP, Math.min(price, maxTP))
+              let newTP: number
 
-              return { ...line, takeProfit: newTP }
+              if (line.type === 'long-position') {
+                // LONG: TP (ירוק) ניתן לגרירה רק מעל ל-Entry
+                // אם ניסה לגרור מתחת Entry, נעצור ב-Entry
+                newTP = Math.max(price, entryPrice)
+              } else if (line.type === 'short-position') {
+                // SHORT: TP (ירוק) ניתן לגרירה רק מתחת ל-Entry
+                // אם ניסה לגרור מעל Entry, נעצור ב-Entry
+                newTP = Math.min(price, entryPrice)
+              } else {
+                newTP = price
+              }
+
+              return { ...line, takeProfit: newTP as BarPrice }
             })
             // ✅ עדכון מיידי של ref כדי שהגרירה תעבוד חלק
             drawnLinesRef.current = updated
