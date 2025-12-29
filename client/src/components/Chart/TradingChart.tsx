@@ -70,8 +70,9 @@ export default function TradingChart() {
   const [draggingLine, setDraggingLine] = useState<{
     lineId: string
     lineType: 'stopLoss' | 'takeProfit' | 'entry' | 'resize'
+    originalPrice?: number // המחיר המקורי של הקו שנלחץ - לזיהוי ייחודי
   } | null>(null)
-  const draggingLineRef = useRef<{ lineId: string; lineType: 'stopLoss' | 'takeProfit' | 'entry' | 'resize' } | null>(null)
+  const draggingLineRef = useRef<{ lineId: string; lineType: 'stopLoss' | 'takeProfit' | 'entry' | 'resize'; originalPrice?: number } | null>(null)
 
   // Preview lines for pending order (shown while menu is open)
   const previewLineSeriesRef = useRef<ISeriesApi<'Line'>[]>([])
@@ -595,7 +596,7 @@ export default function TradingChart() {
               handleScroll: false,
               handleScale: false,
             })
-            setDraggingLine({ lineId: line.id, lineType: 'stopLoss' })
+            setDraggingLine({ lineId: line.id, lineType: 'stopLoss', originalPrice: Number(line.stopLoss) })
             e.preventDefault()
             return
           }
@@ -610,7 +611,7 @@ export default function TradingChart() {
               handleScroll: false,
               handleScale: false,
             })
-            setDraggingLine({ lineId: line.id, lineType: 'takeProfit' })
+            setDraggingLine({ lineId: line.id, lineType: 'takeProfit', originalPrice: Number(line.takeProfit) })
             e.preventDefault()
             return
           }
@@ -677,9 +678,17 @@ export default function TradingChart() {
           }
         } else if (lineType === 'stopLoss') {
           // Update SL price with constraints
+          const originalPrice = draggingLineRef.current?.originalPrice
+
           setDrawnLines(prev => {
             const updated = prev.map(line => {
+              // ✅ זיהוי ייחודי: רק אם זה ה-lineId הנכון וגם המחיר המקורי תואם
               if (line.id !== lineId) return line
+              if (originalPrice !== undefined && line.stopLoss !== undefined) {
+                // בדיקה שזה אותו SL בדיוק (ולא SL של פוזיציה אחרת עם אותו lineId)
+                const priceDiff = Math.abs(Number(line.stopLoss) - originalPrice)
+                if (priceDiff > 0.01) return line // לא אותו קו
+              }
 
               const entryPrice = Number(line.price)
               let newSL: number
@@ -704,9 +713,17 @@ export default function TradingChart() {
           })
         } else if (lineType === 'takeProfit') {
           // Update TP price with constraints
+          const originalPrice = draggingLineRef.current?.originalPrice
+
           setDrawnLines(prev => {
             const updated = prev.map(line => {
+              // ✅ זיהוי ייחודי: רק אם זה ה-lineId הנכון וגם המחיר המקורי תואם
               if (line.id !== lineId) return line
+              if (originalPrice !== undefined && line.takeProfit !== undefined) {
+                // בדיקה שזה אותו TP בדיוק (ולא TP של פוזיציה אחרת עם אותו lineId)
+                const priceDiff = Math.abs(Number(line.takeProfit) - originalPrice)
+                if (priceDiff > 0.01) return line // לא אותו קו
+              }
 
               const entryPrice = Number(line.price)
               let newTP: number
