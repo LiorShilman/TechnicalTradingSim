@@ -6,6 +6,7 @@ import ChartToolsPanel from './ChartToolsPanel'
 import { type MASettings } from './IndicatorControls'
 import { type DrawingTool, type DrawnLine } from './DrawingControls'
 import toast from 'react-hot-toast'
+import { telegramService } from '@/services/telegramNotifications'
 
 export default function TradingChart() {
   const chartContainerRef = useRef<HTMLDivElement>(null)
@@ -1702,6 +1703,7 @@ export default function TradingChart() {
       if (shouldTrigger) {
         // הפעלת התראה ויזואלית
         const direction = isPriceAbove ? '↑' : '↓'
+        const crossDirection = isPriceAbove ? 'above' : 'below'
         const message = `⚠️ התראת קו: ${direction} המחיר חצה את $${linePrice.toFixed(2)}`
 
         // שימוש ב-toast מהמערכת הקיימת
@@ -1713,6 +1715,14 @@ export default function TradingChart() {
             color: '#fff',
             border: '2px solid #FFD700',
           },
+        })
+
+        // שליחת התראה ל-Telegram
+        telegramService.notifyPriceAlert({
+          direction: crossDirection as 'above' | 'below',
+          targetPrice: linePrice,
+          currentPrice: currClose,
+          asset: gameState?.asset,
         })
 
         // סימון שההתראה הופעלה

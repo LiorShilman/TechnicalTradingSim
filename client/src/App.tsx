@@ -8,7 +8,6 @@ import ChartControls from './components/Chart/ChartControls'
 import EquityChart from './components/Chart/EquityChart'
 import GameStats from './components/Stats/GameStats'
 import AlertSettings from './components/Settings/AlertSettings'
-import PriceAlertsPanel from './components/Settings/PriceAlertsPanel'
 import { useGameStore } from './stores/gameStore'
 import { priceAlertsService } from './services/priceAlertsService'
 import { Play, Loader2, Upload } from 'lucide-react'
@@ -555,16 +554,13 @@ function App() {
         <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
           <div style={{ flex: '1 1 0', minHeight: '0' }}>
             <TradingChart />
-            <AlertSettings />
-            {gameState && (
-              <PriceAlertsPanel
-                priceAlerts={priceAlerts}
-                onAddAlert={handleAddAlert}
-                onRemoveAlert={handleRemoveAlert}
-                onToggleAlert={handleToggleAlert}
-                currentPrice={gameState.candles[gameState.currentIndex]?.close || 0}
-              />
-            )}
+            <AlertSettings
+              priceAlerts={priceAlerts}
+              onAddAlert={handleAddAlert}
+              onRemoveAlert={handleRemoveAlert}
+              onToggleAlert={handleToggleAlert}
+              currentPrice={gameState?.candles[gameState.currentIndex]?.close || 0}
+            />
           </div>
           <div style={{ flex: '0 0 250px' }}>
             <EquityChart />

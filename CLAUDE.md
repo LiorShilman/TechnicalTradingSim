@@ -89,10 +89,13 @@ Test server health: `curl http://localhost:5000/api/health`
 **Client:**
 - `client/src/stores/gameStore.ts` - Zustand state management with localStorage persistence
 - `client/src/services/api.ts` - Axios API client with interceptors
+- `client/src/services/telegramNotifications.ts` - Telegram Bot API service for sending alerts
+- `client/src/services/priceAlertsService.ts` - Price alerts management with crossing detection
 - `client/src/types/game.types.ts` - Shared TypeScript types (duplicate of server types)
 - `client/src/components/Chart/TradingChart.tsx` - Lightweight Charts integration with pattern visualization, drawing tools, and dynamic MA series management
 - `client/src/components/Chart/ChartToolsPanel.tsx` - Unified panel for indicators (unlimited MAs) and drawing tools with selection
 - `client/src/components/Chart/IndicatorControls.tsx` - MA settings panel with Add/Remove functionality and color customization
+- `client/src/components/Settings/AlertSettings.tsx` - Unified alerts panel with Telegram config and price alerts (tabbed interface)
 - `client/src/components/Trading/OrderPanel.tsx` - Buy/Sell interface with advanced SL/TP and risk management
 - `client/src/components/Trading/AccountInfo.tsx` - Real-time account balance and P&L display
 - `client/src/components/Trading/PositionsList.tsx` - Displays open positions with edit and close functionality
@@ -403,6 +406,61 @@ Lightweight Charts (TradingView) integration:
     - Color-coded by order type: green for buy orders, red for sell orders
     - Positioned between OrderPanel and PositionsList in sidebar
     - Scrollable if many orders exist
+
+### Telegram Notifications & Price Alerts
+The app supports free Telegram notifications and custom price alerts:
+
+**Telegram Integration (`telegramNotifications.ts`):**
+- Free Telegram Bot API for instant notifications to phone
+- localStorage config persistence (bot token, chat ID, enabled state)
+- HTML-formatted messages with emojis for visual clarity
+- Test connection feature with success/error feedback
+- Notification types:
+  - Stop Loss hits (with P&L, entry/exit prices)
+  - Take Profit hits (with P&L, entry/exit prices)
+  - Position closures (manual, with P&L)
+  - Pending order fills (order type, price, quantity)
+  - Price alerts (crossing notifications)
+  - Horizontal line alerts (when price crosses drawn lines with alerts enabled)
+
+**Price Alerts System (`priceAlertsService.ts`):**
+- TradingView-style price alerts with directional crossing detection
+- Alert directions: Above (trigger when price crosses from below to above), Below (trigger when price crosses from above to below)
+- One-time alerts: Auto-disable after triggering to prevent spam
+- localStorage persistence for all alerts
+- Alert properties: targetPrice, direction, enabled, createdAt, createdAtPrice, optional note
+- Real-time checking during candle progression
+- Integration with Telegram service for instant notifications
+
+**AlertSettings Component (`AlertSettings.tsx`):**
+- Unified panel combining Telegram config and price alerts
+- Positioned at `top-[120px] left-4` with dynamic width (140px collapsed, 300px expanded)
+- Smooth width transition animation with `transition-[width] duration-200 ease-out`
+- Two-tab interface: "Telegram" and "Price Alerts"
+- **Telegram Tab:**
+  - Enable/disable toggle with visual slider
+  - Bot Token and Chat ID input fields
+  - "מדריך" (Guide) button linking to Telegram bot creation tutorial
+  - Save and Test buttons with loading states
+  - Success/error feedback messages with auto-dismiss (3s)
+  - Info section listing all notification types
+- **Price Alerts Tab:**
+  - Add alert form with:
+    - Price input (140px fixed width)
+    - Direction select (flex-1 for responsive width)
+    - Note input (optional, 50 char max) with margin-top spacing
+    - Add button (Plus icon)
+  - Alerts list (max-height: 320px, scrollable):
+    - Toggle enable/disable (ToggleLeft/ToggleRight icons)
+    - Target price display with direction arrow (↑/↓)
+    - Optional note display (truncated)
+    - Distance from current price ($ and %) with color coding (yellow if <1% away)
+    - Delete button (Trash2 icon)
+  - Current price display at bottom
+  - Alerts sorted by price (descending)
+- Green dot indicator when any alerts are enabled (Telegram or price alerts)
+- Bell icon in header with yellow color
+- Border: `border-2 border-yellow-600/40` for visual prominence
 
 ### Balance Persistence with localStorage
 The app persists account balance across sessions using localStorage:
