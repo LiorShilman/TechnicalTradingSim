@@ -214,10 +214,11 @@ The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
   - Formula: `(Equity × Risk%) / (Price × SL%)`
   - Example: $10,000 equity, 1% risk, $50,000 price, 2% SL → 0.1 BTC
   - Updates in real-time as you adjust risk/SL parameters
-- **Persistent Preferences**: SL%, TP%, and Risk% are saved to localStorage
-  - Auto-saves whenever values change
-  - Restored on next session
+- **Persistent Preferences**: SL%, TP%, Risk%, and checkbox states saved to localStorage
+  - Auto-saves whenever values or checkboxes change
+  - Restored on next session (including enabled/disabled state of SL, TP, Risk Management)
   - Allows users to set their preferred trading parameters once
+  - Example: If user enables SL with 2% and TP with 5%, next game starts with those exact settings
 
 **Technical Implementation:**
 - Uses `useRef` to freeze SL/TP/RR values during price changes (prevents UI flicker)

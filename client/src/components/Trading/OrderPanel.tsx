@@ -110,14 +110,47 @@ export default function OrderPanel() {
   })
 
   /** Enable/disable Stop Loss */
-  const [useStopLoss, setUseStopLoss] = useState(false)
+  const [useStopLoss, setUseStopLoss] = useState(() => {
+    const saved = localStorage.getItem('tradingPreferences')
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved)
+        return prefs.useStopLoss ?? false
+      } catch {
+        return false
+      }
+    }
+    return false
+  })
 
   /** Enable/disable Take Profit */
-  const [useTakeProfit, setUseTakeProfit] = useState(false)
+  const [useTakeProfit, setUseTakeProfit] = useState(() => {
+    const saved = localStorage.getItem('tradingPreferences')
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved)
+        return prefs.useTakeProfit ?? false
+      } catch {
+        return false
+      }
+    }
+    return false
+  })
 
   // === Risk Management State ===
   /** Enable/disable risk management calculations */
-  const [useRiskManagement, setUseRiskManagement] = useState(false)
+  const [useRiskManagement, setUseRiskManagement] = useState(() => {
+    const saved = localStorage.getItem('tradingPreferences')
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved)
+        return prefs.useRiskManagement ?? false
+      } catch {
+        return false
+      }
+    }
+    return false
+  })
 
   /** Maximum risk per trade as % of account equity (e.g., '2' = 2%) */
   const [riskPercentPerTrade, setRiskPercentPerTrade] = useState(() => {
@@ -238,16 +271,19 @@ export default function OrderPanel() {
 
   /**
    * Save Trading Preferences to localStorage
-   * Persists SL/TP percentages and risk management settings across sessions
+   * Persists SL/TP percentages, checkbox states, and risk management settings across sessions
    */
   useEffect(() => {
     const preferences = {
       stopLossPercent,
       takeProfitPercent,
       riskPercentPerTrade,
+      useStopLoss,
+      useTakeProfit,
+      useRiskManagement,
     }
     localStorage.setItem('tradingPreferences', JSON.stringify(preferences))
-  }, [stopLossPercent, takeProfitPercent, riskPercentPerTrade])
+  }, [stopLossPercent, takeProfitPercent, riskPercentPerTrade, useStopLoss, useTakeProfit, useRiskManagement])
 
   // === Derived Values from Frozen Refs ===
   /** Stop Loss price from frozen ref (stable during price movements) */
