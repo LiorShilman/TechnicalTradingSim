@@ -36,7 +36,16 @@ function App() {
   const { gameState, isLoading, showStats, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
 
   // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
-  const savedGameInfo = useMemo(() => getSavedGameInfo(), [refreshSavedGame, getSavedGameInfo])
+  const savedGameInfo = useMemo(() => {
+    const info = getSavedGameInfo()
+    console.log('🔍 SavedGameInfo check:', {
+      hasInfo: !!info,
+      uploadedFileName: uploadedFile?.name,
+      savedFileName: info?.sourceFileName,
+      matches: info && uploadedFile && info.sourceFileName === uploadedFile.name
+    })
+    return info
+  }, [refreshSavedGame, getSavedGameInfo, uploadedFile])
 
   // Visual effects hook
   const { profitTrail } = useVisualEffects(gameState)
@@ -578,7 +587,7 @@ function App() {
       {/* Visual Effects Layer */}
       <EquityColorShift
         equity={gameState.account.equity}
-        initialBalance={gameState.account.initialBalance}
+        initialBalance={initialBalance}
       />
 
       {/* Profit Trail Animation */}

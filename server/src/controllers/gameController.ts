@@ -392,18 +392,22 @@ export const nextCandle = async (req: Request, res: Response) => {
         if (position.stopLoss && currentPrice <= position.stopLoss) {
           shouldClose = true
           closeReason = 'stop_loss'
+          console.log(`🛑 LONG SL hit: price ${currentPrice} <= SL ${position.stopLoss}`)
         } else if (position.takeProfit && currentPrice >= position.takeProfit) {
           shouldClose = true
           closeReason = 'take_profit'
+          console.log(`🎯 LONG TP hit: price ${currentPrice} >= TP ${position.takeProfit}`)
         }
       } else {
         // SHORT: SL למעלה, TP למטה
         if (position.stopLoss && currentPrice >= position.stopLoss) {
           shouldClose = true
           closeReason = 'stop_loss'
+          console.log(`🛑 SHORT SL hit: price ${currentPrice} >= SL ${position.stopLoss}`)
         } else if (position.takeProfit && currentPrice <= position.takeProfit) {
           shouldClose = true
           closeReason = 'take_profit'
+          console.log(`🎯 SHORT TP hit: price ${currentPrice} <= TP ${position.takeProfit}`)
         }
       }
 
@@ -718,6 +722,14 @@ export const executeTrade = async (req: Request, res: Response) => {
         stopLoss: stopLoss,
         takeProfit: takeProfit,
       }
+
+      console.log(`📍 New ${newPosition.type} position created:`, {
+        entryPrice: currentPrice,
+        stopLoss,
+        takeProfit,
+        slDirection: newPosition.type === 'long' ? 'below' : 'above',
+        tpDirection: newPosition.type === 'long' ? 'above' : 'below'
+      })
 
       // 3. בדיקה אם נכנסו בתבנית
       let entryQuality = 50 // ברירת מחדל
