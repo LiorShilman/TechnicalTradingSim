@@ -431,30 +431,34 @@ Lightweight Charts (TradingView) integration:
     - Color-coded by order type: green for buy orders, red for sell orders
     - Positioned between OrderPanel and PositionsList in sidebar
     - Scrollable if many orders exist
-  - **PendingOrderMenu Component**: Context menu for creating pending orders with advanced risk management
+  - **PendingOrderMenu Component**: Context menu for creating pending orders with precise price-based controls
     - **Editable target price**: Price input field with 4 decimal precision (crypto/forex support)
       - User can modify the price after right-clicking on chart
-      - All calculations (SL/TP/quantity) update dynamically when price changes
-    - **Dual display SL/TP**: Shows both percentage input AND calculated price
-      - Left field: Percentage input (e.g., 2%, 4%)
-      - Right field: Read-only calculated price with 4 decimal precision
-      - Header shows color-coded price (red for SL, green for TP)
-      - Automatically recalculates when target price or percentage changes
-      - SL/TP inversion for SHORT positions (SL above entry, TP below entry)
+      - All calculations (SL/TP/quantity/trade value) update dynamically when price changes
+      - Real-time display of current price below for comparison
+    - **Price-based SL/TP (NOT percentages)**: User enters exact prices
+      - Stop Loss input: Exact price with 4 decimal precision
+      - Take Profit input: Exact price with 4 decimal precision
+      - Header shows calculated percentage distance for reference (color-coded: red for SL, green for TP)
+      - Automatically validates based on position type (LONG: SL < entry < TP, SHORT: TP < entry < SL)
     - **Smart default quantity**: 1% of equity divided by target price
       - Example: $10,000 equity, $50,000 price → 0.002 BTC (not hardcoded 0.01)
-      - Updates when target price changes
-    - **Auto-quantity calculation from risk**: Same as OrderPanel
+      - Updates dynamically when target price changes
+    - **Real-time trade value display**: Shows total position value (quantity × price) in header
+      - Updates instantly as quantity or price changes
+      - Helps user understand position sizing in dollar terms
+    - **Auto-quantity calculation from risk**: Based on absolute price difference
       - Risk percentage input (default 2% of equity)
-      - Formula: `quantity = (equity × risk%) / (targetPrice × SL%)`
-      - "חשב" (Calculate) button to apply recommended quantity
+      - Formula: `quantity = (equity × risk%) / |targetPrice - stopLoss|`
+      - Uses actual price distance, not percentage
+      - "חשב" (Calculate) button applies recommended quantity
+      - Button disabled until SL price is set
       - Real-time recommended quantity display below input field
-      - Shows dollar amount of risk based on percentage
     - **Position type preview**: LONG/SHORT buttons to preview position direction
-      - Changes SL/TP calculation direction based on selected type
+      - Visual indicator of selected type (green for LONG, red for SHORT)
     - **4 decimal precision throughout**: All prices display with .toFixed(4) for forex/crypto
     - Centered modal (50% x/y with transform) with purple-themed risk section
-    - Modal shows current price vs target price comparison (both 4 decimals)
+    - Clean, professional UI with color-coded borders (red for SL, green for TP)
 
 ### Telegram Notifications & Price Alerts
 The app supports free Telegram notifications and custom price alerts:

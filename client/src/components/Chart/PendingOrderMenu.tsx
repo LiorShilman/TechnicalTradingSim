@@ -29,57 +29,37 @@ export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, on
   const [takeProfit, setTakeProfit] = useState<number | undefined>()
   const [previewType, setPreviewType] = useState<'long' | 'short'>('long')
 
-  // ניהול סיכון - אחוזי SL/TP
-  const [stopLossPercent, setStopLossPercent] = useState('')
-  const [takeProfitPercent, setTakeProfitPercent] = useState('')
+  // ניהול סיכון
   const [maxRiskPercent, setMaxRiskPercent] = useState('2') // סיכון מקסימלי לעסקה (% מההון)
 
-  // חישוב SL/TP בפועל מאחוזים
-  useEffect(() => {
-    if (stopLossPercent && !isNaN(parseFloat(stopLossPercent))) {
-      const slPercent = parseFloat(stopLossPercent) / 100
-      if (previewType === 'long') {
-        // LONG: SL מתחת למחיר היעד
-        setStopLoss(targetPrice * (1 - slPercent))
-      } else {
-        // SHORT: SL מעל למחיר היעד
-        setStopLoss(targetPrice * (1 + slPercent))
-      }
-    } else {
-      setStopLoss(undefined)
-    }
-  }, [stopLossPercent, targetPrice, previewType])
+  // חישוב אחוזים מהמחירים המדויקים (לתצוגה בלבד)
+  const calculatePercentFromPrice = (price: number | undefined): string => {
+    if (!price || price === 0) return ''
 
-  useEffect(() => {
-    if (takeProfitPercent && !isNaN(parseFloat(takeProfitPercent))) {
-      const tpPercent = parseFloat(takeProfitPercent) / 100
-      if (previewType === 'long') {
-        // LONG: TP מעל למחיר היעד
-        setTakeProfit(targetPrice * (1 + tpPercent))
-      } else {
-        // SHORT: TP מתחת למחיר היעד
-        setTakeProfit(targetPrice * (1 - tpPercent))
-      }
-    } else {
-      setTakeProfit(undefined)
-    }
-  }, [takeProfitPercent, targetPrice, previewType])
+    const diff = Math.abs(targetPrice - price)
+    const percent = (diff / targetPrice) * 100
+
+    return percent.toFixed(2)
+  }
+
+  // חישוב מחיר העיסקה (כמות × מחיר)
+  const tradeValue = quantity * targetPrice
 
   // חישוב כמות מומלצת על פי סיכון
   const calculateRecommendedQuantity = (): number => {
-    if (!stopLossPercent || isNaN(parseFloat(stopLossPercent))) {
+    if (!stopLoss) {
       return parseFloat(defaultQuantity.toFixed(3)) // ברירת מחדל: 1% מההון
     }
 
-    const slPercent = parseFloat(stopLossPercent)
     const riskPercent = parseFloat(maxRiskPercent)
+    const slDiff = Math.abs(targetPrice - stopLoss)
 
-    if (slPercent === 0 || riskPercent === 0) {
+    if (slDiff === 0 || riskPercent === 0) {
       return parseFloat(defaultQuantity.toFixed(3))
     }
 
-    // נוסחה: כמות = (הון * % סיכון) / (מחיר * % SL)
-    const recommendedQty = (equity * riskPercent / 100) / (targetPrice * (slPercent / 100))
+    // נוסחה: כמות = (הון * % סיכון) / הפרש מחיר SL
+    const recommendedQty = (equity * riskPercent / 100) / slDiff
 
     return Math.max(0.001, parseFloat(recommendedQty.toFixed(3)))
   }
@@ -160,54 +140,46 @@ export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, on
           </div>
         </div>
 
-        {/* Stop Loss % */}
+        {/* Stop Loss - מחיר מדויק */}
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs text-text-secondary">Stop Loss</label>
+            <label className="text-xs text-text-secondary">Stop Loss (מחיר)</label>
             {stopLoss && (
               <span className="text-xs text-red-400 font-mono" dir="ltr">
-                ${stopLoss.toFixed(4)}
+                {calculatePercentFromPrice(stopLoss)}%
               </span>
             )}
           </div>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              value={stopLossPercent}
-              onChange={(e) => setStopLossPercent(e.target.value)}
-              step="0.1"
-              placeholder="%"
-              className="w-20 px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500 text-center"
-            />
-            <div className="flex-1 px-3 py-2 bg-dark-bg/50 border border-dark-border/50 rounded text-sm text-text-secondary flex items-center" dir="ltr">
-              {stopLoss ? `$${stopLoss.toFixed(4)}` : 'לא מוגדר'}
-            </div>
-          </div>
+          <input
+            type="number"
+            value={stopLoss || ''}
+            onChange={(e) => setStopLoss(e.target.value ? parseFloat(e.target.value) : undefined)}
+            step="0.0001"
+            placeholder="לא מוגדר"
+            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-red-500"
+            dir="ltr"
+          />
         </div>
 
-        {/* Take Profit % */}
+        {/* Take Profit - מחיר מדויק */}
         <div className="mb-3">
           <div className="flex items-center justify-between mb-1">
-            <label className="text-xs text-text-secondary">Take Profit</label>
+            <label className="text-xs text-text-secondary">Take Profit (מחיר)</label>
             {takeProfit && (
               <span className="text-xs text-green-400 font-mono" dir="ltr">
-                ${takeProfit.toFixed(4)}
+                {calculatePercentFromPrice(takeProfit)}%
               </span>
             )}
           </div>
-          <div className="flex gap-2">
-            <input
-              type="number"
-              value={takeProfitPercent}
-              onChange={(e) => setTakeProfitPercent(e.target.value)}
-              step="0.1"
-              placeholder="%"
-              className="w-20 px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500 text-center"
-            />
-            <div className="flex-1 px-3 py-2 bg-dark-bg/50 border border-dark-border/50 rounded text-sm text-text-secondary flex items-center" dir="ltr">
-              {takeProfit ? `$${takeProfit.toFixed(4)}` : 'לא מוגדר'}
-            </div>
-          </div>
+          <input
+            type="number"
+            value={takeProfit || ''}
+            onChange={(e) => setTakeProfit(e.target.value ? parseFloat(e.target.value) : undefined)}
+            step="0.0001"
+            placeholder="לא מוגדר"
+            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-green-500"
+            dir="ltr"
+          />
         </div>
 
         {/* ניהול סיכון */}
@@ -229,7 +201,12 @@ export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, on
 
         {/* כמות עם כפתור חישוב אוטומטי */}
         <div className="mb-3">
-          <label className="block text-xs text-text-secondary mb-1">כמות</label>
+          <div className="flex items-center justify-between mb-1">
+            <label className="text-xs text-text-secondary">כמות</label>
+            <span className="text-xs text-blue-400 font-mono" dir="ltr">
+              ${tradeValue.toFixed(2)}
+            </span>
+          </div>
           <div className="flex gap-2">
             <input
               type="number"
@@ -241,16 +218,16 @@ export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, on
             />
             <button
               onClick={handleAutoCalculate}
-              disabled={!stopLossPercent}
+              disabled={!stopLoss}
               className="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-xs font-semibold whitespace-nowrap transition-colors"
               title="חשב כמות אוטומטית לפי הסיכון"
             >
               חשב
             </button>
           </div>
-          {stopLossPercent && (
+          {stopLoss && (
             <div className="text-xs text-text-secondary mt-1">
-              כמות מומלצת: {calculateRecommendedQuantity().toFixed(3)} BTC
+              כמות מומלצת: {calculateRecommendedQuantity().toFixed(3)}
             </div>
           )}
         </div>
