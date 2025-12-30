@@ -161,6 +161,9 @@ Patterns are embedded in the 500-candle sequence (8 patterns total):
 
 Pattern metadata includes expected entry/exit prices for quality scoring. Price movements are realistic (0.5-2.5% per candle).
 
+**⚠️ Known Issue - Pattern Implementation Status**:
+While the pattern detection mechanism is active and functional, patterns #4, #6, and #8 do not currently work correctly in the implementation. This may affect the educational value and feedback accuracy in some scenarios. The pattern visualization and detection algorithms for these specific pattern instances require further refinement. All other pattern detection and feedback mechanisms continue to function as designed.
+
 ### Feedback System
 Server evaluates trades and generates feedback:
 - Pattern hints: "Breakout pattern forming..."
@@ -683,6 +686,52 @@ The system supports saving and resuming games:
 - Extracted from `gameState.asset` in OrderPanel, PositionsList, ChartControls
 - Supports indices (SP/SPX), crypto (BTC/USD), and any other asset format
 - Auto-detects from TradingView filenames and preserves full name
+
+### Visual Effects System
+The game includes three visual effects for enhanced user experience and feedback:
+
+#### 1. Profit Trail Animation (`ProfitTrail.tsx`)
+- **Trigger**: Displays when closing any position (profit or loss)
+- **Animation**:
+  - Large centered display showing exact P&L amount and percentage
+  - Icon based on position type (TrendingUp for LONG, TrendingDown for SHORT)
+  - 12 colored particles scatter outward (green for profit, red for loss)
+  - Bounce + fade out animations
+  - Auto-dismisses after 2 seconds
+- **Purpose**: Provides immediate, satisfying visual feedback on trade results
+- **Implementation**: Managed by `useVisualEffects` hook, triggered on `closedPositions.length` change
+
+#### 2. Target Zone Glow (`TargetZoneGlow.tsx`)
+- **Trigger**: Activates when current price is within 2% of Take Profit
+- **Animation**:
+  - Pulsing green background gradient overlay on entire screen
+  - Central notification: "🎯 קרוב ל-Take Profit!" with distance info
+  - Two expanding glow rings around center
+  - Glow intensity increases as price gets closer (dynamic opacity)
+- **Purpose**: Alert trader when approaching profit target
+- **Implementation**: Monitors first open position with TP, calculates distance percentage
+
+#### 3. Equity Color Shift (`EquityColorShift.tsx`)
+- **Trigger**: Always active, changes based on account performance
+- **Performance Tiers**:
+  - **Excellent** (+20% or more): Bright green gradient with pulse animation
+  - **Good** (+10% to +20%): Dark green gradient
+  - **Neutral** (-10% to +10%): Neutral gray gradient
+  - **Poor** (-10% to -20%): Orange-red gradient
+  - **Critical** (-20% or worse): Bright red gradient with pulse animation
+- **Visual Elements**:
+  - Background gradient overlay (opacity 5-12% based on tier)
+  - Radial glow effect for extreme tiers (excellent/critical)
+  - Status indicator in bottom-left corner showing current tier
+- **Purpose**: Constant visual feedback on overall trading performance
+- **Implementation**: Calculates return percentage, applies graduated color scheme
+
+**Technical Details:**
+- Hook: `client/src/hooks/useVisualEffects.ts` manages effect state and triggers
+- Components: `client/src/components/Effects/` directory
+- Integration: All effects integrated in `App.tsx` with proper z-index layering
+- Z-index hierarchy: EquityColorShift (z-0 background) → TargetZoneGlow (z-40) → ProfitTrail (z-50)
+- No performance impact: Effects use CSS animations, minimal re-renders
 
 ## Development Workflow
 

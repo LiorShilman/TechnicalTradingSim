@@ -8,8 +8,12 @@ import ChartControls from './components/Chart/ChartControls'
 import EquityChart from './components/Chart/EquityChart'
 import GameStats from './components/Stats/GameStats'
 import AlertSettings from './components/Settings/AlertSettings'
+import ProfitTrail from './components/Effects/ProfitTrail'
+import TargetZoneGlow from './components/Effects/TargetZoneGlow'
+import EquityColorShift from './components/Effects/EquityColorShift'
 import { useGameStore } from './stores/gameStore'
 import { priceAlertsService } from './services/priceAlertsService'
+import { useVisualEffects } from './hooks/useVisualEffects'
 import { Play, Loader2, Upload } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 import toast from 'react-hot-toast'
@@ -33,6 +37,9 @@ function App() {
 
   // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
   const savedGameInfo = useMemo(() => getSavedGameInfo(), [refreshSavedGame, getSavedGameInfo])
+
+  // Visual effects hook
+  const { profitTrail } = useVisualEffects(gameState)
 
   // Price Alerts handlers
   const handleAddAlert = (alert: Omit<import('./types/game.types').PriceAlert, 'id' | 'createdAt'>) => {
@@ -568,8 +575,31 @@ function App() {
   if (gameState) {
     return (
     <div className="h-screen flex flex-col bg-dark-bg" dir="rtl">
+      {/* Visual Effects Layer */}
+      <EquityColorShift
+        equity={gameState.account.equity}
+        initialBalance={gameState.account.initialBalance}
+      />
+
+      {/* Profit Trail Animation */}
+      {profitTrail && (
+        <ProfitTrail position={profitTrail.position} />
+      )}
+
+      {/* Target Zone Glow - for first open position with TP */}
+      {gameState.positions.length > 0 && gameState.positions[0].takeProfit && (
+        <TargetZoneGlow
+          position={{
+            type: gameState.positions[0].type,
+            entryPrice: gameState.positions[0].entryPrice,
+            currentPrice: gameState.candles[gameState.currentIndex]?.close || 0,
+            takeProfit: gameState.positions[0].takeProfit,
+          }}
+        />
+      )}
+
       {/* Header */}
-      <header className="h-16 bg-dark-panel border-b border-dark-border flex items-center justify-between px-6">
+      <header className="h-16 bg-dark-panel border-b border-dark-border flex items-center justify-between px-6 relative z-10">
         <div className="flex items-center gap-6">
           <h1 className="text-xl font-bold">משחק מסחר טכני</h1>
           <div className="text-sm text-text-secondary">
@@ -580,7 +610,7 @@ function App() {
       </header>
 
       {/* Main content */}
-      <div className="flex-1 flex overflow-hidden">
+      <div className="flex-1 flex overflow-hidden relative z-10">
         {/* Chart area */}
         <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
           <div style={{ flex: '1 1 0', minHeight: '0' }}>
