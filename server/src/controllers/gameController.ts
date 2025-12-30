@@ -381,10 +381,14 @@ export const nextCandle = async (req: Request, res: Response) => {
     // 2. בדיקת Stop Loss / Take Profit והסרת פוזיציות שנפגעו
     const positionsToClose: Array<{ position: any; reason: 'stop_loss' | 'take_profit' }> = []
 
+    console.log(`📊 Checking ${game.positions.length} positions for SL/TP at price ${currentCandle.close}`)
+
     for (const position of game.positions) {
       const currentPrice = currentCandle.close
       let shouldClose = false
       let closeReason: 'stop_loss' | 'take_profit' | undefined
+
+      console.log(`  Position ${position.type}: entry=${position.entryPrice}, SL=${position.stopLoss}, TP=${position.takeProfit}, current=${currentPrice}`)
 
       // בדיקת Stop Loss / Take Profit
       if (position.type === 'long') {
