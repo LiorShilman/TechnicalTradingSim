@@ -204,11 +204,17 @@ The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
 - Recommended position size calculator based on risk parameters
 - Risk warning when position size exceeds configured risk tolerance
 - Auto-calculate button to use recommended quantity
+- **Auto-quantity from risk**: When Risk Management is enabled, quantity automatically updates to recommended value
+  - Triggers on: Risk Management toggle, Risk% change, Stop Loss% change, Stop Loss toggle
+  - Formula: `(Equity × Risk%) / (Price × SL%)`
+  - Example: $10,000 equity, 1% risk, $50,000 price, 2% SL → 0.1 BTC
+  - Updates in real-time as you adjust risk/SL parameters
 
 **Technical Implementation:**
 - Uses `useRef` to freeze SL/TP/RR values during price changes (prevents UI flicker)
 - Values only recalculate when user changes settings, not on every candle
 - For SHORT positions: SL/TP prices are inverted automatically
+- `useEffect` hook (lines 285-290) auto-updates quantity when risk parameters change
 
 ## Configuration
 

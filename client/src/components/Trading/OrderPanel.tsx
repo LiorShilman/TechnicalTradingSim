@@ -268,6 +268,27 @@ export default function OrderPanel() {
    */
   const isRiskTooHigh = useRiskManagement && actualRiskPercent > parseFloat(riskPercentPerTrade || '2')
 
+  /**
+   * Auto-calculate quantity based on risk percentage when Risk Management is enabled
+   *
+   * This effect automatically sets the quantity to the recommended value based on:
+   * - Account equity
+   * - Risk percentage per trade
+   * - Stop Loss percentage
+   *
+   * Triggers when:
+   * - Risk Management is toggled ON
+   * - Risk percentage changes
+   * - Stop Loss percentage changes
+   * - Stop Loss is toggled ON/OFF
+   */
+  useEffect(() => {
+    if (useRiskManagement && useStopLoss && recommendedQuantity > 0) {
+      setQuantity(recommendedQuantity.toFixed(3))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [useRiskManagement, useStopLoss, riskPercentPerTrade, stopLossPercent])
+
   // === Trading Handlers ===
 
   /**
