@@ -6,6 +6,7 @@ interface EditPositionModalProps {
   position?: Position
   pendingOrder?: PendingOrder
   currentPrice: number
+  assetSymbol?: string
   onClose: () => void
   onSave: (updates: {
     stopLoss?: number
@@ -19,6 +20,7 @@ export default function EditPositionModal({
   position,
   pendingOrder,
   currentPrice,
+  assetSymbol = 'BTC/USD',
   onClose,
   onSave,
 }: EditPositionModalProps) {
@@ -147,7 +149,7 @@ export default function EditPositionModal({
             </div>
           </div>
           <div className="text-xs text-text-secondary" dir="ltr">
-            כמות: {quantity.toFixed(3)} BTC
+            כמות: {quantity.toFixed(3)} {assetSymbol}
           </div>
           {isPosition && (
             <div className="text-xs text-text-secondary" dir="ltr">

@@ -26,6 +26,7 @@ export default function PendingOrdersList() {
   }
 
   const currentPrice = gameState.candles[gameState.currentIndex]?.close || 0
+  const assetSymbol = gameState.asset || 'BTC/USD'
 
   const getOrderTypeLabel = (orderType: string): string => {
     switch (orderType) {
@@ -133,7 +134,7 @@ export default function PendingOrdersList() {
                 <div>
                   <div className="text-[10px] text-text-secondary">כמות</div>
                   <div className="text-sm font-bold" dir="ltr">
-                    {order.quantity.toFixed(3)} BTC
+                    {order.quantity.toFixed(3)} {assetSymbol}
                   </div>
                 </div>
               </div>
@@ -182,6 +183,7 @@ export default function PendingOrdersList() {
         <EditPositionModal
           pendingOrder={editingOrder}
           currentPrice={currentPrice}
+          assetSymbol={assetSymbol}
           onClose={() => setEditingOrder(null)}
           onSave={handleSaveEdit}
         />

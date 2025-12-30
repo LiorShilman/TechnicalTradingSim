@@ -142,6 +142,7 @@ export default function PositionsList() {
         <EditPositionModal
           position={editingPosition}
           currentPrice={currentPrice}
+          assetSymbol={assetSymbol}
           onClose={() => setEditingPosition(null)}
           onSave={handleSaveEdit}
         />
