@@ -66,30 +66,6 @@ export default function EditPositionModal({
   }
 
   const handleSave = () => {
-    const basePrice = isPosition ? position!.entryPrice : targetPrice
-
-    // Validate SL/TP are in correct direction
-    if (positionType === 'long') {
-      if (stopLoss !== undefined && stopLoss >= basePrice) {
-        alert('שגיאה: Stop Loss עבור LONG חייב להיות מתחת למחיר הכניסה!')
-        return
-      }
-      if (takeProfit !== undefined && takeProfit <= basePrice) {
-        alert('שגיאה: Take Profit עבור LONG חייב להיות מעל מחיר הכניסה!')
-        return
-      }
-    } else {
-      // SHORT
-      if (stopLoss !== undefined && stopLoss <= basePrice) {
-        alert('שגיאה: Stop Loss עבור SHORT חייב להיות מעל מחיר הכניסה!')
-        return
-      }
-      if (takeProfit !== undefined && takeProfit >= basePrice) {
-        alert('שגיאה: Take Profit עבור SHORT חייב להיות מתחת למחיר הכניסה!')
-        return
-      }
-    }
-
     const updates: {
       stopLoss?: number
       takeProfit?: number
