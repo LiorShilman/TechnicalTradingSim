@@ -82,10 +82,32 @@ export default function OrderPanel() {
 
   // === Stop Loss & Take Profit State ===
   /** Stop Loss percentage (e.g., '2' = 2% below entry for LONG) */
-  const [stopLossPercent, setStopLossPercent] = useState('2')
+  const [stopLossPercent, setStopLossPercent] = useState(() => {
+    const saved = localStorage.getItem('tradingPreferences')
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved)
+        return prefs.stopLossPercent || '2'
+      } catch {
+        return '2'
+      }
+    }
+    return '2'
+  })
 
   /** Take Profit percentage (e.g., '5' = 5% above entry for LONG) */
-  const [takeProfitPercent, setTakeProfitPercent] = useState('5')
+  const [takeProfitPercent, setTakeProfitPercent] = useState(() => {
+    const saved = localStorage.getItem('tradingPreferences')
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved)
+        return prefs.takeProfitPercent || '5'
+      } catch {
+        return '5'
+      }
+    }
+    return '5'
+  })
 
   /** Enable/disable Stop Loss */
   const [useStopLoss, setUseStopLoss] = useState(false)
@@ -98,7 +120,18 @@ export default function OrderPanel() {
   const [useRiskManagement, setUseRiskManagement] = useState(false)
 
   /** Maximum risk per trade as % of account equity (e.g., '2' = 2%) */
-  const [riskPercentPerTrade, setRiskPercentPerTrade] = useState('2')
+  const [riskPercentPerTrade, setRiskPercentPerTrade] = useState(() => {
+    const saved = localStorage.getItem('tradingPreferences')
+    if (saved) {
+      try {
+        const prefs = JSON.parse(saved)
+        return prefs.riskPercentPerTrade || '2'
+      } catch {
+        return '2'
+      }
+    }
+    return '2'
+  })
 
   // === Frozen Values (useRef Pattern) ===
   /**
@@ -202,6 +235,19 @@ export default function OrderPanel() {
     // This is the core of the "freeze" pattern - values update only when user changes settings
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useStopLoss, useTakeProfit, stopLossPercent, takeProfitPercent])
+
+  /**
+   * Save Trading Preferences to localStorage
+   * Persists SL/TP percentages and risk management settings across sessions
+   */
+  useEffect(() => {
+    const preferences = {
+      stopLossPercent,
+      takeProfitPercent,
+      riskPercentPerTrade,
+    }
+    localStorage.setItem('tradingPreferences', JSON.stringify(preferences))
+  }, [stopLossPercent, takeProfitPercent, riskPercentPerTrade])
 
   // === Derived Values from Frozen Refs ===
   /** Stop Loss price from frozen ref (stable during price movements) */
@@ -552,6 +598,9 @@ export default function OrderPanel() {
                     className="w-full bg-dark-panel border border-dark-border rounded px-3 py-1 text-sm font-mono focus:outline-none focus:border-blue-500"
                     placeholder="אחוז"
                   />
+                  <div className="text-[10px] text-text-secondary mt-1">
+                    💡 מומלץ 1-2% (ניהול סיכון מקצועי) | ההגדרה נשמרת אוטומטית
+                  </div>
                 </div>
 
                 {/* Risk Analysis */}

@@ -14,8 +14,8 @@ interface PendingOrderMenuProps {
 export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, onClose, onPreviewUpdate }: PendingOrderMenuProps) {
   const { gameState, createPendingOrder } = useGameStore()
 
-  // מחיר יעד עריך
-  const [targetPrice, setTargetPrice] = useState(initialPrice)
+  // מחיר יעד עריך - מעוגל ל-4 ספרות
+  const [targetPrice, setTargetPrice] = useState(parseFloat(initialPrice.toFixed(4)))
 
   // קבלת המחיר הנוכחי
   const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
@@ -130,7 +130,10 @@ export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, on
           <input
             type="number"
             value={targetPrice}
-            onChange={(e) => setTargetPrice(parseFloat(e.target.value) || 0)}
+            onChange={(e) => {
+              const value = parseFloat(e.target.value) || 0
+              setTargetPrice(parseFloat(value.toFixed(4)))
+            }}
             step="0.0001"
             className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-lg font-bold text-blue-400 focus:outline-none focus:border-blue-500"
             dir="ltr"

@@ -204,6 +204,7 @@ The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
 
 **Risk Management:**
 - Maximum risk per trade (% of account equity)
+- Default: 2% (professional trading standard for risk management)
 - Real-time risk calculation in dollars and percentage
 - Recommended position size calculator based on risk parameters
 - Risk warning when position size exceeds configured risk tolerance
@@ -213,11 +214,16 @@ The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
   - Formula: `(Equity × Risk%) / (Price × SL%)`
   - Example: $10,000 equity, 1% risk, $50,000 price, 2% SL → 0.1 BTC
   - Updates in real-time as you adjust risk/SL parameters
+- **Persistent Preferences**: SL%, TP%, and Risk% are saved to localStorage
+  - Auto-saves whenever values change
+  - Restored on next session
+  - Allows users to set their preferred trading parameters once
 
 **Technical Implementation:**
 - Uses `useRef` to freeze SL/TP/RR values during price changes (prevents UI flicker)
 - Values only recalculate when user changes settings, not on every candle
 - For SHORT positions: SL/TP prices are inverted automatically
+- Trading preferences saved to localStorage via useEffect on change
 - `useEffect` hook (lines 285-290) auto-updates quantity when risk parameters change
 - `useEffect` hook (lines 300-308) sets smart default quantity on game load (1% of equity)
 
@@ -434,6 +440,8 @@ Lightweight Charts (TradingView) integration:
   - **PendingOrderMenu Component**: Context menu for creating pending orders with precise price-based controls
     - **Editable target price**: Price input field with 4 decimal precision (crypto/forex support)
       - User can modify the price after right-clicking on chart
+      - Initial price from chart click is automatically rounded to 4 decimals (prevents floating-point display issues)
+      - Price changes are also rounded to 4 decimals on input
       - All calculations (SL/TP/quantity/trade value) update dynamically when price changes
       - Real-time display of current price below for comparison
     - **Price-based SL/TP (NOT percentages)**: User enters exact prices
