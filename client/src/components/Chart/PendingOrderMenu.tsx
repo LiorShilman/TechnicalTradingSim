@@ -18,8 +18,69 @@ export default function PendingOrderMenu({ price, x: _x, y: _y, onClose, onPrevi
   const [takeProfit, setTakeProfit] = useState<number | undefined>()
   const [previewType, setPreviewType] = useState<'long' | 'short'>('long')
 
+  // ניהול סיכון - אחוזי SL/TP
+  const [stopLossPercent, setStopLossPercent] = useState('')
+  const [takeProfitPercent, setTakeProfitPercent] = useState('')
+  const [maxRiskPercent, setMaxRiskPercent] = useState('2') // סיכון מקסימלי לעסקה (% מההון)
+
   // קבלת המחיר הנוכחי
   const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
+  const equity = gameState?.account.equity || 10000
+
+  // חישוב SL/TP בפועל מאחוזים
+  useEffect(() => {
+    if (stopLossPercent && !isNaN(parseFloat(stopLossPercent))) {
+      const slPercent = parseFloat(stopLossPercent) / 100
+      if (previewType === 'long') {
+        // LONG: SL מתחת למחיר היעד
+        setStopLoss(price * (1 - slPercent))
+      } else {
+        // SHORT: SL מעל למחיר היעד
+        setStopLoss(price * (1 + slPercent))
+      }
+    } else {
+      setStopLoss(undefined)
+    }
+  }, [stopLossPercent, price, previewType])
+
+  useEffect(() => {
+    if (takeProfitPercent && !isNaN(parseFloat(takeProfitPercent))) {
+      const tpPercent = parseFloat(takeProfitPercent) / 100
+      if (previewType === 'long') {
+        // LONG: TP מעל למחיר היעד
+        setTakeProfit(price * (1 + tpPercent))
+      } else {
+        // SHORT: TP מתחת למחיר היעד
+        setTakeProfit(price * (1 - tpPercent))
+      }
+    } else {
+      setTakeProfit(undefined)
+    }
+  }, [takeProfitPercent, price, previewType])
+
+  // חישוב כמות מומלצת על פי סיכון
+  const calculateRecommendedQuantity = (): number => {
+    if (!stopLossPercent || isNaN(parseFloat(stopLossPercent))) {
+      return 0.01 // ברירת מחדל
+    }
+
+    const slPercent = parseFloat(stopLossPercent)
+    const riskPercent = parseFloat(maxRiskPercent)
+
+    if (slPercent === 0 || riskPercent === 0) {
+      return 0.01
+    }
+
+    // נוסחה: כמות = (הון * % סיכון) / (מחיר * % SL)
+    const recommendedQty = (equity * riskPercent / 100) / (price * (slPercent / 100))
+
+    return Math.max(0.001, parseFloat(recommendedQty.toFixed(3)))
+  }
+
+  const handleAutoCalculate = () => {
+    const recommended = calculateRecommendedQuantity()
+    setQuantity(recommended)
+  }
 
   // עדכון התצוגה המקדימה בגרף
   useEffect(() => {
@@ -87,43 +148,85 @@ export default function PendingOrderMenu({ price, x: _x, y: _y, onClose, onPrevi
           </div>
         </div>
 
-        {/* כמות */}
+        {/* Stop Loss % */}
+        <div className="mb-3">
+          <label className="block text-xs text-text-secondary mb-1">Stop Loss %</label>
+          <input
+            type="number"
+            value={stopLossPercent}
+            onChange={(e) => setStopLossPercent(e.target.value)}
+            step="0.1"
+            placeholder="לדוגמא: 2"
+            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
+          />
+          {stopLoss && (
+            <div className="text-xs text-text-secondary mt-1" dir="ltr">
+              מחיר SL: ${stopLoss.toFixed(4)}
+            </div>
+          )}
+        </div>
+
+        {/* Take Profit % */}
+        <div className="mb-3">
+          <label className="block text-xs text-text-secondary mb-1">Take Profit %</label>
+          <input
+            type="number"
+            value={takeProfitPercent}
+            onChange={(e) => setTakeProfitPercent(e.target.value)}
+            step="0.1"
+            placeholder="לדוגמא: 4"
+            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
+          />
+          {takeProfit && (
+            <div className="text-xs text-text-secondary mt-1" dir="ltr">
+              מחיר TP: ${takeProfit.toFixed(4)}
+            </div>
+          )}
+        </div>
+
+        {/* ניהול סיכון */}
+        <div className="mb-3 p-2 bg-purple-900/20 border border-purple-500/30 rounded">
+          <label className="block text-xs text-text-secondary mb-1">סיכון מקסימלי לעסקה (%)</label>
+          <input
+            type="number"
+            value={maxRiskPercent}
+            onChange={(e) => setMaxRiskPercent(e.target.value)}
+            step="0.1"
+            min="0.1"
+            max="10"
+            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-purple-500"
+          />
+          <div className="text-xs text-text-secondary mt-1">
+            סיכון בדולרים: ${((equity * parseFloat(maxRiskPercent) / 100) || 0).toFixed(2)}
+          </div>
+        </div>
+
+        {/* כמות עם כפתור חישוב אוטומטי */}
         <div className="mb-3">
           <label className="block text-xs text-text-secondary mb-1">כמות</label>
-          <input
-            type="number"
-            value={quantity}
-            onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
-            step="0.01"
-            min="0.01"
-            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Stop Loss (אופציונלי) */}
-        <div className="mb-3">
-          <label className="block text-xs text-text-secondary mb-1">Stop Loss (אופציונלי)</label>
-          <input
-            type="number"
-            value={stopLoss || ''}
-            onChange={(e) => setStopLoss(e.target.value ? parseFloat(e.target.value) : undefined)}
-            step="0.01"
-            placeholder="לא מוגדר"
-            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
-          />
-        </div>
-
-        {/* Take Profit (אופציונלי) */}
-        <div className="mb-4">
-          <label className="block text-xs text-text-secondary mb-1">Take Profit (אופציונלי)</label>
-          <input
-            type="number"
-            value={takeProfit || ''}
-            onChange={(e) => setTakeProfit(e.target.value ? parseFloat(e.target.value) : undefined)}
-            step="0.01"
-            placeholder="לא מוגדר"
-            className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
-          />
+          <div className="flex gap-2">
+            <input
+              type="number"
+              value={quantity}
+              onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
+              step="0.001"
+              min="0.001"
+              className="flex-1 px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
+            />
+            <button
+              onClick={handleAutoCalculate}
+              disabled={!stopLossPercent}
+              className="px-3 py-2 bg-purple-600 hover:bg-purple-700 disabled:bg-gray-600 disabled:cursor-not-allowed rounded text-xs font-semibold whitespace-nowrap transition-colors"
+              title="חשב כמות אוטומטית לפי הסיכון"
+            >
+              חשב
+            </button>
+          </div>
+          {stopLossPercent && (
+            <div className="text-xs text-text-secondary mt-1">
+              כמות מומלצת: {calculateRecommendedQuantity().toFixed(3)} BTC
+            </div>
+          )}
         </div>
 
         {/* בחירת כיוון פקודה */}

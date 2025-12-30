@@ -431,6 +431,21 @@ Lightweight Charts (TradingView) integration:
     - Color-coded by order type: green for buy orders, red for sell orders
     - Positioned between OrderPanel and PositionsList in sidebar
     - Scrollable if many orders exist
+  - **PendingOrderMenu Component**: Context menu for creating pending orders with advanced risk management
+    - **Percentage-based SL/TP**: Enter SL/TP as percentages (e.g., 2%, 4%)
+      - Automatically calculates actual prices based on target price and position type (LONG/SHORT)
+      - Real-time price display shows calculated SL/TP prices with 4 decimal precision
+      - SL/TP inversion for SHORT positions (SL above entry, TP below entry)
+    - **Auto-quantity calculation from risk**: Same as OrderPanel
+      - Risk percentage input (default 2% of equity)
+      - Formula: `quantity = (equity × risk%) / (price × SL%)`
+      - "חשב" (Calculate) button to apply recommended quantity
+      - Real-time recommended quantity display below input field
+      - Shows dollar amount of risk based on percentage
+    - **Position type preview**: LONG/SHORT buttons to preview position direction
+      - Changes SL/TP calculation direction based on selected type
+    - Centered modal (50% x/y with transform) with purple-themed risk section
+    - Modal shows current price vs target price comparison
 
 ### Telegram Notifications & Price Alerts
 The app supports free Telegram notifications and custom price alerts:
