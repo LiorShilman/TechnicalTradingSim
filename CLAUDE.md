@@ -283,7 +283,11 @@ Currently stub implementations in `patternGenerator.ts`. When implementing:
 
 ### Chart Integration
 Lightweight Charts (TradingView) integration:
-- Displays candlestick series
+- Displays candlestick series with **dynamic price precision**:
+  - **Crypto/Forex** (assets with '/'): 4 decimal places (e.g., BTC/USD, EUR/GBP → 1.2345)
+  - **Stocks/Indices** (no '/'): 2 decimal places (e.g., SP/SPX → 5432.12)
+  - Automatically detects asset type from `gameState.asset`
+  - `minMove` calculated dynamically: 0.0001 for crypto/forex, 0.01 for stocks
 - Chart instance managed in TradingChart component
 - Data format: `{ time: number, open, high, low, close }` (seconds-based timestamps)
 - Volume displayed as histogram series
@@ -500,7 +504,20 @@ The "שמור וצא" (Save and Exit) button provides comprehensive game statist
 3. After 500ms delay (for toast notification), sets `showStats: true`
 4. GameStats modal appears with full statistics
 
-**GameStats Modal Behavior:**
+**GameStats Modal Design:**
+- **Wide horizontal layout** (`max-w-6xl` ≈ 1152px) instead of vertical
+- **Compact header**: Trophy + title on left, total return (large %) on right
+- **3-column grid layout**:
+  - Column 1: Trading Performance (total trades, win rate, winning/losing trades)
+  - Column 2: Risk Metrics (profit factor, max drawdown, avg win/loss)
+  - Column 3: Advanced Metrics (Sharpe, Sortino, Calmar ratios)
+- **Secondary row** (3 equal columns):
+  - Pattern Recognition (recognition score + entry quality)
+  - Best Trade (P&L display with pattern type)
+  - Current Streak or Max Streaks (win/loss streaks)
+- **Compact buttons**: Centered at bottom with reduced padding
+
+**Modal Behavior:**
 - **When game is complete** (`isComplete === true`):
   - Shows only "שחק שוב" (Play Again) button
   - Clicking it calls `resetGame()` and returns to start screen
@@ -516,6 +533,7 @@ The "שמור וצא" (Save and Exit) button provides comprehensive game statist
 - Both `isComplete` and `showStats` trigger stats display: `{(gameState?.isComplete || showStats) && <GameStats />}`
 
 **User Experience:**
+- Wide layout prevents vertical overflow, fits better on screen
 - Allows reviewing performance mid-game without losing progress
 - Clear choice between continuing current game or starting new one
 - Toast confirmation ("משחק נשמר בהצלחה! 💾") before stats appear

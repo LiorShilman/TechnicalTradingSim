@@ -406,7 +406,13 @@ export default function TradingChart() {
     }
     setChartControls(handleFitContent, handleResetZoom)
 
-    // יצירת סדרת נרות
+    // חישוב precision דינמי על פי סוג הנכס
+    // קריפטו ופורקס: 4 ספרות, מניות: 2 ספרות
+    const asset = gameState?.asset || 'BTC/USD'
+    const isCryptoOrForex = asset.includes('/') // כל זוג מטבעות (BTC/USD, EUR/GBP וכו')
+    const pricePrecision = isCryptoOrForex ? 4 : 2
+
+    // יצירת סדרת נרות עם precision מותאם
     const candlestickSeries = chart.addCandlestickSeries({
       upColor: '#00c853',
       downColor: '#ff1744',
@@ -414,6 +420,11 @@ export default function TradingChart() {
       borderDownColor: '#ff1744',
       wickUpColor: '#00c853',
       wickDownColor: '#ff1744',
+      priceFormat: {
+        type: 'price',
+        precision: pricePrecision,
+        minMove: 1 / Math.pow(10, pricePrecision), // 0.0001 לפורקס/קריפטו, 0.01 למניות
+      },
     })
 
     // יצירת קו MA 20 לVolume - קודם! כדי שיהיה מאחורי הברים

@@ -185,7 +185,15 @@ export default function OrderPanel() {
     // Calculate Risk-Reward Ratio (pure percentage ratio, independent of price)
     // Example: SL=2%, TP=5% → R:R = 5/2 = 2.5 (displayed as "1:2.5")
     if (useStopLoss && useTakeProfit) {
-      frozenRiskRewardRef.current = parseFloat(takeProfitPercent) / parseFloat(stopLossPercent)
+      const tpValue = parseFloat(takeProfitPercent)
+      const slValue = parseFloat(stopLossPercent)
+
+      // Validate both values are valid numbers and SL is not zero
+      if (!isNaN(tpValue) && !isNaN(slValue) && slValue !== 0) {
+        frozenRiskRewardRef.current = tpValue / slValue
+      } else {
+        frozenRiskRewardRef.current = 0
+      }
     } else {
       frozenRiskRewardRef.current = 0
     }
