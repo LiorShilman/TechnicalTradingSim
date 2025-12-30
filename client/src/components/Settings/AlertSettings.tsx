@@ -96,7 +96,7 @@ export default function AlertSettings({
 
 return (
   <div
-    className={`absolute top-[120px] left-4 z-10 bg-dark-panel/95 border-2 border-yellow-600/40 rounded-lg shadow-xl overflow-hidden
+    className={`absolute top-16 left-4 z-10 bg-dark-panel/95 border-2 border-yellow-600/40 rounded-lg shadow-xl overflow-hidden
     transition-[width] duration-200 ease-out
     ${isExpanded ? 'w-[300px]' : 'w-[140px]'}`}
   >
