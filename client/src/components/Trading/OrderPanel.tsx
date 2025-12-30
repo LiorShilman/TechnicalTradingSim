@@ -289,6 +289,24 @@ export default function OrderPanel() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [useRiskManagement, useStopLoss, riskPercentPerTrade, stopLossPercent])
 
+  /**
+   * Set initial quantity based on account equity when game first loads
+   *
+   * This effect runs once when the component mounts with a valid game state.
+   * Sets a reasonable default quantity (1% of account equity divided by current price).
+   *
+   * Example: $10,000 account, $50,000 BTC price → 0.002 BTC ($100 position, 1% of account)
+   */
+  useEffect(() => {
+    if (gameState && accountEquity > 0 && currentPrice > 0 && quantity === '0.1') {
+      // Only set if quantity is still at default '0.1'
+      const defaultPositionPercent = 0.01 // 1% of account equity
+      const initialQuantity = (accountEquity * defaultPositionPercent) / currentPrice
+      setQuantity(initialQuantity.toFixed(3))
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState?.id]) // Run only when game ID changes (new game loaded)
+
   // === Trading Handlers ===
 
   /**
@@ -358,7 +376,7 @@ export default function OrderPanel() {
   const canTrade = gameState && !gameState.isComplete && !isLoading
 
   return (
-    <div className="p-4 border-b border-dark-border">
+    <div className="p-4 border-b border-dark-border max-h-[calc(100vh-100px)] overflow-y-auto">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold">פאנל מסחר</h3>
         <button

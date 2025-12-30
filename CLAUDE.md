@@ -189,8 +189,12 @@ The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
 
 **Basic Trading:**
 - Quantity input with 0.001 BTC precision (supports fractional crypto trading)
+- **Smart default quantity**: Automatically set to 1% of account equity on game load
+  - Example: $13,000 account, $5,000 SNP price → 0.026 SNP (1% = $130)
+  - Prevents hardcoded 0.1 BTC default (which would be $5,000 position = 38% of account)
 - Real-time total value calculation and portfolio percentage display
 - Current price display with live updates
+- **Scrollable panel**: `max-h-[calc(100vh-100px)] overflow-y-auto` allows access to all settings
 
 **Advanced Settings (Expandable):**
 - **Stop Loss**: Percentage-based SL with live price calculation
@@ -215,6 +219,7 @@ The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
 - Values only recalculate when user changes settings, not on every candle
 - For SHORT positions: SL/TP prices are inverted automatically
 - `useEffect` hook (lines 285-290) auto-updates quantity when risk parameters change
+- `useEffect` hook (lines 300-308) sets smart default quantity on game load (1% of equity)
 
 ## Configuration
 
