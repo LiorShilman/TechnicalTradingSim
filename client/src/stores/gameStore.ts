@@ -103,6 +103,15 @@ export const useGameStore = create<GameStore>((set, get) => ({
         timeframe: response.game?.timeframe
       })
       set({ gameState: response.game, isLoading: false })
+
+      // Auto-fit chart after game loads
+      setTimeout(() => {
+        const { chartFitContent } = get()
+        if (chartFitContent) {
+          console.log('📏 Auto-fitting chart after new game load')
+          chartFitContent()
+        }
+      }, 500)
     } catch (error) {
       console.error('initializeGameWithCSV: Error', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload CSV'
