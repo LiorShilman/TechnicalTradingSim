@@ -432,20 +432,29 @@ Lightweight Charts (TradingView) integration:
     - Positioned between OrderPanel and PositionsList in sidebar
     - Scrollable if many orders exist
   - **PendingOrderMenu Component**: Context menu for creating pending orders with advanced risk management
-    - **Percentage-based SL/TP**: Enter SL/TP as percentages (e.g., 2%, 4%)
-      - Automatically calculates actual prices based on target price and position type (LONG/SHORT)
-      - Real-time price display shows calculated SL/TP prices with 4 decimal precision
+    - **Editable target price**: Price input field with 4 decimal precision (crypto/forex support)
+      - User can modify the price after right-clicking on chart
+      - All calculations (SL/TP/quantity) update dynamically when price changes
+    - **Dual display SL/TP**: Shows both percentage input AND calculated price
+      - Left field: Percentage input (e.g., 2%, 4%)
+      - Right field: Read-only calculated price with 4 decimal precision
+      - Header shows color-coded price (red for SL, green for TP)
+      - Automatically recalculates when target price or percentage changes
       - SL/TP inversion for SHORT positions (SL above entry, TP below entry)
+    - **Smart default quantity**: 1% of equity divided by target price
+      - Example: $10,000 equity, $50,000 price → 0.002 BTC (not hardcoded 0.01)
+      - Updates when target price changes
     - **Auto-quantity calculation from risk**: Same as OrderPanel
       - Risk percentage input (default 2% of equity)
-      - Formula: `quantity = (equity × risk%) / (price × SL%)`
+      - Formula: `quantity = (equity × risk%) / (targetPrice × SL%)`
       - "חשב" (Calculate) button to apply recommended quantity
       - Real-time recommended quantity display below input field
       - Shows dollar amount of risk based on percentage
     - **Position type preview**: LONG/SHORT buttons to preview position direction
       - Changes SL/TP calculation direction based on selected type
+    - **4 decimal precision throughout**: All prices display with .toFixed(4) for forex/crypto
     - Centered modal (50% x/y with transform) with purple-themed risk section
-    - Modal shows current price vs target price comparison
+    - Modal shows current price vs target price comparison (both 4 decimals)
 
 ### Telegram Notifications & Price Alerts
 The app supports free Telegram notifications and custom price alerts:
