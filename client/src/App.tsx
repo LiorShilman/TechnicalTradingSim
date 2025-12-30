@@ -96,26 +96,57 @@ function App() {
 
       if (parts.length >= 2) {
         // מציאת timeframe - מחפשים חלק שמכיל מספר ואות (1D, 4H, 15m וכו')
+        // או מספר בלבד לפורמט FOREX (60, 240 וכו')
         const timeframeRegex = /^\d+[DHmW]$/
-        let timeframeIndex = parts.findIndex(part => timeframeRegex.test(part))
+        const forexTimeframeRegex = /^\d+$/
+        let timeframeIndex = parts.findIndex(part => timeframeRegex.test(part) || forexTimeframeRegex.test(part))
 
         console.log(`🔍 Timeframe index: ${timeframeIndex}`)
 
         if (timeframeIndex !== -1) {
           // מצאנו timeframe
-          detectedTimeframeFromName = parts[timeframeIndex]
+          const rawTimeframe = parts[timeframeIndex]
+
+          // המרה מפורמט FOREX (דקות) לפורמט רגיל
+          if (forexTimeframeRegex.test(rawTimeframe) && !timeframeRegex.test(rawTimeframe)) {
+            const minutes = parseInt(rawTimeframe)
+            // המרה מדקות לפורמט TradingView
+            if (minutes === 1) detectedTimeframeFromName = '1m'
+            else if (minutes === 5) detectedTimeframeFromName = '5m'
+            else if (minutes === 15) detectedTimeframeFromName = '15m'
+            else if (minutes === 30) detectedTimeframeFromName = '30m'
+            else if (minutes === 60) detectedTimeframeFromName = '1H'
+            else if (minutes === 240) detectedTimeframeFromName = '4H'
+            else if (minutes === 1440) detectedTimeframeFromName = '1D'
+            else if (minutes === 10080) detectedTimeframeFromName = '1W'
+            else detectedTimeframeFromName = `${minutes}m` // ברירת מחדל
+
+            console.log(`🔄 Converted FOREX timeframe: ${rawTimeframe} minutes → ${detectedTimeframeFromName}`)
+          } else {
+            detectedTimeframeFromName = rawTimeframe
+          }
 
           // כל מה שלפני ה-timeframe הוא שם הנכס
           const assetParts = parts.slice(0, timeframeIndex)
           console.log(`💼 Asset parts:`, assetParts)
 
           if (assetParts.length === 2) {
-            // מקרה של SP_SPX -> SP/SPX
-            detectedAsset = assetParts.join('/')
+            // מקרה של SP_SPX -> SP/SPX או FX_EURGBP -> EUR/GBP
+            if (assetParts[0] === 'FX' && assetParts[1].length === 6) {
+              // פורמט FOREX: FX_EURGBP -> EUR/GBP
+              const pair = assetParts[1]
+              detectedAsset = `${pair.substring(0, 3)}/${pair.substring(3, 6)}`
+            } else {
+              detectedAsset = assetParts.join('/')
+            }
           } else if (assetParts.length === 1) {
             // מקרה של BTCUSD -> BTC/USD (אם יש USD בסוף)
             const asset = assetParts[0]
-            if (asset.endsWith('USD')) {
+
+            // בדיקה אם זה זוג FOREX בפורמט EURGBP (6 תווים)
+            if (asset.length === 6 && /^[A-Z]{6}$/.test(asset)) {
+              detectedAsset = `${asset.substring(0, 3)}/${asset.substring(3, 6)}`
+            } else if (asset.endsWith('USD')) {
               detectedAsset = asset.replace('USD', '/USD')
             } else if (asset.endsWith('USDT')) {
               detectedAsset = asset.replace('USDT', '/USDT')

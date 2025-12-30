@@ -568,11 +568,26 @@ Complete game state is saved to localStorage and can be resumed:
 
 ### TradingView Filename Parsing
 When uploading CSV files from TradingView, the system auto-detects asset and timeframe:
+
+**Standard Format:**
 - Filename format: `ASSET_TIMEFRAME_XXXXX.csv` (e.g., "SP_SPX_1D_07c94.csv", "BTCUSD_1H_abc123.csv")
 - Handles commas and spaces in filenames: "SP_SPX, 1D_07c94.csv" → SP/SPX, 1D
 - Timeframe patterns: 1m, 5m, 15m, 30m, 1H, 4H, 1D, 1W
 - Asset formatting: Converts underscores to slashes (SP_SPX → SP/SPX)
+
+**FOREX Format Support:**
+- Filename format: `FX_EURGBP_240_XXXXX.csv` → EUR/GBP, 4H
+- Timeframe in minutes: 1, 5, 15, 30, 60, 240, 1440 (1D), 10080 (1W)
+- Auto-converts minutes to standard format: 240 → 4H, 60 → 1H, 1440 → 1D
+- FOREX pair parsing: FX_EURGBP → EUR/GBP (splits 6-character pair in half)
+- Also supports standalone FOREX pairs: EURGBP_240 → EUR/GBP, 4H
+
+**Technical Implementation:**
+- Two regex patterns: `/^\d+[DHmW]$/` for standard, `/^\d+$/` for FOREX minutes
+- FOREX conversion logic in `App.tsx` lines 110-127
+- Asset detection handles FX_ prefix and 6-character pairs (lines 133-159)
 - Implementation in `App.tsx`: cleans filename with `.replace(/,\s*/g, '_')` before parsing
+- Debug logging: `🔄 Converted FOREX timeframe: 240 minutes → 4H`
 
 ### RTL (Right-to-Left) Layout Support
 The UI supports Hebrew text with proper RTL layout:
