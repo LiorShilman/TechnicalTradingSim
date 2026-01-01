@@ -98,6 +98,7 @@ Test server health: `curl http://localhost:5000/api/health`
 - `client/src/components/Settings/AlertSettings.tsx` - Unified alerts panel with Telegram config and price alerts (tabbed interface, positioned at top-7 left-8)
 - `client/src/components/Settings/RulesSettingsPanel.tsx` - Trading rules configuration panel (right sidebar)
 - `client/src/components/Stats/RuleCompliancePanel.tsx` - Rule violations tracking and compliance score display (right sidebar)
+- `client/src/components/Help/HelpModal.tsx` - Comprehensive in-game help guide with 5 tabs (Quick Start, Trading Rules, Chart Tools, Pending Orders, Trading Tips)
 - `client/src/components/Trading/OrderPanel.tsx` - Buy/Sell interface with advanced SL/TP and risk management
 - `client/src/components/Trading/AccountInfo.tsx` - Real-time account balance and P&L display
 - `client/src/components/Trading/PositionsList.tsx` - Displays open positions with edit and close functionality
@@ -751,6 +752,95 @@ The Trade History screen provides comprehensive review of all completed trades w
 - Responsive grid layout for stats
 - RTL support with proper `dir="ltr"` for numbers
 - Lucide icons throughout (Calendar, TrendingUp, TrendingDown, Clock, DollarSign, Percent)
+
+### In-Game Help System
+Comprehensive help modal accessible from toolbar providing full Hebrew documentation of all game features.
+
+**Component**: `client/src/components/Help/HelpModal.tsx`
+
+**Access**: Blue-to-cyan gradient "עזרה" (Help) button in ChartControls toolbar (with HelpCircle icon)
+
+**Architecture:**
+- **Full-screen modal** (90vw × 85vh) with purple gradient header
+- **5 tabbed sections** with icon-based navigation:
+  - 🔥 **Quick Start** (התחלה מהירה): 4-step onboarding guide
+  - 🛡️ **Trading Rules** (כללי מסחר): Complete Rule Violation Tracker documentation
+  - 📊 **Chart Tools** (כלי גרף): All 11 drawing tools + unlimited MAs explained
+  - 🎯 **Pending Orders** (פקודות ממתינות): Step-by-step guide to order types and usage
+  - 📈 **Trading Tips** (טיפים למסחר): 8 professional trading principles
+
+**Content Structure (All in Hebrew):**
+
+1. **Quick Start Tab:**
+   - Welcome message explaining game purpose
+   - 4-step numbered guide: Upload CSV → Navigate chart → Open trades → Track performance
+   - Color-coded cards (purple accent)
+   - Tips on using History and Auto-Play features
+
+2. **Trading Rules Tab:**
+   - Explanation of discipline system philosophy
+   - 6 rules grid (2 columns) with border color-coding:
+     - Red border = Critical rules (SL requirement, daily limit, consecutive losses)
+     - Yellow border = Warning rules (TP requirement, R:R ratio)
+     - Gray border = Future rules (max risk per trade)
+   - Special section on "profitable violations" concept
+   - Compliance score formula and tier explanation
+
+3. **Chart Tools Tab:**
+   - Moving Averages section: Unlimited, color customization, SMA/EMA, real-time mode
+   - 11 drawing tools grid (2 columns) with color-coded titles matching tool colors
+   - Each tool has icon, name, and brief description
+   - Tip on localStorage persistence and drag-to-edit features
+
+4. **Pending Orders Tab:**
+   - 3-step creation guide (right-click → select type → configure)
+   - 4 order types explained with color coding (green for buy, red for sell)
+   - Advanced features: visualization, edit/cancel, auto-risk calculation, execution logic
+   - Important warnings about persistence and behavior
+
+5. **Trading Tips Tab:**
+   - 8 professional trading principles in color-coded cards:
+     - Green: Always use Stop Loss
+     - Blue: Maintain R:R of 1.5:1+
+     - Purple: Manage fixed risk (1-2%)
+     - Yellow: Stop after 3 losses
+     - Red: Avoid overtrading
+     - Indigo: Keep trading journal
+     - Teal: Use drawing tools
+     - Pink: Process > Results
+   - "Formula for Success" section with 5-step checklist
+   - All principles with practical examples
+
+**Design Features:**
+- **Gradient theme**: Purple-to-blue throughout matching app design
+- **Tab system**: Click-based navigation with active state highlighting
+- **Color-coded sections**: Each tip/rule has unique left border color
+- **Lucide icons**: Visual indicators for each section (Zap, Shield, LineChart, Target, TrendingUp)
+- **Scrollable content**: `overflow-y-auto` on content area for long sections
+- **Footer tip**: Rotating advice displayed at bottom
+- **Professional typography**: Clear hierarchy with h3/h4/h5 headings, varied text sizes
+
+**Technical Implementation:**
+- State: `useState<TabType>` for active tab management
+- Conditional rendering: Separate component for each tab content
+- Modal overlay: Fixed position with backdrop blur and dark background
+- Close button: X icon in header with hover effect
+- No external dependencies: Pure React component
+
+**User Experience:**
+- Always accessible from toolbar (no game state required)
+- Modal can be closed anytime (X button or onClose)
+- Content survives navigation (no localStorage needed - always available)
+- Comprehensive coverage of all game features in native Hebrew
+- Beginner-friendly with step-by-step guides
+- Advanced sections for experienced traders
+
+**Educational Value:**
+- Teaches proper trading discipline (not just how to use UI)
+- Explains WHY certain rules exist (not just WHAT they do)
+- Provides real formulas and calculations
+- Emphasizes professional trading principles
+- Separates "winning" from "trading correctly"
 
 ### Dynamic Moving Averages Architecture
 The MA system supports unlimited moving averages with dynamic management:

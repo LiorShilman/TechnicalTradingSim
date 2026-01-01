@@ -1,6 +1,7 @@
-import { ChevronRight, RotateCcw, Play, Pause, Save, History } from 'lucide-react'
+import { ChevronRight, RotateCcw, Play, Pause, Save, History, HelpCircle } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import HelpModal from '../Help/HelpModal'
 
 export function CandleCounter() {
   const {
@@ -56,6 +57,8 @@ export default function ChartControls() {
     saveAndExit,
     toggleTradeHistory
   } = useGameStore()
+
+  const [showHelp, setShowHelp] = useState(false)
 
   const canProgress = gameState && !gameState.isComplete
 
@@ -168,6 +171,19 @@ export default function ChartControls() {
         <History size={20} />
         היסטוריה
       </button>
+
+      {/* כפתור Help */}
+      <button
+        onClick={() => setShowHelp(true)}
+        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
+        title="מדריך למשחק"
+      >
+        <HelpCircle size={20} />
+        עזרה
+      </button>
+
+      {/* Help Modal */}
+      {showHelp && <HelpModal onClose={() => setShowHelp(false)} />}
 
       {/* מפריד */}
       <div className="h-8 w-px bg-dark-border mx-1"></div>
