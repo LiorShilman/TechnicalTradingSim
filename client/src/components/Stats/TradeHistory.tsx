@@ -184,10 +184,6 @@ export default function TradeHistory({
                                 {/* Entry */}
                                 <div className="flex items-center gap-2">
                                   <span className="text-text-secondary w-16">כניסה:</span>
-                                  <span className="font-mono text-blue-400 font-semibold" dir="ltr">
-                                    ${position.entryPrice.toFixed(4)}
-                                  </span>
-                                  <span className="text-text-secondary">•</span>
                                   <span className="font-mono text-text-primary text-[10px]">
                                     {position.entryTime
                                       ? new Date(position.entryTime * 1000).toLocaleString('he-IL', {
@@ -198,15 +194,15 @@ export default function TradeHistory({
                                         })
                                       : 'N/A'}
                                   </span>
+                                  <span className="text-text-secondary">•</span>
+                                  <span className="font-mono text-blue-400 font-semibold" dir="ltr">
+                                    ${position.entryPrice.toFixed(4)}
+                                  </span>
                                 </div>
 
                                 {/* Exit */}
                                 <div className="flex items-center gap-2">
                                   <span className="text-text-secondary w-16">יציאה:</span>
-                                  <span className="font-mono text-purple-400 font-semibold" dir="ltr">
-                                    ${(position.exitPrice || 0).toFixed(4)}
-                                  </span>
-                                  <span className="text-text-secondary">•</span>
                                   <span className="font-mono text-text-primary text-[10px]">
                                     {position.exitTime
                                       ? new Date(position.exitTime * 1000).toLocaleString('he-IL', {
@@ -216,6 +212,10 @@ export default function TradeHistory({
                                           minute: '2-digit',
                                         })
                                       : 'N/A'}
+                                  </span>
+                                  <span className="text-text-secondary">•</span>
+                                  <span className="font-mono text-purple-400 font-semibold" dir="ltr">
+                                    ${(position.exitPrice || 0).toFixed(4)}
                                   </span>
                                 </div>
 
@@ -246,13 +246,13 @@ export default function TradeHistory({
                               </div>
                             </div>
 
-                            {/* Right side: P&L */}
+                            {/* Right side: P&L (only one percentage display) */}
                             <div className="text-right flex-shrink-0">
-                              <div className={`text-2xl font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`} dir="ltr">
-                                {isProfit ? '+' : ''}{pnl.toFixed(2)}$
-                              </div>
-                              <div className={`text-sm font-semibold ${isProfit ? 'text-green-500' : 'text-red-500'}`} dir="ltr">
+                              <div className={`text-xl font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`} dir="ltr">
                                 {isProfit ? '+' : ''}{pnlPercent.toFixed(2)}%
+                              </div>
+                              <div className={`text-lg font-semibold ${isProfit ? 'text-green-500' : 'text-red-500'}`} dir="ltr">
+                                {isProfit ? '+' : ''}{pnl.toFixed(2)}$
                               </div>
                             </div>
                           </div>
