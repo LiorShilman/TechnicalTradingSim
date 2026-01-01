@@ -2199,8 +2199,13 @@ if (sl && tp) {
 
     // יצירת קו חיבור רק לפוזיציה שמרחפים מעליה (אם יש)
     gameState.closedPositions.forEach((position, index) => {
+      // ⚠️ אם אין ריחוף בכלל, לא להציג שום קו
+      if (hoveredPositionIndex === null) {
+        return // אין ריחוף - לא מציגים קווים
+      }
+
       // אם יש ריחוף, נציג רק את הקו של הפוזיציה שמרחפים מעליה
-      if (hoveredPositionIndex !== null && index !== hoveredPositionIndex) {
+      if (index !== hoveredPositionIndex) {
         return // דלג על פוזיציות אחרות
       }
 
