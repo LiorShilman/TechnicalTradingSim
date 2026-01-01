@@ -894,7 +894,16 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
       const price = candlestickSeriesRef.current.coordinateToPrice(relativeY)
       const time = chartRef.current.timeScale().coordinateToTime(relativeX)
 
-      if (price === null || price === undefined) return
+      // ⚠️ אם price או time הם null, זה אומר שהעכבר לא מעל אזור תקין של הצ'רט
+      // במקרה זה, נוודא שהריחוף מתאפס (hoveredPositionId = null)
+      if (price === null || price === undefined || time === null || time === undefined) {
+        // Clear hover state if we're not dragging
+        if (!draggingLineRef.current && hoveredPositionId !== null) {
+          console.log('🚫 Mouse outside valid chart area - clearing hover')
+          setHoveredPositionId(null)
+        }
+        return
+      }
 
       // If we're dragging, update the line position
       if (draggingLineRef.current) {
