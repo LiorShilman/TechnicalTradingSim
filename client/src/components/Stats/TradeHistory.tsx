@@ -1,4 +1,4 @@
-import { X, TrendingUp, TrendingDown, Calendar, DollarSign, Percent, Clock } from 'lucide-react'
+import { X, TrendingUp, TrendingDown, Calendar, Clock } from 'lucide-react'
 import type { Position } from '@/types/game.types'
 
 interface TradeHistoryProps {
@@ -137,129 +137,120 @@ export default function TradeHistory({
                       return (
                         <div
                           key={idx}
-                          className={`bg-dark-panel border-2 rounded-lg p-4 hover:shadow-lg transition-all ${
+                          className={`bg-dark-panel border-l-4 rounded-lg p-3 hover:shadow-lg transition-all ${
                             isProfit
-                              ? 'border-green-500/30 hover:border-green-500/50'
-                              : 'border-red-500/30 hover:border-red-500/50'
+                              ? 'border-l-green-500 bg-green-500/5'
+                              : 'border-l-red-500 bg-red-500/5'
                           }`}
                         >
-                          <div className="flex items-start justify-between">
-                            {/* Left: Position Info */}
-                            <div className="flex-1">
-                              <div className="flex items-center gap-3 mb-2">
-                                {/* Position Type Badge */}
-                                {position.type === 'long' ? (
-                                  <div className="flex items-center gap-1.5 bg-green-500/20 border border-green-500/40 rounded-lg px-3 py-1">
-                                    <TrendingUp className="w-4 h-4 text-green-400" />
-                                    <span className="text-sm font-bold text-green-400">LONG</span>
-                                  </div>
-                                ) : (
-                                  <div className="flex items-center gap-1.5 bg-red-500/20 border border-red-500/40 rounded-lg px-3 py-1">
-                                    <TrendingDown className="w-4 h-4 text-red-400" />
-                                    <span className="text-sm font-bold text-red-400">SHORT</span>
-                                  </div>
-                                )}
-
-                                {/* Exit Reason Badge */}
-                                {position.exitReason && (
-                                  <div className={`text-xs px-2 py-1 rounded ${
-                                    position.exitReason === 'stop_loss'
-                                      ? 'bg-red-900/30 text-red-400 border border-red-500/30'
-                                      : position.exitReason === 'take_profit'
-                                      ? 'bg-green-900/30 text-green-400 border border-green-500/30'
-                                      : 'bg-blue-900/30 text-blue-400 border border-blue-500/30'
-                                  }`}>
-                                    {position.exitReason === 'stop_loss' && '🛑 Stop Loss'}
-                                    {position.exitReason === 'take_profit' && '🎯 Take Profit'}
-                                    {position.exitReason === 'manual' && '✋ סגירה ידנית'}
-                                  </div>
-                                )}
-
-                                {/* Quantity */}
-                                <div className="text-xs text-text-secondary" dir="ltr">
-                                  {position.quantity.toFixed(4)} {assetSymbol}
+                          {/* Header Row: Type + Reason + Quantity + P&L */}
+                          <div className="flex items-center justify-between mb-3">
+                            <div className="flex items-center gap-2">
+                              {/* Position Type */}
+                              {position.type === 'long' ? (
+                                <div className="flex items-center gap-1 bg-green-500/20 border border-green-500/40 rounded px-2 py-0.5">
+                                  <TrendingUp className="w-3 h-3 text-green-400" />
+                                  <span className="text-xs font-bold text-green-400">LONG</span>
                                 </div>
-                              </div>
+                              ) : (
+                                <div className="flex items-center gap-1 bg-red-500/20 border border-red-500/40 rounded px-2 py-0.5">
+                                  <TrendingDown className="w-3 h-3 text-red-400" />
+                                  <span className="text-xs font-bold text-red-400">SHORT</span>
+                                </div>
+                              )}
 
-                              {/* Entry/Exit Prices and Times */}
-                              <div className="grid grid-cols-2 gap-4 text-sm mb-2">
-                                <div>
-                                  <div className="text-xs text-text-secondary mb-1">מחיר כניסה</div>
-                                  <div className="font-mono font-bold text-blue-400" dir="ltr">
-                                    ${position.entryPrice.toFixed(4)}
-                                  </div>
+                              {/* Exit Reason */}
+                              {position.exitReason && (
+                                <div className={`text-xs px-2 py-0.5 rounded ${
+                                  position.exitReason === 'stop_loss'
+                                    ? 'bg-red-900/30 text-red-400 border border-red-500/30'
+                                    : position.exitReason === 'take_profit'
+                                    ? 'bg-green-900/30 text-green-400 border border-green-500/30'
+                                    : 'bg-blue-900/30 text-blue-400 border border-blue-500/30'
+                                }`}>
+                                  {position.exitReason === 'stop_loss' && '🛑 SL'}
+                                  {position.exitReason === 'take_profit' && '🎯 TP'}
+                                  {position.exitReason === 'manual' && '✋ ידני'}
                                 </div>
-                                <div>
-                                  <div className="text-xs text-text-secondary mb-1">מחיר יציאה</div>
-                                  <div className="font-mono font-bold text-purple-400" dir="ltr">
-                                    ${(position.exitPrice || 0).toFixed(4)}
-                                  </div>
-                                </div>
-                              </div>
+                              )}
 
-                              {/* Entry and Exit Times */}
-                              <div className="grid grid-cols-2 gap-4 text-xs mb-2">
-                                <div>
-                                  <div className="text-text-secondary mb-1">כניסה</div>
-                                  <div className="font-mono text-text-primary">
-                                    {position.entryTime
-                                      ? new Date(position.entryTime * 1000).toLocaleString('he-IL', {
-                                          day: '2-digit',
-                                          month: '2-digit',
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                        })
-                                      : 'N/A'}
-                                  </div>
-                                </div>
-                                <div>
-                                  <div className="text-text-secondary mb-1">יציאה</div>
-                                  <div className="font-mono text-text-primary flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {position.exitTime
-                                      ? new Date(position.exitTime * 1000).toLocaleString('he-IL', {
-                                          day: '2-digit',
-                                          month: '2-digit',
-                                          hour: '2-digit',
-                                          minute: '2-digit',
-                                        })
-                                      : 'N/A'}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* Hold Duration */}
-                              <div className="text-xs">
-                                <div className="text-text-secondary mb-1">זמן החזקה</div>
-                                <div className="font-mono text-text-primary">
-                                  {position.exitTime && position.entryTime
-                                    ? (() => {
-                                        const diffSeconds = position.exitTime - position.entryTime
-                                        const days = Math.floor(diffSeconds / 86400)
-                                        const hours = Math.floor((diffSeconds % 86400) / 3600)
-                                        const minutes = Math.floor((diffSeconds % 3600) / 60)
-
-                                        if (days > 0) {
-                                          return `${days} ימים, ${hours}ש ${minutes}ד`
-                                        } else if (hours > 0) {
-                                          return `${hours}ש ${minutes}ד`
-                                        }
-                                        return `${minutes} דק'`
-                                      })()
-                                    : 'N/A'}
-                                </div>
+                              {/* Quantity */}
+                              <div className="text-xs font-mono text-text-secondary" dir="ltr">
+                                {position.quantity.toFixed(4)} {assetSymbol}
                               </div>
                             </div>
 
-                            {/* Right: P&L */}
-                            <div className="text-left ml-4">
-                              <div className={`text-2xl font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`} dir="ltr">
-                                <DollarSign className="inline w-5 h-5 mb-1" />
-                                {isProfit ? '+' : ''}{pnl.toFixed(2)}
+                            {/* P&L - Right side */}
+                            <div className="text-right">
+                              <div className={`text-xl font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`} dir="ltr">
+                                {isProfit ? '+' : ''}{pnl.toFixed(2)}$
                               </div>
-                              <div className={`text-sm font-semibold flex items-center gap-1 ${isProfit ? 'text-green-500' : 'text-red-500'}`} dir="ltr">
-                                <Percent className="w-3 h-3" />
+                              <div className={`text-xs font-semibold ${isProfit ? 'text-green-500' : 'text-red-500'}`} dir="ltr">
                                 {isProfit ? '+' : ''}{pnlPercent.toFixed(2)}%
+                              </div>
+                            </div>
+                          </div>
+
+                          {/* Info Grid: Compact 3-column layout */}
+                          <div className="grid grid-cols-3 gap-3 text-xs bg-dark-bg/50 rounded p-2">
+                            {/* Entry Info */}
+                            <div className="space-y-1">
+                              <div className="text-text-secondary text-[10px] uppercase">כניסה</div>
+                              <div className="font-mono text-blue-400 font-semibold" dir="ltr">
+                                ${position.entryPrice.toFixed(4)}
+                              </div>
+                              <div className="font-mono text-text-primary text-[10px]">
+                                {position.entryTime
+                                  ? new Date(position.entryTime * 1000).toLocaleString('he-IL', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : 'N/A'}
+                              </div>
+                            </div>
+
+                            {/* Exit Info */}
+                            <div className="space-y-1">
+                              <div className="text-text-secondary text-[10px] uppercase">יציאה</div>
+                              <div className="font-mono text-purple-400 font-semibold" dir="ltr">
+                                ${(position.exitPrice || 0).toFixed(4)}
+                              </div>
+                              <div className="font-mono text-text-primary text-[10px]">
+                                {position.exitTime
+                                  ? new Date(position.exitTime * 1000).toLocaleString('he-IL', {
+                                      day: '2-digit',
+                                      month: '2-digit',
+                                      hour: '2-digit',
+                                      minute: '2-digit',
+                                    })
+                                  : 'N/A'}
+                              </div>
+                            </div>
+
+                            {/* Hold Duration */}
+                            <div className="space-y-1">
+                              <div className="text-text-secondary text-[10px] uppercase flex items-center gap-1">
+                                <Clock className="w-3 h-3" />
+                                זמן החזקה
+                              </div>
+                              <div className="font-mono text-yellow-400 font-semibold">
+                                {position.exitTime && position.entryTime
+                                  ? (() => {
+                                      const diffSeconds = position.exitTime - position.entryTime
+                                      const days = Math.floor(diffSeconds / 86400)
+                                      const hours = Math.floor((diffSeconds % 86400) / 3600)
+                                      const minutes = Math.floor((diffSeconds % 3600) / 60)
+
+                                      if (days > 0) {
+                                        return `${days}י ${hours}ש`
+                                      } else if (hours > 0) {
+                                        return `${hours}ש ${minutes}ד`
+                                      }
+                                      return `${minutes} דק'`
+                                    })()
+                                  : 'N/A'}
                               </div>
                             </div>
                           </div>
