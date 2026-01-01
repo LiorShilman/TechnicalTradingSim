@@ -43,11 +43,11 @@ export default function TradeHistory({
   return (
     <>
       {/* Background overlay */}
-      <div className="fixed inset-0 z-40 bg-black/70 backdrop-blur-sm" onClick={onClose} />
+      <div className="fixed inset-0 z-[100] bg-black/70 backdrop-blur-sm" onClick={onClose} />
 
       {/* Modal */}
       <div
-        className="fixed z-50 bg-gradient-to-br from-dark-panel via-dark-bg to-dark-panel border-2 border-blue-500/30 rounded-xl shadow-2xl overflow-hidden"
+        className="fixed z-[110] bg-gradient-to-br from-dark-panel via-dark-bg to-dark-panel border-2 border-blue-500/30 rounded-xl shadow-2xl overflow-hidden"
         style={{
           left: '50%',
           top: '50%',

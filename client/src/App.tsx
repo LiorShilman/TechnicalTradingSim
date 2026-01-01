@@ -7,6 +7,7 @@ import PendingOrdersList from './components/Trading/PendingOrdersList'
 import ChartControls from './components/Chart/ChartControls'
 import EquityChart from './components/Chart/EquityChart'
 import GameStats from './components/Stats/GameStats'
+import TradeHistory from './components/Stats/TradeHistory'
 import AlertSettings from './components/Settings/AlertSettings'
 import ProfitTrail from './components/Effects/ProfitTrail'
 import TargetZoneGlow from './components/Effects/TargetZoneGlow'
@@ -33,7 +34,7 @@ function App() {
   const [refreshSavedGame, setRefreshSavedGame] = useState(0) // מונה לרענון מצב משחק שמור
   const [priceAlerts, setPriceAlerts] = useState(() => priceAlertsService.getAlerts())
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { gameState, isLoading, showStats, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
+  const { gameState, isLoading, showStats, showTradeHistory, toggleTradeHistory, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
 
   // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
   const savedGameInfo = useMemo(() => {
@@ -652,6 +653,23 @@ function App() {
 
       {/* Stats modal (shown when game is complete or when user saves and exits) */}
       {(gameState?.isComplete || showStats) && <GameStats />}
+
+      {/* Trade History modal */}
+      {showTradeHistory && gameState && (
+        <TradeHistory
+          closedPositions={gameState.closedPositions}
+          sourceFileName={gameState.sourceFileName || 'Unknown'}
+          sourceDateRange={
+            typeof gameState.sourceDateRange === 'string'
+              ? gameState.sourceDateRange
+              : gameState.sourceDateRange
+                ? `${gameState.sourceDateRange.start} - ${gameState.sourceDateRange.end}`
+                : 'Unknown'
+          }
+          assetSymbol={gameState.asset}
+          onClose={toggleTradeHistory}
+        />
+      )}
 
       {/* Toast notifications */}
       <Toaster

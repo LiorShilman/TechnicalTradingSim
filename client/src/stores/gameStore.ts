@@ -17,6 +17,7 @@ interface GameStore {
   chartFitContent: (() => void) | null
   chartResetZoom: (() => void) | null
   showStats: boolean // הצגת מסך סטטיסטיקות (למשל בשמירה ויציאה)
+  showTradeHistory: boolean // הצגת מסך היסטוריית עסקאות
 
   // Actions
   initializeGame: (config?: { initialBalance?: number }) => Promise<void>
@@ -53,6 +54,9 @@ interface GameStore {
   getSavedGameInfo: () => SavedGameState | null
   clearSavedGame: () => void
 
+  // UI State
+  toggleTradeHistory: () => void
+
   // Helper
   clearError: () => void
 }
@@ -66,6 +70,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   chartFitContent: null,
   chartResetZoom: null,
   showStats: false,
+  showTradeHistory: false,
 
   initializeGame: async (config) => {
     console.log('initializeGame: Starting...', config)
@@ -742,6 +747,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
       toast.error(`שגיאה: ${errorMessage}`, { icon: '❌' })
     }
   },
+
+  toggleTradeHistory: () => set((state) => ({ showTradeHistory: !state.showTradeHistory })),
 
   clearError: () => set({ error: null }),
 }))
