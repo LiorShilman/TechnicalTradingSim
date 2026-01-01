@@ -107,6 +107,9 @@ export default function TradingChart() {
   // Preview lines for pending order (shown while menu is open)
   const previewLineSeriesRef = useRef<ISeriesApi<'Line'>[]>([])
 
+  // Hover state for closed positions - tracks which position index is being hovered
+  const [hoveredPositionId, setHoveredPositionId] = useState<number | null>(null)
+
   // Sync activeTool state with ref
   useEffect(() => {
     activeToolRef.current = activeTool
@@ -993,6 +996,34 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
         let isOverDraggableLine = false
         let isOverResizeMarker = false
 
+        // Check if hovering over a closed position entry marker
+        let hoveredPosIndex: number | null = null
+        if (time !== null && time !== undefined && price !== null && gameState?.closedPositions) {
+          const candleDuration = gameState.candles.length > 1
+            ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
+            : 86400
+          const timeTolerance = candleDuration * 2 // טולרנס זמן
+          const priceTolerance = price * 0.015 // טולרנס מחיר 1.5%
+
+          gameState.closedPositions.forEach((position, index) => {
+            // בדיקה אם הכניסה כבר התרחשה
+            if (position.entryIndex > gameState.currentIndex) return
+
+            // בדיקה אם העכבר קרוב לנקודת הכניסה
+            const timeMatch = Math.abs((time as number) - position.entryTime) < timeTolerance
+            const priceMatch = Math.abs(price - position.entryPrice) < priceTolerance
+
+            if (timeMatch && priceMatch) {
+              hoveredPosIndex = index
+            }
+          })
+        }
+
+        // עדכון מצב הריחוף
+        if (hoveredPosIndex !== hoveredPositionId) {
+          setHoveredPositionId(hoveredPosIndex)
+        }
+
         if (time !== null && time !== undefined && gameState) {
           for (const line of drawnLinesRef.current) {
             if (line.type !== 'long-position' && line.type !== 'short-position') continue
@@ -1111,6 +1142,11 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
           handleScale: true,
         })
         setDraggingLine(null)
+      }
+
+      // Clear position hover state
+      if (hoveredPositionId !== null) {
+        setHoveredPositionId(null)
       }
     }
 
@@ -2147,7 +2183,8 @@ if (sl && tp) {
   }
 
   // פונקציה ליצירת קווי חיבור לפוזיציות סגורות
-  const createClosedPositionLines = () => {
+  // עכשיו מקבלת hoveredPositionIndex כדי להציג רק את הקו של הפוזיציה שמרחפים מעליה
+  const createClosedPositionLines = (hoveredPositionIndex: number | null = null) => {
     if (!chartRef.current || !gameState?.closedPositions || !gameState?.candles) return
 
     // הסרת קווים ישנים
@@ -2160,8 +2197,13 @@ if (sl && tp) {
     })
     closedPositionLineSeriesRef.current = []
 
-    // יצירת קו חיבור לכל פוזיציה סגורה (אם גם הכניסה וגם היציאה כבר התרחשו)
-    gameState.closedPositions.forEach((position) => {
+    // יצירת קו חיבור רק לפוזיציה שמרחפים מעליה (אם יש)
+    gameState.closedPositions.forEach((position, index) => {
+      // אם יש ריחוף, נציג רק את הקו של הפוזיציה שמרחפים מעליה
+      if (hoveredPositionIndex !== null && index !== hoveredPositionIndex) {
+        return // דלג על פוזיציות אחרות
+      }
+
       // וידוא שגם הכניסה וגם היציאה כבר התרחשו
       if (position.exitIndex === undefined ||
           position.entryIndex > gameState.currentIndex ||
@@ -2191,7 +2233,9 @@ if (sl && tp) {
       closedPositionLineSeriesRef.current.push(connectionLine)
     })
 
-    console.log(`📊 Created ${closedPositionLineSeriesRef.current.length} closed position connection lines`)
+    if (hoveredPositionIndex !== null) {
+      console.log(`📊 Showing connection line for hovered position #${hoveredPositionIndex}`)
+    }
   }
 
   // פונקציה להצגת קו תצוגה מקדימה לפקודה עתידית
@@ -2344,7 +2388,7 @@ if (sl && tp) {
       createPendingOrderLines()
 
       // יצירת קווי חיבור לפוזיציות סגורות
-      createClosedPositionLines()
+      createClosedPositionLines(hoveredPositionId ?? null)
 
       if (chartRef.current && visibleCandles.length > 0) {
         // תמיד הצג את כל הנרות עד האינדקס הנוכחי
@@ -2404,7 +2448,7 @@ if (sl && tp) {
       lastCandleIndexRef.current = currentIndex
       createPatternMarkers()
       createPendingOrderLines()
-      createClosedPositionLines()
+      createClosedPositionLines(hoveredPositionId ?? null)
 
       if (chartRef.current) {
         chartRef.current.timeScale().scrollToPosition(3, true)
@@ -2473,7 +2517,7 @@ if (sl && tp) {
         createPendingOrderLines()
 
         // עדכון קווי חיבור לפוזיציות סגורות (צריך להתעדכן כאשר פוזיציה נסגרת)
-        createClosedPositionLines()
+        createClosedPositionLines(hoveredPositionId ?? null)
 
         // גלילה אוטומטית חלקה לנר החדש
         if (chartRef.current) {
@@ -2482,6 +2526,14 @@ if (sl && tp) {
       }
     }
   }, [gameState?.currentIndex, gameState?.id, gameState?.candles.length])
+
+  // Effect to update connection lines when hovering over position entry markers
+  useEffect(() => {
+    if (!chartRef.current || !gameState?.closedPositions) return
+
+    // רק אם יש פוזיציות סגורות, עדכן את הקווים
+    createClosedPositionLines(hoveredPositionId)
+  }, [hoveredPositionId, gameState?.closedPositions?.length])
 
   return (
     <div className="w-full h-full bg-dark-panel rounded-lg overflow-hidden relative">
