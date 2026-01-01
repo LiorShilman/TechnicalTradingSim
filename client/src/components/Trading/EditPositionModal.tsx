@@ -152,16 +152,16 @@ export default function EditPositionModal({
             )}
             <div className="text-xs text-text-secondary" dir="ltr">
               {isPosition
-                ? `Entry: $${position!.entryPrice.toFixed(2)}`
-                : `Target: $${parseFloat(targetPrice || '0').toFixed(2)}`}
+                ? `Entry: $${position!.entryPrice.toFixed(4)}`
+                : `Target: $${parseFloat(targetPrice || '0').toFixed(4)}`}
             </div>
           </div>
           <div className="text-xs text-text-secondary" dir="ltr">
-            כמות: {parseFloat(quantity || '0').toFixed(3)} {assetSymbol}
+            כמות: {parseFloat(quantity || '0').toFixed(4)} {assetSymbol}
           </div>
           {isPosition && (
             <div className="text-xs text-text-secondary" dir="ltr">
-              מחיר נוכחי: ${currentPrice.toFixed(2)}
+              מחיר נוכחי: ${currentPrice.toFixed(4)}
             </div>
           )}
         </div>

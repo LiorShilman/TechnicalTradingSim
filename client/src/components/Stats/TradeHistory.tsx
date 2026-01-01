@@ -177,28 +177,42 @@ export default function TradeHistory({
 
                                 {/* Quantity */}
                                 <div className="text-xs text-text-secondary" dir="ltr">
-                                  {position.quantity.toFixed(3)} {assetSymbol}
+                                  {position.quantity.toFixed(4)} {assetSymbol}
                                 </div>
                               </div>
 
-                              {/* Entry/Exit Prices */}
-                              <div className="grid grid-cols-3 gap-4 text-sm">
+                              {/* Entry/Exit Prices and Times */}
+                              <div className="grid grid-cols-2 gap-4 text-sm mb-2">
                                 <div>
                                   <div className="text-xs text-text-secondary mb-1">מחיר כניסה</div>
                                   <div className="font-mono font-bold text-blue-400" dir="ltr">
-                                    ${position.entryPrice.toFixed(2)}
+                                    ${position.entryPrice.toFixed(4)}
                                   </div>
                                 </div>
                                 <div>
                                   <div className="text-xs text-text-secondary mb-1">מחיר יציאה</div>
                                   <div className="font-mono font-bold text-purple-400" dir="ltr">
-                                    ${(position.exitPrice || 0).toFixed(2)}
+                                    ${(position.exitPrice || 0).toFixed(4)}
+                                  </div>
+                                </div>
+                              </div>
+
+                              <div className="grid grid-cols-2 gap-4 text-xs">
+                                <div>
+                                  <div className="text-text-secondary mb-1">שעת סגירה</div>
+                                  <div className="font-mono text-text-primary flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {position.exitTime
+                                      ? new Date(position.exitTime * 1000).toLocaleTimeString('he-IL', {
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })
+                                      : 'N/A'}
                                   </div>
                                 </div>
                                 <div>
-                                  <div className="text-xs text-text-secondary mb-1">זמן החזקה</div>
-                                  <div className="font-mono text-text-primary flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
+                                  <div className="text-text-secondary mb-1">זמן החזקה</div>
+                                  <div className="font-mono text-text-primary">
                                     {position.exitTime && position.entryTime
                                       ? `${Math.floor((position.exitTime - position.entryTime) / 60)} דק'`
                                       : 'N/A'}
