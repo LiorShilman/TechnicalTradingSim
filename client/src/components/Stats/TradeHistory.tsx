@@ -109,7 +109,7 @@ export default function TradeHistory({
         </div>
 
         {/* Scrollable Content */}
-        <div className="overflow-y-auto h-[calc(100%-180px)] px-6 py-4">
+        <div className="overflow-y-auto h-[calc(100%-240px)] px-6 py-4 pb-20">
           {Object.keys(groupedTrades).length === 0 ? (
             <div className="flex flex-col items-center justify-center h-full text-text-secondary">
               <Calendar className="w-16 h-16 mb-4 opacity-50" />
@@ -206,6 +206,7 @@ export default function TradeHistory({
                                       ? new Date(position.exitTime * 1000).toLocaleTimeString('he-IL', {
                                           hour: '2-digit',
                                           minute: '2-digit',
+                                          second: '2-digit',
                                         })
                                       : 'N/A'}
                                   </div>
@@ -214,7 +215,15 @@ export default function TradeHistory({
                                   <div className="text-text-secondary mb-1">זמן החזקה</div>
                                   <div className="font-mono text-text-primary">
                                     {position.exitTime && position.entryTime
-                                      ? `${Math.floor((position.exitTime - position.entryTime) / 60)} דק'`
+                                      ? (() => {
+                                          const diffSeconds = position.exitTime - position.entryTime
+                                          const hours = Math.floor(diffSeconds / 3600)
+                                          const minutes = Math.floor((diffSeconds % 3600) / 60)
+                                          if (hours > 0) {
+                                            return `${hours}ש ${minutes}ד`
+                                          }
+                                          return `${minutes} דק'`
+                                        })()
                                       : 'N/A'}
                                   </div>
                                 </div>
@@ -244,10 +253,10 @@ export default function TradeHistory({
         </div>
 
         {/* Footer */}
-        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-dark-bg via-dark-panel to-transparent px-6 py-4 border-t border-dark-border">
+        <div className="absolute bottom-0 left-0 right-0 bg-gradient-to-t from-dark-bg via-dark-panel to-transparent px-6 py-2 border-t border-dark-border">
           <button
             onClick={onClose}
-            className="w-full px-6 py-3 bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg font-bold text-white transition-all shadow-lg hover:shadow-xl"
+            className="w-full px-4 py-2 text-sm bg-gradient-to-r from-blue-600 to-purple-600 hover:from-blue-700 hover:to-purple-700 rounded-lg font-bold text-white transition-all"
           >
             סגור
           </button>
