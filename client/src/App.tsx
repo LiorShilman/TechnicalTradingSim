@@ -9,6 +9,8 @@ import EquityChart from './components/Chart/EquityChart'
 import GameStats from './components/Stats/GameStats'
 import TradeHistory from './components/Stats/TradeHistory'
 import AlertSettings from './components/Settings/AlertSettings'
+import { RulesSettingsPanel } from './components/Settings/RulesSettingsPanel'
+import { RuleCompliancePanel } from './components/Stats/RuleCompliancePanel'
 import ProfitTrail from './components/Effects/ProfitTrail'
 import TargetZoneGlow from './components/Effects/TargetZoneGlow'
 import EquityColorShift from './components/Effects/EquityColorShift'
@@ -621,7 +623,19 @@ function App() {
 
       {/* Main content */}
       <div className="flex-1 flex overflow-hidden relative z-10">
-        {/* Chart area */}
+        {/* Left sidebar - Account, Order, Lists */}
+        <div className="w-96 bg-dark-panel border-l border-dark-border flex flex-col">
+          <AccountInfo />
+          <OrderPanel />
+
+          {/* רשימת פוזיציות ופקודות עתידיות - גלילה משותפת */}
+          <div className="flex-1 overflow-y-auto">
+            <PendingOrdersList />
+            <PositionsList />
+          </div>
+        </div>
+
+        {/* Chart area - אמצע */}
         <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
           <div style={{ flex: '1 1 0', minHeight: '0' }}>
             <TradingChart />
@@ -638,15 +652,16 @@ function App() {
           </div>
         </div>
 
-        {/* Right sidebar - רשימת פוזיציות ופקודות משולבת */}
-        <div className="w-96 bg-dark-panel border-r border-dark-border flex flex-col">
-          <AccountInfo />
-          <OrderPanel />
+        {/* Right sidebar - כללים ומשמעת */}
+        <div className="w-[420px] bg-dark-panel border-r border-dark-border flex flex-col overflow-y-auto">
+          {/* כללי מסחר */}
+          <div className="p-4 border-b border-dark-border">
+            <RulesSettingsPanel />
+          </div>
 
-          {/* רשימת פוזיציות ופקודות עתידיות - גלילה משותפת */}
-          <div className="flex-1 overflow-y-auto">
-            <PendingOrdersList />
-            <PositionsList />
+          {/* משמעת מסחר */}
+          <div className="p-4 flex-1">
+            <RuleCompliancePanel />
           </div>
         </div>
       </div>

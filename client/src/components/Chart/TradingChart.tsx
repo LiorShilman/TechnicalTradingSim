@@ -2449,24 +2449,68 @@ if (sl && tp) {
         lastCandle: visibleCandles[visibleCandles.length - 1]
       })
 
-      // עדכון נרות
-      candlestickSeriesRef.current.setData(visibleCandles.map(c => ({
-        ...c,
-        time: c.time as Time
-      })))
+      // חישוב Volume MA20 לכל הנרות הנראים (מאינדקס 20 ועד currentIndex)
+      const volumeMAData: { time: Time; value: number }[] = []
 
-      // עדכון Volume - צבע לפי כיוון הנר
-      const volumeData = visibleCandles.map(candle => ({
-        time: candle.time as Time,
-        value: candle.volume,
-        color: candle.close >= candle.open ? '#00c85380' : '#ff174480', // ירוק/אדום עם שקיפות
-      }))
+      for (let i = 19; i <= currentIndex; i++) {
+        const last20Candles = gameState.candles.slice(i - 19, i + 1)
+        if (last20Candles.length === 20) {
+          const volumeSum = last20Candles.reduce((sum, c) => sum + c.volume, 0)
+          const volumeMA = volumeSum / 20
+          volumeMAData.push({
+            time: gameState.candles[i].time as Time,
+            value: volumeMA,
+          })
+        }
+      }
+
+      volumeMASeriesRef.current.setData(volumeMAData)
+      console.log(`📊 Volume MA Initial: Calculated ${volumeMAData.length} MA points from candle 20 to ${currentIndex}`)
+
+      // עדכון נרות + Volume - עם הדגשת ווליום גבוה (1.5x MA)
+      const candleData = visibleCandles.map((candle, idx) => {
+        const candleIndex = idx // האינדקס ב-visibleCandles מתאים לאינדקס בגיים
+        const isGreenCandle = candle.close >= candle.open
+
+        // בדיקה אם יש MA עבור הנר הזה והאם הווליום גבוה (1.5x MA)
+        const maPoint = volumeMAData.find(ma => ma.time === candle.time)
+        const isHighVolume = maPoint && candle.volume >= maPoint.value * 1.5
+
+        if (isHighVolume) {
+          console.log(`🔥 High Volume at index ${candleIndex}: ${candle.volume.toFixed(0)} (MA: ${maPoint.value.toFixed(0)}, ratio: ${(candle.volume / maPoint.value).toFixed(2)}x)`)
+        }
+
+        return {
+          ...candle,
+          time: candle.time as Time,
+          // נרות עם ווליום גבוה - צבועים בצבע בולט
+          ...(isHighVolume && {
+            color: isGreenCandle ? '#00ff00' : '#ff0000', // ירוק/אדום בהיר מלא
+            wickColor: isGreenCandle ? '#00ff00' : '#ff0000',
+            borderColor: isGreenCandle ? '#00ff00' : '#ff0000',
+          })
+        }
+      })
+      candlestickSeriesRef.current.setData(candleData)
+
+      // עדכון Volume - צבע לפי כיוון הנר + הדגשת ווליום גבוה
+      const volumeData = visibleCandles.map((candle, idx) => {
+        const isGreenCandle = candle.close >= candle.open
+        let color = isGreenCandle ? '#00c85380' : '#ff174480'
+
+        // אם יש MA ווליום גבוה - צבע בולט
+        const maPoint = volumeMAData.find(ma => ma.time === candle.time)
+        if (maPoint && candle.volume >= maPoint.value * 1.5) {
+          color = isGreenCandle ? '#00ff00cc' : '#ff0000cc'
+        }
+
+        return {
+          time: candle.time as Time,
+          value: candle.volume,
+          color: color,
+        }
+      })
       volumeSeriesRef.current.setData(volumeData)
-
-      // אל תציג MA בטעינה ראשונית - רק אחרי שהמשתמש מתקדם בפועל
-      // המשתמש צריך להתקדם 20 נרות מהאינדקס ההתחלתי כדי שה-MA יופיע
-      volumeMASeriesRef.current.setData([])
-      console.log(`MA Initial: No MA on first load - will appear after progressing 20 candles from index ${currentIndex}`)
 
       // שמירת האינדקס ההתחלתי
       initialIndexRef.current = currentIndex
@@ -2554,30 +2598,15 @@ if (sl && tp) {
     if (currentIndex > lastCandleIndexRef.current) {
       const newCandle = gameState.candles[currentIndex]
       if (newCandle) {
-        // חישוב כמה נרות התווספו מאז התחלת המשחק
-        const candlesProgressed = currentIndex - initialIndexRef.current
-
-        // עדכון נר
-        candlestickSeriesRef.current.update({
-          ...newCandle,
-          time: newCandle.time as Time
-        })
-
-        // עדכון Volume
-        volumeSeriesRef.current.update({
-          time: newCandle.time as Time,
-          value: newCandle.volume,
-          color: newCandle.close >= newCandle.open ? '#00c85380' : '#ff174480',
-        })
-
         // בדיקת התראות לקווים אופקיים
         const previousCandle = gameState.candles[currentIndex - 1]
         if (previousCandle) {
           checkLineAlerts(newCandle, previousCandle)
         }
 
-        // עדכון MA 20 של Volume - רק אחרי שהמשתמש התקדם 20 נרות מהאינדקס ההתחלתי!
-        if (candlesProgressed >= 20) {
+        // עדכון MA 20 של Volume (מאינדקס 20 ואילך)
+        let volumeMA: number | null = null
+        if (currentIndex >= 19) {
           // חישוב אחורה: 20 נרות אחרונים כולל הנוכחי
           const startIdx = currentIndex - 19
           const endIdx = currentIndex + 1
@@ -2585,18 +2614,48 @@ if (sl && tp) {
 
           if (last20Candles.length === 20) {
             const volumeSum = last20Candles.reduce((sum, c) => sum + c.volume, 0)
-            const volumeMA = volumeSum / 20
+            volumeMA = volumeSum / 20
 
             volumeMASeriesRef.current.update({
               time: newCandle.time as Time,
               value: volumeMA,
             })
 
-            console.log(`MA Update: progressed=${candlesProgressed}, idx=${currentIndex}, range=[${startIdx}, ${endIdx}), MA=${volumeMA.toFixed(2)}`)
+            console.log(`📊 MA Update: idx=${currentIndex}, range=[${startIdx}, ${endIdx}), MA=${volumeMA.toFixed(2)}`)
           }
-        } else {
-          console.log(`MA Waiting: progressed=${candlesProgressed}/20, idx=${currentIndex}`)
         }
+
+        // בדיקה אם ווליום גבוה (1.5x MA)
+        const isGreenCandle = newCandle.close >= newCandle.open
+        const isHighVolume = volumeMA && newCandle.volume >= volumeMA * 1.5
+
+        if (isHighVolume) {
+          console.log(`🔥 High Volume at index ${currentIndex}: ${newCandle.volume.toFixed(0)} (MA: ${volumeMA.toFixed(0)}, ratio: ${(newCandle.volume / volumeMA).toFixed(2)}x)`)
+        }
+
+        // עדכון נר - עם צבע בולט אם ווליום גבוה
+        candlestickSeriesRef.current.update({
+          ...newCandle,
+          time: newCandle.time as Time,
+          // נר עם ווליום גבוה - צבוע בצבע בולט
+          ...(isHighVolume && {
+            color: isGreenCandle ? '#00ff00' : '#ff0000',
+            wickColor: isGreenCandle ? '#00ff00' : '#ff0000',
+            borderColor: isGreenCandle ? '#00ff00' : '#ff0000',
+          })
+        })
+
+        // עדכון Volume - צבע לפי כיוון הנר + הדגשת ווליום גבוה
+        let volumeColor = isGreenCandle ? '#00c85380' : '#ff174480'
+        if (isHighVolume) {
+          volumeColor = isGreenCandle ? '#00ff00cc' : '#ff0000cc'
+        }
+
+        volumeSeriesRef.current.update({
+          time: newCandle.time as Time,
+          value: newCandle.volume,
+          color: volumeColor,
+        })
 
         lastCandleIndexRef.current = currentIndex
 

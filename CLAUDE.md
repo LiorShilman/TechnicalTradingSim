@@ -95,7 +95,9 @@ Test server health: `curl http://localhost:5000/api/health`
 - `client/src/components/Chart/TradingChart.tsx` - Lightweight Charts integration with pattern visualization, drawing tools, and dynamic MA series management
 - `client/src/components/Chart/ChartToolsPanel.tsx` - Unified panel for indicators (unlimited MAs) and drawing tools with selection
 - `client/src/components/Chart/IndicatorControls.tsx` - MA settings panel with Add/Remove functionality and color customization
-- `client/src/components/Settings/AlertSettings.tsx` - Unified alerts panel with Telegram config and price alerts (tabbed interface)
+- `client/src/components/Settings/AlertSettings.tsx` - Unified alerts panel with Telegram config and price alerts (tabbed interface, positioned at top-7 left-8)
+- `client/src/components/Settings/RulesSettingsPanel.tsx` - Trading rules configuration panel (right sidebar)
+- `client/src/components/Stats/RuleCompliancePanel.tsx` - Rule violations tracking and compliance score display (right sidebar)
 - `client/src/components/Trading/OrderPanel.tsx` - Buy/Sell interface with advanced SL/TP and risk management
 - `client/src/components/Trading/AccountInfo.tsx` - Real-time account balance and P&L display
 - `client/src/components/Trading/PositionsList.tsx` - Displays open positions with edit and close functionality
@@ -232,6 +234,99 @@ The OrderPanel (`OrderPanel.tsx`) provides professional trading capabilities:
 - Trading preferences saved to localStorage via useEffect on change
 - `useEffect` hook (lines 285-290) auto-updates quantity when risk parameters change
 - `useEffect` hook (lines 300-308) sets smart default quantity on game load (1% of equity)
+
+### Rule Violation Tracker (Trading Discipline System)
+A pedagogical feature that teaches trading discipline by tracking rule violations and calculating compliance scores.
+
+**Core Concept:**
+Separates "process" (following rules) from "results" (profit/loss). Teaches that profitable trades that violate rules are still mistakes in the long run.
+
+**Architecture:**
+- **State Management** (`gameStore.ts`):
+  - `tradingRules: TradingRules` - User-configurable rules (6 rules total)
+  - `ruleViolations: RuleViolation[]` - All violations with severity, timestamp, and PnL tracking
+  - `updateTradingRules()` - Saves rules to localStorage (`tradingRules` key)
+  - `clearViolations()` - Resets violation history
+  - `loadTradingRules()` - Loads rules from localStorage on init
+
+- **Real-time Validation** (`gameStore.ts` executeTrade, lines 329-434):
+  Checks performed BEFORE trade execution (only for buy operations):
+  1. **requireStopLoss** (critical): Blocks trades without SL
+  2. **requireTakeProfit** (warning): Warns about missing TP
+  3. **minRRRatio** (warning): Checks Risk:Reward ratio (SL/TP distance)
+  4. **maxDailyTrades** (critical): Prevents overtrading
+  5. **maxConsecutiveLosses** (critical): Warns after N consecutive losses
+  6. **maxRiskPerTrade** (not yet implemented in validation)
+
+- **UI Components:**
+  - **RulesSettingsPanel** (`client/src/components/Settings/RulesSettingsPanel.tsx`):
+    - Right sidebar panel with purple gradient theme
+    - 6 configurable rules with inputs and toggles
+    - Save button (stores to localStorage immediately)
+    - Reset button (restores defaults: 5 daily trades, 1.5 R:R, 2% risk, SL required)
+
+  - **RuleCompliancePanel** (`client/src/components/Stats/RuleCompliancePanel.tsx`):
+    - Right sidebar panel below RulesSettingsPanel
+    - **Compliance Score** (0-100%): `(totalTrades - criticalViolations) / totalTrades × 100`
+    - Color-coded score: Green (≥90%), Yellow (≥70%), Red (<70%)
+    - Stats grid: Total violations, critical count, warnings, profitable violations
+    - Violation breakdown by type with Hebrew labels
+    - Last 5 violations with severity icons and timestamp
+    - Special warning for "profitable violations" (trades that made money despite breaking rules)
+
+- **Three-Column Layout** (`App.tsx` lines 625-667):
+  ```
+  ┌────────────┬─────────────────┬─────────────┐
+  │ Left       │ Middle          │ Right       │
+  │ (w-96)     │ (flex-1)        │ (w-[420px]) │
+  ├────────────┼─────────────────┼─────────────┤
+  │ Account    │ TradingChart    │ Rules       │
+  │ Info       │                 │ Settings    │
+  │            │                 │ Panel       │
+  │ Order      │ AlertSettings   ├─────────────┤
+  │ Panel      │ (top-7 left-8)  │ Rule        │
+  │            │                 │ Compliance  │
+  │ Pending    │ EquityChart     │ Panel       │
+  │ Orders     │                 │             │
+  │            │                 │             │
+  │ Positions  │                 │             │
+  │ List       │                 │             │
+  └────────────┴─────────────────┴─────────────┘
+  ```
+
+**Data Types** (`client/src/types/game.types.ts` lines 226-250):
+```typescript
+interface TradingRules {
+  maxDailyTrades: number          // Default: 5
+  minRRRatio: number              // Default: 1.5
+  maxRiskPerTrade: number         // Default: 2%
+  requireStopLoss: boolean        // Default: true
+  requireTakeProfit: boolean      // Default: false
+  maxConsecutiveLosses: number    // Default: 3
+}
+
+interface RuleViolation {
+  id: string
+  timestamp: number
+  candleIndex: number             // Which candle the violation occurred on
+  rule: keyof TradingRules        // Which rule was violated
+  message: string                 // Hebrew violation message
+  severity: 'warning' | 'critical'
+  tradePnL?: number               // If set, indicates profitable violation
+  positionId?: string             // Associated position ID
+}
+```
+
+**User Feedback:**
+- Toast notifications on violation (red for critical, yellow for warning)
+- Compliance score updates in real-time
+- Visual breakdown shows most common violations
+- Special highlight for profitable violations (teaches that luck ≠ skill)
+
+**localStorage Persistence:**
+- Rules saved to `tradingRules` key
+- Violations NOT persisted (cleared on page refresh)
+- Rules survive game resets and page reloads
 
 ## Configuration
 

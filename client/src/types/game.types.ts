@@ -224,6 +224,32 @@ export interface PriceAlert {
 }
 
 /**
+ * כללי מסחר - מוגדרים על ידי השחקן
+ */
+export interface TradingRules {
+  maxDailyTrades: number;          // מקסימום עסקאות ביום
+  minRRRatio: number;              // R:R מינימלי (default: 1.5)
+  maxRiskPerTrade: number;         // סיכון מקסימלי באחוזים (default: 2%)
+  requireStopLoss: boolean;        // חובת SL
+  requireTakeProfit: boolean;      // חובת TP
+  maxConsecutiveLosses: number;    // מקס הפסדים ברצף לפני הפסקה
+}
+
+/**
+ * הפרת כלל מסחר
+ */
+export interface RuleViolation {
+  id: string;
+  timestamp: number;
+  candleIndex: number;             // באיזה נר ההפרה קרתה
+  rule: keyof TradingRules;        // איזה כלל הופר
+  message: string;
+  severity: 'warning' | 'critical';
+  tradePnL?: number;               // האם ההפרה הייתה בעסקה מנצחת (גרוע יותר)
+  positionId?: string;             // ID של העסקה הרלוונטית
+}
+
+/**
  * בקשה ליצירת משחק חדש
  */
 export interface CreateGameRequest {

@@ -1,5 +1,5 @@
 import { create } from 'zustand'
-import type { GameState, SavedGameState } from '@/types/game.types'
+import type { GameState, SavedGameState, TradingRules, RuleViolation } from '@/types/game.types'
 import { api } from '@/services/api'
 import toast from 'react-hot-toast'
 import { telegramService } from '@/services/telegramNotifications'
@@ -7,6 +7,17 @@ import { priceAlertsService } from '@/services/priceAlertsService'
 
 // שם המפתח ב-localStorage
 const SAVED_GAME_KEY = 'savedGameState'
+const TRADING_RULES_KEY = 'tradingRules'
+
+// כללי מסחר ברירת מחדל
+const DEFAULT_TRADING_RULES: TradingRules = {
+  maxDailyTrades: 5,
+  minRRRatio: 1.5,
+  maxRiskPerTrade: 2,
+  requireStopLoss: true,
+  requireTakeProfit: false,
+  maxConsecutiveLosses: 3,
+}
 
 interface GameStore {
   gameState: GameState | null
@@ -18,6 +29,10 @@ interface GameStore {
   chartResetZoom: (() => void) | null
   showStats: boolean // הצגת מסך סטטיסטיקות (למשל בשמירה ויציאה)
   showTradeHistory: boolean // הצגת מסך היסטוריית עסקאות
+
+  // Rule Violation Tracking
+  tradingRules: TradingRules
+  ruleViolations: RuleViolation[]
 
   // Actions
   initializeGame: (config?: { initialBalance?: number }) => Promise<void>
@@ -57,8 +72,25 @@ interface GameStore {
   // UI State
   toggleTradeHistory: () => void
 
+  // Rule Violation Actions
+  updateTradingRules: (rules: Partial<TradingRules>) => void
+  clearViolations: () => void
+
   // Helper
   clearError: () => void
+}
+
+// טוען כללים מ-localStorage או מחזיר ברירת מחדל
+const loadTradingRules = (): TradingRules => {
+  try {
+    const saved = localStorage.getItem(TRADING_RULES_KEY)
+    if (saved) {
+      return { ...DEFAULT_TRADING_RULES, ...JSON.parse(saved) }
+    }
+  } catch (e) {
+    console.error('Failed to load trading rules:', e)
+  }
+  return DEFAULT_TRADING_RULES
 }
 
 export const useGameStore = create<GameStore>((set, get) => ({
@@ -71,6 +103,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
   chartResetZoom: null,
   showStats: false,
   showTradeHistory: false,
+
+  // Rule Violation State
+  tradingRules: loadTradingRules(),
+  ruleViolations: [],
 
   initializeGame: async (config) => {
     console.log('initializeGame: Starting...', config)
@@ -291,8 +327,111 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   executeTrade: async (type, quantity, positionId, positionType, stopLoss, takeProfit) => {
-    const { gameState } = get()
+    const { gameState, tradingRules, ruleViolations } = get()
     if (!gameState) return
+
+    // 🔍 בדיקת הפרות כללים - רק לעסקאות חדשות (type === 'buy')
+    const newViolations: RuleViolation[] = []
+
+    if (type === 'buy') {
+      const currentPrice = gameState.candles[gameState.currentIndex].close
+
+      // בדיקה 1: Stop Loss חובה
+      if (tradingRules.requireStopLoss && !stopLoss) {
+        newViolations.push({
+          id: `violation-${Date.now()}-sl`,
+          timestamp: Date.now(),
+          candleIndex: gameState.currentIndex,
+          rule: 'requireStopLoss',
+          message: '⛔ נכנסת לעסקה ללא Stop Loss - הפרה קריטית!',
+          severity: 'critical',
+        })
+      }
+
+      // בדיקה 2: Take Profit חובה
+      if (tradingRules.requireTakeProfit && !takeProfit) {
+        newViolations.push({
+          id: `violation-${Date.now()}-tp`,
+          timestamp: Date.now(),
+          candleIndex: gameState.currentIndex,
+          rule: 'requireTakeProfit',
+          message: '⚠️ נכנסת לעסקה ללא Take Profit',
+          severity: 'warning',
+        })
+      }
+
+      // בדיקה 3: R:R מינימלי
+      if (stopLoss && takeProfit) {
+        const slDistance = Math.abs(currentPrice - stopLoss)
+        const tpDistance = Math.abs(takeProfit - currentPrice)
+        const rrRatio = tpDistance / slDistance
+
+        if (rrRatio < tradingRules.minRRRatio) {
+          newViolations.push({
+            id: `violation-${Date.now()}-rr`,
+            timestamp: Date.now(),
+            candleIndex: gameState.currentIndex,
+            rule: 'minRRRatio',
+            message: `⚠️ R:R נמוך מדי (${rrRatio.toFixed(2)}:1), מינימום נדרש: ${tradingRules.minRRRatio}:1`,
+            severity: 'warning',
+          })
+        }
+      }
+
+      // בדיקה 4: Overtrading - מקסימום עסקאות יומיות
+      const today = new Date().toDateString()
+      const todayTrades = gameState.closedPositions.filter(p => {
+        const tradeDate = new Date(p.exitTime! * 1000).toDateString()
+        return tradeDate === today
+      }).length
+
+      if (todayTrades >= tradingRules.maxDailyTrades) {
+        newViolations.push({
+          id: `violation-${Date.now()}-daily`,
+          timestamp: Date.now(),
+          candleIndex: gameState.currentIndex,
+          rule: 'maxDailyTrades',
+          message: `🛑 עברת את מגבלת העסקאות היומית! (${todayTrades}/${tradingRules.maxDailyTrades})`,
+          severity: 'critical',
+        })
+      }
+
+      // בדיקה 5: רצף הפסדים
+      let consecutiveLosses = 0
+      for (let i = gameState.closedPositions.length - 1; i >= 0; i--) {
+        const pos = gameState.closedPositions[i]
+        if ((pos.exitPnL || 0) < 0) {
+          consecutiveLosses++
+        } else {
+          break
+        }
+      }
+
+      if (consecutiveLosses >= tradingRules.maxConsecutiveLosses) {
+        newViolations.push({
+          id: `violation-${Date.now()}-streak`,
+          timestamp: Date.now(),
+          candleIndex: gameState.currentIndex,
+          rule: 'maxConsecutiveLosses',
+          message: `🚨 ${consecutiveLosses} הפסדים ברצף - מומלץ להפסיק ולנתח!`,
+          severity: 'critical',
+        })
+      }
+
+      // הצגת התראות על הפרות
+      if (newViolations.length > 0) {
+        newViolations.forEach(v => {
+          if (v.severity === 'critical') {
+            toast.error(v.message, { icon: '🚫', duration: 5000 })
+          } else {
+            toast(v.message, { icon: '⚠️', duration: 4000 })
+          }
+        })
+      }
+
+      // עדכון state עם ההפרות החדשות
+      set({ ruleViolations: [...ruleViolations, ...newViolations] })
+    }
 
     set({ isLoading: true, error: null })
     try {
@@ -335,6 +474,30 @@ export const useGameStore = create<GameStore>((set, get) => ({
           pnlPercent: response.closedPosition.exitPnLPercent || 0,
           asset: get().gameState?.asset,
         })
+
+        // 📊 עדכון PnL בהפרות שקשורות לעסקה זו (אם יש)
+        if (newViolations.length > 0 && response.position) {
+          const updatedViolations = get().ruleViolations.map(v => {
+            // אם ההפרה נוצרה באותו זמן כמו העסקה הזו
+            if (newViolations.some(nv => nv.id === v.id)) {
+              return {
+                ...v,
+                tradePnL: pnl,
+                positionId: response.closedPosition!.id,
+              }
+            }
+            return v
+          })
+          set({ ruleViolations: updatedViolations })
+
+          // אם העסקה הייתה רווחית למרות הפרות - התראה מיוחדת
+          if (isProfitable && newViolations.some(v => v.severity === 'critical')) {
+            toast('💰 רווחת למרות הפרת כללים - זה לא מצדיק את ההפרה!', {
+              icon: '⚠️',
+              duration: 6000,
+            })
+          }
+        }
       }
 
       // ✅ שמירת הסכום המעודכן ל-localStorage אחרי כל עסקה
@@ -752,6 +915,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   toggleTradeHistory: () => set((state) => ({ showTradeHistory: !state.showTradeHistory })),
+
+  // Rule Violation Actions
+  updateTradingRules: (rules: Partial<TradingRules>) => {
+    const newRules = { ...get().tradingRules, ...rules }
+    set({ tradingRules: newRules })
+    // שמירה ל-localStorage
+    localStorage.setItem(TRADING_RULES_KEY, JSON.stringify(newRules))
+    console.log('📜 Trading rules updated:', newRules)
+  },
+
+  clearViolations: () => {
+    set({ ruleViolations: [] })
+    console.log('🧹 All violations cleared')
+  },
 
   clearError: () => set({ error: null }),
 }))
