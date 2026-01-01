@@ -59,8 +59,8 @@ export default function PositionsList() {
                     <div className="text-xs text-text-secondary">
                       {position.type === 'long' ? '📈 Long' : '📉 Short'}
                     </div>
-                    <div className="font-mono font-semibold">
-                      {position.quantity} {assetSymbol}
+                    <div className="font-mono font-semibold" dir="ltr">
+                      {position.quantity.toFixed(4)} {assetSymbol}
                     </div>
                   </div>
                   <div className="flex gap-1">
@@ -88,7 +88,7 @@ export default function PositionsList() {
                 <div className="grid grid-cols-2 gap-2 text-xs mb-2">
                   <div>
                     <span className="text-text-secondary">כניסה: </span>
-                    <span className="font-mono" dir="ltr">${position.entryPrice.toLocaleString()}</span>
+                    <span className="font-mono" dir="ltr">${position.entryPrice.toFixed(4)}</span>
                   </div>
                   <div>
                     <span className="text-text-secondary">נר: </span>
@@ -109,13 +109,13 @@ export default function PositionsList() {
                     {position.stopLoss && (
                       <div>
                         <span className="text-red-400">🛑 SL: </span>
-                        <span className="font-mono" dir="ltr">${position.stopLoss.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                        <span className="font-mono" dir="ltr">${position.stopLoss.toFixed(4)}</span>
                       </div>
                     )}
                     {position.takeProfit && (
                       <div>
                         <span className="text-green-400">🎯 TP: </span>
-                        <span className="font-mono" dir="ltr">${position.takeProfit.toLocaleString(undefined, { maximumFractionDigits: 0 })}</span>
+                        <span className="font-mono" dir="ltr">${position.takeProfit.toFixed(4)}</span>
                       </div>
                     )}
                   </div>
