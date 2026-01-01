@@ -137,120 +137,122 @@ export default function TradeHistory({
                       return (
                         <div
                           key={idx}
-                          className={`bg-dark-panel border-l-4 rounded-lg p-3 hover:shadow-lg transition-all ${
+                          className={`bg-dark-panel border-2 rounded-lg p-3 hover:shadow-lg transition-all ${
                             isProfit
-                              ? 'border-l-green-500 bg-green-500/5'
-                              : 'border-l-red-500 bg-red-500/5'
+                              ? 'border-green-500/30 hover:border-green-500/50'
+                              : 'border-red-500/30 hover:border-red-500/50'
                           }`}
                         >
-                          {/* Header Row: Type + Reason + Quantity + P&L */}
-                          <div className="flex items-center justify-between mb-3">
-                            <div className="flex items-center gap-2">
-                              {/* Position Type */}
-                              {position.type === 'long' ? (
-                                <div className="flex items-center gap-1 bg-green-500/20 border border-green-500/40 rounded px-2 py-0.5">
-                                  <TrendingUp className="w-3 h-3 text-green-400" />
-                                  <span className="text-xs font-bold text-green-400">LONG</span>
-                                </div>
-                              ) : (
-                                <div className="flex items-center gap-1 bg-red-500/20 border border-red-500/40 rounded px-2 py-0.5">
-                                  <TrendingDown className="w-3 h-3 text-red-400" />
-                                  <span className="text-xs font-bold text-red-400">SHORT</span>
-                                </div>
-                              )}
+                          <div className="flex items-start justify-between gap-4">
+                            {/* Left side: All info in compact vertical layout */}
+                            <div className="flex-1">
+                              {/* Top row: Type + Reason + Quantity */}
+                              <div className="flex items-center gap-2 mb-3">
+                                {position.type === 'long' ? (
+                                  <div className="flex items-center gap-1 bg-green-500/20 border border-green-500/40 rounded px-2 py-0.5">
+                                    <TrendingUp className="w-3 h-3 text-green-400" />
+                                    <span className="text-xs font-bold text-green-400">LONG</span>
+                                  </div>
+                                ) : (
+                                  <div className="flex items-center gap-1 bg-red-500/20 border border-red-500/40 rounded px-2 py-0.5">
+                                    <TrendingDown className="w-3 h-3 text-red-400" />
+                                    <span className="text-xs font-bold text-red-400">SHORT</span>
+                                  </div>
+                                )}
 
-                              {/* Exit Reason */}
-                              {position.exitReason && (
-                                <div className={`text-xs px-2 py-0.5 rounded ${
-                                  position.exitReason === 'stop_loss'
-                                    ? 'bg-red-900/30 text-red-400 border border-red-500/30'
-                                    : position.exitReason === 'take_profit'
-                                    ? 'bg-green-900/30 text-green-400 border border-green-500/30'
-                                    : 'bg-blue-900/30 text-blue-400 border border-blue-500/30'
-                                }`}>
-                                  {position.exitReason === 'stop_loss' && '🛑 SL'}
-                                  {position.exitReason === 'take_profit' && '🎯 TP'}
-                                  {position.exitReason === 'manual' && '✋ ידני'}
-                                </div>
-                              )}
+                                {position.exitReason && (
+                                  <div className={`text-xs px-2 py-0.5 rounded ${
+                                    position.exitReason === 'stop_loss'
+                                      ? 'bg-red-900/30 text-red-400 border border-red-500/30'
+                                      : position.exitReason === 'take_profit'
+                                      ? 'bg-green-900/30 text-green-400 border border-green-500/30'
+                                      : 'bg-blue-900/30 text-blue-400 border border-blue-500/30'
+                                  }`}>
+                                    {position.exitReason === 'stop_loss' && '🛑 SL'}
+                                    {position.exitReason === 'take_profit' && '🎯 TP'}
+                                    {position.exitReason === 'manual' && '✋ ידני'}
+                                  </div>
+                                )}
 
-                              {/* Quantity */}
-                              <div className="text-xs font-mono text-text-secondary" dir="ltr">
-                                {position.quantity.toFixed(4)} {assetSymbol}
+                                <div className="text-xs font-mono text-text-secondary" dir="ltr">
+                                  {position.quantity.toFixed(4)} {assetSymbol}
+                                </div>
+                              </div>
+
+                              {/* Price and Time info in compact table-like layout */}
+                              <div className="space-y-1.5 text-xs">
+                                {/* Entry */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-text-secondary w-16">כניסה:</span>
+                                  <span className="font-mono text-blue-400 font-semibold" dir="ltr">
+                                    ${position.entryPrice.toFixed(4)}
+                                  </span>
+                                  <span className="text-text-secondary">•</span>
+                                  <span className="font-mono text-text-primary text-[10px]">
+                                    {position.entryTime
+                                      ? new Date(position.entryTime * 1000).toLocaleString('he-IL', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })
+                                      : 'N/A'}
+                                  </span>
+                                </div>
+
+                                {/* Exit */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-text-secondary w-16">יציאה:</span>
+                                  <span className="font-mono text-purple-400 font-semibold" dir="ltr">
+                                    ${(position.exitPrice || 0).toFixed(4)}
+                                  </span>
+                                  <span className="text-text-secondary">•</span>
+                                  <span className="font-mono text-text-primary text-[10px]">
+                                    {position.exitTime
+                                      ? new Date(position.exitTime * 1000).toLocaleString('he-IL', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })
+                                      : 'N/A'}
+                                  </span>
+                                </div>
+
+                                {/* Hold Duration */}
+                                <div className="flex items-center gap-2">
+                                  <span className="text-text-secondary w-16 flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    זמן:
+                                  </span>
+                                  <span className="font-mono text-yellow-400 font-semibold">
+                                    {position.exitTime && position.entryTime
+                                      ? (() => {
+                                          const diffSeconds = position.exitTime - position.entryTime
+                                          const days = Math.floor(diffSeconds / 86400)
+                                          const hours = Math.floor((diffSeconds % 86400) / 3600)
+                                          const minutes = Math.floor((diffSeconds % 3600) / 60)
+
+                                          if (days > 0) {
+                                            return `${days} ימים, ${hours}ש ${minutes}ד`
+                                          } else if (hours > 0) {
+                                            return `${hours}ש ${minutes}ד`
+                                          }
+                                          return `${minutes} דק'`
+                                        })()
+                                      : 'N/A'}
+                                  </span>
+                                </div>
                               </div>
                             </div>
 
-                            {/* P&L - Right side */}
-                            <div className="text-right">
-                              <div className={`text-xl font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`} dir="ltr">
+                            {/* Right side: P&L */}
+                            <div className="text-right flex-shrink-0">
+                              <div className={`text-2xl font-bold ${isProfit ? 'text-green-400' : 'text-red-400'}`} dir="ltr">
                                 {isProfit ? '+' : ''}{pnl.toFixed(2)}$
                               </div>
-                              <div className={`text-xs font-semibold ${isProfit ? 'text-green-500' : 'text-red-500'}`} dir="ltr">
+                              <div className={`text-sm font-semibold ${isProfit ? 'text-green-500' : 'text-red-500'}`} dir="ltr">
                                 {isProfit ? '+' : ''}{pnlPercent.toFixed(2)}%
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Info Grid: Compact 3-column layout */}
-                          <div className="grid grid-cols-3 gap-3 text-xs bg-dark-bg/50 rounded p-2">
-                            {/* Entry Info */}
-                            <div className="space-y-1">
-                              <div className="text-text-secondary text-[10px] uppercase">כניסה</div>
-                              <div className="font-mono text-blue-400 font-semibold" dir="ltr">
-                                ${position.entryPrice.toFixed(4)}
-                              </div>
-                              <div className="font-mono text-text-primary text-[10px]">
-                                {position.entryTime
-                                  ? new Date(position.entryTime * 1000).toLocaleString('he-IL', {
-                                      day: '2-digit',
-                                      month: '2-digit',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })
-                                  : 'N/A'}
-                              </div>
-                            </div>
-
-                            {/* Exit Info */}
-                            <div className="space-y-1">
-                              <div className="text-text-secondary text-[10px] uppercase">יציאה</div>
-                              <div className="font-mono text-purple-400 font-semibold" dir="ltr">
-                                ${(position.exitPrice || 0).toFixed(4)}
-                              </div>
-                              <div className="font-mono text-text-primary text-[10px]">
-                                {position.exitTime
-                                  ? new Date(position.exitTime * 1000).toLocaleString('he-IL', {
-                                      day: '2-digit',
-                                      month: '2-digit',
-                                      hour: '2-digit',
-                                      minute: '2-digit',
-                                    })
-                                  : 'N/A'}
-                              </div>
-                            </div>
-
-                            {/* Hold Duration */}
-                            <div className="space-y-1">
-                              <div className="text-text-secondary text-[10px] uppercase flex items-center gap-1">
-                                <Clock className="w-3 h-3" />
-                                זמן החזקה
-                              </div>
-                              <div className="font-mono text-yellow-400 font-semibold">
-                                {position.exitTime && position.entryTime
-                                  ? (() => {
-                                      const diffSeconds = position.exitTime - position.entryTime
-                                      const days = Math.floor(diffSeconds / 86400)
-                                      const hours = Math.floor((diffSeconds % 86400) / 3600)
-                                      const minutes = Math.floor((diffSeconds % 3600) / 60)
-
-                                      if (days > 0) {
-                                        return `${days}י ${hours}ש`
-                                      } else if (hours > 0) {
-                                        return `${hours}ש ${minutes}ד`
-                                      }
-                                      return `${minutes} דק'`
-                                    })()
-                                  : 'N/A'}
                               </div>
                             </div>
                           </div>
