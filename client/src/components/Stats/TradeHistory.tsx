@@ -197,35 +197,56 @@ export default function TradeHistory({
                                 </div>
                               </div>
 
-                              <div className="grid grid-cols-2 gap-4 text-xs">
+                              {/* Entry and Exit Times */}
+                              <div className="grid grid-cols-2 gap-4 text-xs mb-2">
                                 <div>
-                                  <div className="text-text-secondary mb-1">שעת סגירה</div>
-                                  <div className="font-mono text-text-primary flex items-center gap-1">
-                                    <Clock className="w-3 h-3" />
-                                    {position.exitTime
-                                      ? new Date(position.exitTime * 1000).toLocaleTimeString('he-IL', {
+                                  <div className="text-text-secondary mb-1">כניסה</div>
+                                  <div className="font-mono text-text-primary">
+                                    {position.entryTime
+                                      ? new Date(position.entryTime * 1000).toLocaleString('he-IL', {
+                                          day: '2-digit',
+                                          month: '2-digit',
                                           hour: '2-digit',
                                           minute: '2-digit',
-                                          second: '2-digit',
                                         })
                                       : 'N/A'}
                                   </div>
                                 </div>
                                 <div>
-                                  <div className="text-text-secondary mb-1">זמן החזקה</div>
-                                  <div className="font-mono text-text-primary">
-                                    {position.exitTime && position.entryTime
-                                      ? (() => {
-                                          const diffSeconds = position.exitTime - position.entryTime
-                                          const hours = Math.floor(diffSeconds / 3600)
-                                          const minutes = Math.floor((diffSeconds % 3600) / 60)
-                                          if (hours > 0) {
-                                            return `${hours}ש ${minutes}ד`
-                                          }
-                                          return `${minutes} דק'`
-                                        })()
+                                  <div className="text-text-secondary mb-1">יציאה</div>
+                                  <div className="font-mono text-text-primary flex items-center gap-1">
+                                    <Clock className="w-3 h-3" />
+                                    {position.exitTime
+                                      ? new Date(position.exitTime * 1000).toLocaleString('he-IL', {
+                                          day: '2-digit',
+                                          month: '2-digit',
+                                          hour: '2-digit',
+                                          minute: '2-digit',
+                                        })
                                       : 'N/A'}
                                   </div>
+                                </div>
+                              </div>
+
+                              {/* Hold Duration */}
+                              <div className="text-xs">
+                                <div className="text-text-secondary mb-1">זמן החזקה</div>
+                                <div className="font-mono text-text-primary">
+                                  {position.exitTime && position.entryTime
+                                    ? (() => {
+                                        const diffSeconds = position.exitTime - position.entryTime
+                                        const days = Math.floor(diffSeconds / 86400)
+                                        const hours = Math.floor((diffSeconds % 86400) / 3600)
+                                        const minutes = Math.floor((diffSeconds % 3600) / 60)
+
+                                        if (days > 0) {
+                                          return `${days} ימים, ${hours}ש ${minutes}ד`
+                                        } else if (hours > 0) {
+                                          return `${hours}ש ${minutes}ד`
+                                        }
+                                        return `${minutes} דק'`
+                                      })()
+                                    : 'N/A'}
                                 </div>
                               </div>
                             </div>
