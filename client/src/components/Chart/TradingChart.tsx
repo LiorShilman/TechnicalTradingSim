@@ -2065,13 +2065,20 @@ if (sl && tp) {
       // markers לכניסה - תמיד מוצגים
       if (position.entryIndex <= gameState.currentIndex) {
         const isLong = position.type === 'long'
+        const isProfitable = (position.exitPnL || 0) > 0
+
+        // צבע החץ לפי כיוון: LONG = ירוק, SHORT = אדום
+        const arrowColor = isLong ? '#22c55e' : '#ef4444'
+
+        // צבע הנקודה (background) לפי תוצאה: רווח = ירוק, הפסד = אדום
+        const markerColor = isProfitable ? '#22c55e' : '#ef4444'
 
         tradeMarkers.push({
           time: position.entryTime as Time,
           position: isLong ? ('belowBar' as const) : ('aboveBar' as const),
-          color: isLong ? '#22c55e' : '#ef4444', // ירוק ל-LONG, אדום ל-SHORT
+          color: markerColor, // צבע הנקודה לפי תוצאה
           shape: isLong ? ('arrowUp' as const) : ('arrowDown' as const),
-          text: `${isLong ? '🟢' : '🔴'} Entry`,
+          text: `${isLong ? '🟢' : '🔴'} Entry`, // טקסט לפי כיוון
           size: 1.2,
         })
       }
