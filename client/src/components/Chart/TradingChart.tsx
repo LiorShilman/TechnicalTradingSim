@@ -998,12 +998,14 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
 
         // Check if hovering over a closed position entry marker
         let hoveredPosIndex: number | null = null
-        if (time !== null && time !== undefined && price !== null && gameState?.closedPositions) {
+
+        // ⚠️ תמיד נבדוק - גם אם time/price הם null, כדי לוודא שהריחוף יתאפס
+        if (gameState?.closedPositions && time !== null && time !== undefined && price !== null) {
           const candleDuration = gameState.candles.length > 1
             ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
             : 86400
-          const timeTolerance = candleDuration * 1.5 // טולרנס זמן (1.5 נרות)
-          const priceTolerance = price * 0.008 // טולרנס מחיר 0.8% (יותר קטן)
+          const timeTolerance = candleDuration * 1 // טולרנס זמן (1 נר בלבד - קטן יותר!)
+          const priceTolerance = price * 0.005 // טולרנס מחיר 0.5% (עוד יותר קטן!)
 
           gameState.closedPositions.forEach((position, index) => {
             // בדיקה אם הכניסה כבר התרחשה
@@ -1018,6 +1020,7 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
             }
           })
         }
+        // אחרת (time או price הם null) - hoveredPosIndex נשאר null
 
         // עדכון מצב הריחוף (תמיד - גם אם null)
         // זה יבטיח שכשיוצאים מאזור הריחוף, הקו ייעלם
@@ -1025,7 +1028,7 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
           setHoveredPositionId(hoveredPosIndex)
           if (hoveredPosIndex !== null) {
             console.log(`🎯 Hovering over position #${hoveredPosIndex}`)
-          } else {
+          } else if (hoveredPositionId !== null) {
             console.log('👋 Left hover area - clearing lines')
           }
         }
@@ -1884,10 +1887,10 @@ if (sl && tp) {
     if (gameState?.candles && gameState.currentIndex >= 0) {
       // קריאה מעוכבת כדי לוודא ש-drawnMarkersRef התעדכן
       setTimeout(() => {
-        createPatternMarkers()
+        createPatternMarkers(hoveredPositionId)
       }, 0)
     }
-  }, [drawnLines, selectedLineId, gameState?.currentIndex, gameState?.candles.length, gameState?.id, gameState?.closedPositions?.length])
+  }, [drawnLines, selectedLineId, gameState?.currentIndex, gameState?.candles.length, gameState?.id, gameState?.closedPositions?.length, hoveredPositionId])
 
   // פונקציות לניהול קווים
   const handleDeleteLine = (id: string) => {
@@ -1984,13 +1987,14 @@ if (sl && tp) {
   }
 
   // פונקציה ליצירת סימון עסקאות סגורות
-  const createClosedTradeMarkers = (): any[] => {
+  // עכשיו מקבלת hoveredPositionIndex כדי להציג exit markers רק עבור פוזיציה מרחפת
+  const createClosedTradeMarkers = (hoveredPositionIndex: number | null = null): any[] => {
     if (!gameState?.closedPositions || !gameState?.candles) return []
 
     const tradeMarkers: any[] = []
 
-    gameState.closedPositions.forEach((position) => {
-      // markers לכניסה
+    gameState.closedPositions.forEach((position, index) => {
+      // markers לכניסה - תמיד מוצגים
       if (position.entryIndex <= gameState.currentIndex) {
         const isLong = position.type === 'long'
 
@@ -2004,8 +2008,10 @@ if (sl && tp) {
         })
       }
 
-      // markers ליציאה (אם היציאה כבר התרחשה)
-      if (position.exitIndex !== undefined && position.exitIndex <= gameState.currentIndex) {
+      // markers ליציאה - רק אם מרחפים על הפוזיציה הזו!
+      if (position.exitIndex !== undefined &&
+          position.exitIndex <= gameState.currentIndex &&
+          hoveredPositionIndex === index) {
         const isProfitable = (position.exitPnL || 0) > 0
         const pnlText = position.exitPnL
           ? `${isProfitable ? '+' : ''}$${position.exitPnL.toFixed(2)} (${position.exitPnLPercent?.toFixed(1)}%)`
@@ -2026,7 +2032,8 @@ if (sl && tp) {
   }
 
   // פונקציה ליצירת סימון תבניות
-  const createPatternMarkers = () => {
+  // עכשיו מקבלת hoveredPositionIndex כדי להעביר ל-createClosedTradeMarkers
+  const createPatternMarkers = (hoveredPositionIndex: number | null = null) => {
     if (!chartRef.current || !gameState?.patterns || !gameState?.candles) return
     if (!candlestickSeriesRef.current) return
 
@@ -2115,8 +2122,8 @@ if (sl && tp) {
       }
     })
 
-    // יצירת markers לעסקאות סגורות
-    const tradeMarkers = createClosedTradeMarkers()
+    // יצירת markers לעסקאות סגורות (מעבירים hoveredPositionIndex)
+    const tradeMarkers = createClosedTradeMarkers(hoveredPositionIndex)
 
     // מיזוג markers תבניות, עסקאות סגורות, ו-markers כלי ציור
     const allMarkers = [...markers, ...tradeMarkers, ...drawnMarkersRef.current]
@@ -2393,7 +2400,7 @@ if (sl && tp) {
       lastGameIdRef.current = currentGameId // שמירת gameId כדי לזהות משחק טעון
 
       // יצירת סימון תבניות
-      createPatternMarkers()
+      createPatternMarkers(hoveredPositionId ?? null)
 
       // יצירת סימון פקודות עתידיות
       createPendingOrderLines()
@@ -2457,7 +2464,7 @@ if (sl && tp) {
       volumeSeriesRef.current.setData(volumeData)
 
       lastCandleIndexRef.current = currentIndex
-      createPatternMarkers()
+      createPatternMarkers(hoveredPositionId ?? null)
       createPendingOrderLines()
       createClosedPositionLines(hoveredPositionId ?? null)
 
@@ -2521,7 +2528,7 @@ if (sl && tp) {
         // עדכון סימון תבניות אם נחשפה תבנית חדשה
         const hasNewPattern = gameState.patterns?.some(p => p.startIndex === currentIndex)
         if (hasNewPattern) {
-          createPatternMarkers()
+          createPatternMarkers(hoveredPositionId ?? null)
         }
 
         // עדכון סימון פקודות עתידיות (צריך להתעדכן בכל נר כי הקו מתארך)
