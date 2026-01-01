@@ -1002,8 +1002,8 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
           const candleDuration = gameState.candles.length > 1
             ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
             : 86400
-          const timeTolerance = candleDuration * 2 // טולרנס זמן
-          const priceTolerance = price * 0.015 // טולרנס מחיר 1.5%
+          const timeTolerance = candleDuration * 1.5 // טולרנס זמן (1.5 נרות)
+          const priceTolerance = price * 0.008 // טולרנס מחיר 0.8% (יותר קטן)
 
           gameState.closedPositions.forEach((position, index) => {
             // בדיקה אם הכניסה כבר התרחשה
@@ -1019,9 +1019,15 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
           })
         }
 
-        // עדכון מצב הריחוף
+        // עדכון מצב הריחוף (תמיד - גם אם null)
+        // זה יבטיח שכשיוצאים מאזור הריחוף, הקו ייעלם
         if (hoveredPosIndex !== hoveredPositionId) {
           setHoveredPositionId(hoveredPosIndex)
+          if (hoveredPosIndex !== null) {
+            console.log(`🎯 Hovering over position #${hoveredPosIndex}`)
+          } else {
+            console.log('👋 Left hover area - clearing lines')
+          }
         }
 
         if (time !== null && time !== undefined && gameState) {
