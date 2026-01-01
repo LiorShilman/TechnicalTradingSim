@@ -109,11 +109,17 @@ export default function TradingChart() {
 
   // Hover state for closed positions - tracks which position index is being hovered
   const [hoveredPositionId, setHoveredPositionId] = useState<number | null>(null)
+  const hoveredPositionIdRef = useRef<number | null>(null)
 
   // Sync activeTool state with ref
   useEffect(() => {
     activeToolRef.current = activeTool
   }, [activeTool])
+
+  // Sync hoveredPositionId state with ref
+  useEffect(() => {
+    hoveredPositionIdRef.current = hoveredPositionId
+  }, [hoveredPositionId])
 
   // Sync draggingLine state with ref
   useEffect(() => {
@@ -505,6 +511,58 @@ export default function TradingChart() {
 
     chart.timeScale().subscribeVisibleLogicalRangeChange(handleVisibleLogicalRangeChange)
     window.addEventListener('resize', handleResize)
+
+    // Subscribe to crosshair movement for hover detection
+    const handleCrosshairMove = (param: any) => {
+      if (!gameState?.closedPositions || param.point === undefined || param.time === undefined) {
+        // No crosshair data - clear hover if exists
+        if (hoveredPositionIdRef.current !== null) {
+          console.log('🚫 Crosshair cleared - clearing hover')
+          setHoveredPositionId(null)
+        }
+        return
+      }
+
+      const time = param.time as number
+      const price = param.seriesData.get(candlestickSeries)?.close
+
+      if (!price) {
+        // No price data - clear hover if exists
+        if (hoveredPositionIdRef.current !== null) {
+          console.log('🚫 No price data - clearing hover')
+          setHoveredPositionId(null)
+        }
+        return
+      }
+
+      // Check if hovering over any closed position entry marker
+      const candleDuration = gameState.candles.length > 1
+        ? Math.abs(gameState.candles[1].time - gameState.candles[0].time)
+        : 86400
+      const timeTolerance = candleDuration * 1
+      const priceTolerance = price * 0.005
+
+      let newHoveredIndex: number | null = null
+
+      gameState.closedPositions.forEach((position, index) => {
+        if (position.entryIndex > gameState.currentIndex) return
+
+        const timeMatch = Math.abs(time - position.entryTime) < timeTolerance
+        const priceMatch = Math.abs(price - position.entryPrice) < priceTolerance
+
+        if (timeMatch && priceMatch) {
+          newHoveredIndex = index
+        }
+      })
+
+      // Update hover state if changed - use ref to get current value
+      if (newHoveredIndex !== hoveredPositionIdRef.current) {
+        console.log(`🔄 Crosshair hover: ${hoveredPositionIdRef.current} → ${newHoveredIndex}`)
+        setHoveredPositionId(newHoveredIndex)
+      }
+    }
+
+    chart.subscribeCrosshairMove(handleCrosshairMove)
 
     // Click handler for drawing tools
     const handleChartClick = (e: MouseEvent) => {
@@ -1031,15 +1089,15 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
         }
         // אחרת (time או price הם null) - hoveredPosIndex נשאר null
 
-        // עדכון מצב הריחוף (תמיד - גם אם null)
-        // זה יבטיח שכשיוצאים מאזור הריחוף, הקו ייעלם
+        // עדכון מצב הריחוף - ALWAYS UPDATE, even if hoveredPosIndex is null
+        // כך כאשר העכבר נע רחוק מנקודת כניסה, hoveredPosIndex יהיה null והריחוף יתאפס
         if (hoveredPosIndex !== hoveredPositionId) {
+          console.log(`🔄 Hover state change: ${hoveredPositionId} → ${hoveredPosIndex}`, {
+            hasTime: time !== null,
+            hasPrice: price !== null,
+            closedPositionsCount: gameState?.closedPositions?.length || 0
+          })
           setHoveredPositionId(hoveredPosIndex)
-          if (hoveredPosIndex !== null) {
-            console.log(`🎯 Hovering over position #${hoveredPosIndex}`)
-          } else if (hoveredPositionId !== null) {
-            console.log('👋 Left hover area - clearing lines')
-          }
         }
 
         if (time !== null && time !== undefined && gameState) {
@@ -1179,6 +1237,7 @@ if (line.startIndex !== undefined && line.endIndex !== undefined && gameState) {
     return () => {
       console.log('TradingChart: Unmounting chart component')
       chart.timeScale().unsubscribeVisibleLogicalRangeChange(handleVisibleLogicalRangeChange)
+      chart.unsubscribeCrosshairMove(handleCrosshairMove)
       window.removeEventListener('resize', handleResize)
       chartContainerRef.current?.removeEventListener('click', handleChartClick)
       chartContainerRef.current?.removeEventListener('dblclick', handleChartDoubleClick)
