@@ -222,6 +222,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               quantity: closedPos.quantity,
               pnl: pnl,
               pnlPercent: closedPos.exitPnLPercent || 0,
+              asset: newGame.asset,
             })
           } else if (closedPos.exitReason === 'take_profit') {
             const pnl = closedPos.exitPnL || 0
@@ -237,6 +238,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               quantity: closedPos.quantity,
               pnl: pnl,
               pnlPercent: closedPos.exitPnLPercent || 0,
+              asset: newGame.asset,
             })
           }
         }
@@ -331,6 +333,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           quantity: response.closedPosition.quantity,
           pnl: pnl,
           pnlPercent: response.closedPosition.exitPnLPercent || 0,
+          asset: get().gameState?.asset,
         })
       }
 
