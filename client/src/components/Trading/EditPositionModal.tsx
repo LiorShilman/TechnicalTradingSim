@@ -169,6 +169,7 @@ export default function EditPositionModal({
               value={targetPrice}
               onChange={(e) => setTargetPrice(parseFloat(e.target.value) || 0)}
               step="0.01"
+              dir="ltr"
               className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -186,6 +187,7 @@ export default function EditPositionModal({
               onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
               step="0.001"
               min="0.001"
+              dir="ltr"
               className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
             />
           </div>
@@ -204,6 +206,7 @@ export default function EditPositionModal({
             }
             step="0.01"
             placeholder="לא מוגדר"
+            dir="ltr"
             className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
           />
           {slPercent !== null && (
@@ -226,6 +229,7 @@ export default function EditPositionModal({
             }
             step="0.01"
             placeholder="לא מוגדר"
+            dir="ltr"
             className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
           />
           {tpPercent !== null && (

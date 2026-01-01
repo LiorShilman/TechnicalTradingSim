@@ -2687,6 +2687,7 @@ if (sl && tp) {
                   type="number"
                   value={line.price.toFixed(2)}
                   disabled
+                  dir="ltr"
                   className="w-full px-3 py-2 bg-dark-bg/50 border border-dark-border rounded text-sm text-text-secondary"
                 />
               </div>
@@ -2699,6 +2700,7 @@ if (sl && tp) {
                   defaultValue={line.stopLoss?.toFixed(2) || ''}
                   step="0.01"
                   id="edit-sl-input"
+                  dir="ltr"
                   className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-red-500"
                 />
               </div>
@@ -2711,6 +2713,7 @@ if (sl && tp) {
                   defaultValue={line.takeProfit?.toFixed(2) || ''}
                   step="0.01"
                   id="edit-tp-input"
+                  dir="ltr"
                   className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-green-500"
                 />
               </div>

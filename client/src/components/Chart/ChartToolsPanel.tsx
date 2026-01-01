@@ -274,6 +274,7 @@ export default function ChartToolsPanel({
                             onChange={(e) => handleUpdateMA(ma.id, { period: parseInt(e.target.value) || 1 })}
                             min="1"
                             max="500"
+                            dir="ltr"
                             className="flex-1 px-2 py-1 bg-dark-bg border border-dark-border rounded text-xs focus:outline-none focus:border-blue-500"
                           />
                         </div>

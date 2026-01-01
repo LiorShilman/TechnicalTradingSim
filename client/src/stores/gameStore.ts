@@ -149,9 +149,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
         lastCandleTime: newGame.candles?.[newGame.candles.length - 1]?.time,
       })
 
+      // בדיקה אם נסגרו פוזיציות ב-SL/TP (מוצהר מוקדם כדי לשמש גם את הבדיקה למשחק טעון)
+      const newClosedCount = newGame.closedPositions.length
+      const positionsClosedThisCandle = newClosedCount > previousClosedCount
+
       // אם יש פוזיציות שנשמרו (משחק טעון), אנחנו צריכים לעדכן את ה-currentPnL שלהן
       // אבל לא לדרוס אותן עם פוזיציות ריקות מהשרת
-      if (currentPositions.length > 0 && newGame.positions.length === 0) {
+      // ⚠️ CRITICAL FIX: רק אם לא נסגרו פוזיציות חדשות (SL/TP)
+      if (currentPositions.length > 0 && newGame.positions.length === 0 && !positionsClosedThisCandle) {
         console.log('⚠️ Detected loaded game - preserving positions and updating PnL')
 
         // עדכון PnL של הפוזיציות על בסיס המחיר החדש
@@ -193,7 +198,6 @@ export const useGameStore = create<GameStore>((set, get) => ({
       }
 
       // בדיקה אם נסגרו פוזיציות ב-SL/TP
-      const newClosedCount = newGame.closedPositions.length
       if (newClosedCount > previousClosedCount) {
         // יש פוזיציות חדשות שנסגרו
         const newlyClosedPositions = newGame.closedPositions.slice(previousClosedCount)

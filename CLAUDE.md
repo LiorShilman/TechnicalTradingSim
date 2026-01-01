@@ -100,8 +100,10 @@ Test server health: `curl http://localhost:5000/api/health`
 - `client/src/components/Trading/AccountInfo.tsx` - Real-time account balance and P&L display
 - `client/src/components/Trading/PositionsList.tsx` - Displays open positions with edit and close functionality
 - `client/src/components/Trading/PendingOrdersList.tsx` - Displays and manages pending orders with edit and cancel functionality
-- `client/src/components/Trading/EditPositionModal.tsx` - Modal for editing SL/TP on positions and pending orders
+- `client/src/components/Trading/EditPositionModal.tsx` - Modal for editing SL/TP on positions and pending orders with dir="ltr" for all number inputs
 - `client/src/components/Stats/GameStats.tsx` - End-game statistics display
+- `client/src/components/Stats/TradeHistory.tsx` - Professional trade history modal with date grouping and comprehensive stats
+- `client/src/components/Chart/ChartControls.tsx` - Chart control buttons including Trade History access
 - `client/src/App.tsx` - Main app with CSV upload, filename parsing, and balance persistence
 
 ### Technology Stack
@@ -290,6 +292,43 @@ Currently stub implementations in `patternGenerator.ts`. When implementing:
   - **Fix #2**: Removed full-screen error UI - errors shown only as toast notifications
   - **Result**: When operations fail (insufficient funds, etc.), all positions and pending orders are preserved
   - Game continues normally after error - user can fix issue and continue playing
+
+### Critical Bug Fixes
+
+#### Bug Fix #1: Stuck Position After SL/TP Closure (January 2026)
+**Issue**: Positions closed by SL/TP on server remained open on client, creating "stuck" positions that couldn't be closed.
+
+**Root Cause**: In `client/src/stores/gameStore.ts` lines 150-184, the `nextCandle()` function had logic to preserve positions when loading saved games. The condition `if (currentPositions.length > 0 && newGame.positions.length === 0)` triggered both for:
+1. Legitimate loaded games (where positions should be preserved)
+2. SL/TP closures (where server correctly removed positions)
+
+**Fix** (line 150):
+```typescript
+// Added condition to check if positions were closed this candle
+const positionsClosedThisCandle = newClosedCount > previousClosedCount
+if (currentPositions.length > 0 && newGame.positions.length === 0 && !positionsClosedThisCandle) {
+  // Only preserve positions for loaded games, not SL/TP closures
+}
+```
+
+**Result**: Client now properly accepts server's empty positions array when SL/TP triggers, fixing the stuck position bug.
+
+#### Bug Fix #2: Decimal Input Direction (January 2026)
+**Issue**: Number inputs displayed incorrectly in RTL Hebrew UI:
+- Typing "0.75" showed as "75." (reversed order)
+- Missing leading zeros
+- Numbers typed right-to-left instead of left-to-right
+
+**Fix**: Added `dir="ltr"` attribute to ALL number inputs across the application:
+- `EditPositionModal.tsx`: 4 inputs (targetPrice, quantity, stopLoss, takeProfit)
+- `OrderPanel.tsx`: 4 inputs (quantity, SL%, TP%, risk%)
+- `PendingOrderMenu.tsx`: 2 inputs (risk%, quantity)
+- `ChartToolsPanel.tsx`: 1 input (MA period)
+- `IndicatorControls.tsx`: 1 input (MA period)
+- `TradingChart.tsx`: 3 inputs (entry, SL, TP for position simulators)
+- `AlertSettings.tsx`: 1 input (alert price)
+
+**Result**: All number inputs now display correctly with proper decimal formatting and left-to-right direction, preserving leading zeros and decimal points.
 
 ### Chart Integration
 Lightweight Charts (TradingView) integration:
@@ -577,6 +616,46 @@ The "שמור וצא" (Save and Exit) button provides comprehensive game statist
 - Allows reviewing performance mid-game without losing progress
 - Clear choice between continuing current game or starting new one
 - Toast confirmation ("משחק נשמר בהצלחה! 💾") before stats appear
+
+### Trade History Feature
+The Trade History screen provides comprehensive review of all completed trades with professional design:
+
+**Component**: `client/src/components/Stats/TradeHistory.tsx`
+
+**Access**: Purple/blue gradient "היסטוריה" button in ChartControls (with History icon from lucide-react)
+
+**Key Features:**
+- **Full-screen modal** (90vw × 85vh) with gradient background and backdrop blur
+- **Comprehensive header**:
+  - File name, date range, and asset symbol display
+  - 5 summary stat cards: Total trades, wins, losses, win rate, total P&L
+  - Color-coded stats (green for wins, red for losses, yellow for win rate)
+- **Date-based organization**:
+  - Trades grouped by Hebrew date format (`toLocaleDateString('he-IL')`)
+  - Sticky date headers with trade count
+  - Chronological display from newest to oldest
+- **Rich trade cards**:
+  - Position type badges (LONG/SHORT with TrendingUp/TrendingDown icons)
+  - Exit reason badges (🛑 Stop Loss, 🎯 Take Profit, ✋ Manual close)
+  - Entry/exit prices, quantity, holding time (in minutes)
+  - Large P&L display ($ and %) with color coding
+  - Hover effects with border color transitions
+- **Scrollable content**: `overflow-y-auto` with `h-[calc(100%-180px)]` for main content area
+- **Empty state**: Calendar icon with helpful message when no trades exist
+- **Gradient footer**: Close button with purple-to-blue gradient
+
+**Data Flow:**
+- Receives `closedPositions` array from gameState
+- Groups by `exitTime` converted to Hebrew date
+- Calculates aggregate stats (win rate, total P&L)
+- Displays each position with full details and visual indicators
+
+**Design Highlights:**
+- Professional gradient theme (blue → purple)
+- Border transitions on hover (green for profitable, red for losing)
+- Responsive grid layout for stats
+- RTL support with proper `dir="ltr"` for numbers
+- Lucide icons throughout (Calendar, TrendingUp, TrendingDown, Clock, DollarSign, Percent)
 
 ### Dynamic Moving Averages Architecture
 The MA system supports unlimited moving averages with dynamic management:

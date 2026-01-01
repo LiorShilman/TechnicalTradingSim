@@ -497,6 +497,7 @@ export default function OrderPanel() {
           onChange={(e) => setQuantity(e.target.value)}
           step="0.001"
           min="0.001"
+          dir="ltr"
           className="w-full bg-dark-bg border border-dark-border rounded-lg px-4 py-2 font-mono focus:outline-none focus:border-blue-500"
           disabled={!canTrade}
           placeholder="0.001"
@@ -544,6 +545,7 @@ export default function OrderPanel() {
                   step="0.5"
                   min="0"
                   max="50"
+                  dir="ltr"
                   className="w-full bg-dark-panel border border-dark-border rounded px-3 py-1 text-sm font-mono focus:outline-none focus:border-red-500"
                   placeholder="אחוז"
                 />
@@ -579,6 +581,7 @@ export default function OrderPanel() {
                   step="0.5"
                   min="0"
                   max="100"
+                  dir="ltr"
                   className="w-full bg-dark-panel border border-dark-border rounded px-3 py-1 text-sm font-mono focus:outline-none focus:border-green-500"
                   placeholder="אחוז"
                 />
@@ -631,6 +634,7 @@ export default function OrderPanel() {
                     step="0.5"
                     min="0.5"
                     max="10"
+                    dir="ltr"
                     className="w-full bg-dark-panel border border-dark-border rounded px-3 py-1 text-sm font-mono focus:outline-none focus:border-blue-500"
                     placeholder="אחוז"
                   />

@@ -195,6 +195,7 @@ export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, on
             step="0.1"
             min="0.1"
             max="10"
+            dir="ltr"
             className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-purple-500"
           />
           <div className="text-xs text-text-secondary mt-1">
@@ -217,6 +218,7 @@ export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, on
               onChange={(e) => setQuantity(parseFloat(e.target.value) || 0)}
               step="0.001"
               min="0.001"
+              dir="ltr"
               className="flex-1 px-3 py-2 bg-dark-bg border border-dark-border rounded text-sm focus:outline-none focus:border-blue-500"
             />
             <button

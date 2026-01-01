@@ -277,6 +277,7 @@ return (
                     onChange={(e) => setNewAlertPrice(e.target.value)}
                     placeholder="מחיר"
                     step="0.01"
+                    dir="ltr"
                     className="w-[140px] px-2 py-1.5 bg-dark-bg border border-dark-border rounded text-xs focus:outline-none focus:border-yellow-500"
                   />
                   <select

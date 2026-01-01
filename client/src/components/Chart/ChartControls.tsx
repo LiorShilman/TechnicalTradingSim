@@ -1,6 +1,7 @@
-import { ChevronRight, RotateCcw, Play, Pause, Save } from 'lucide-react'
+import { ChevronRight, RotateCcw, Play, Pause, Save, History } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
-import { useEffect } from 'react'
+import { useEffect, useState } from 'react'
+import TradeHistory from '@/components/Stats/TradeHistory'
 
 export function CandleCounter() {
   const {
@@ -56,13 +57,16 @@ export default function ChartControls() {
     saveAndExit
   } = useGameStore()
 
+  const [showTradeHistory, setShowTradeHistory] = useState(false)
+
   const canProgress = gameState && !gameState.isComplete
 
   // שם הנכס המלא (למשל: SP/SPX, BTC/USD)
   const assetSymbol = gameState?.asset || 'BTC/USD'
 
   return (
-    <div className="flex items-center gap-3">
+    <>
+      <div className="flex items-center gap-3">
       <CandleCounter/>
 
       {/* כפתור Play/Pause */}
@@ -157,6 +161,20 @@ export default function ChartControls() {
       {/* מפריד */}
       <div className="h-8 w-px bg-dark-border mx-1"></div>
 
+      {/* כפתור Trade History */}
+      <button
+        onClick={() => setShowTradeHistory(true)}
+        disabled={!gameState || isLoading}
+        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
+        title="היסטוריית עסקאות"
+      >
+        <History size={20} />
+        היסטוריה
+      </button>
+
+      {/* מפריד */}
+      <div className="h-8 w-px bg-dark-border mx-1"></div>
+
       {/* כפתורי BUY/SELL מהירים */}
       <button
         onClick={() => executeTrade('buy', 0.01, undefined, 'long')}
@@ -175,5 +193,23 @@ export default function ChartControls() {
         SELL SHORT
       </button>
     </div>
+
+    {/* Trade History Modal */}
+    {showTradeHistory && gameState && (
+      <TradeHistory
+        closedPositions={gameState.closedPositions}
+        sourceFileName={gameState.sourceFileName || 'Unknown'}
+        sourceDateRange={
+          typeof gameState.sourceDateRange === 'string'
+            ? gameState.sourceDateRange
+            : gameState.sourceDateRange
+              ? `${gameState.sourceDateRange.start} - ${gameState.sourceDateRange.end}`
+              : 'Unknown'
+        }
+        assetSymbol={assetSymbol}
+        onClose={() => setShowTradeHistory(false)}
+      />
+    )}
+  </>
   )
 }
