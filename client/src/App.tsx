@@ -613,8 +613,10 @@ function App() {
 
       {/* Header */}
       <header className="h-16 bg-dark-panel border-b border-dark-border flex items-center justify-between px-6 relative z-10">
-        <div className="flex items-center gap-6">
-          <h1 className="text-xl font-bold">משחק מסחר טכני</h1>
+        <div className="flex items-center gap-6 min-w-[280px]">
+          <h1 className="text-2xl font-bold bg-gradient-to-l from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent whitespace-nowrap">
+            משחק מסחר טכני
+          </h1>
         </div>
         <ChartControls />
       </header>
