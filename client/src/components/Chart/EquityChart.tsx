@@ -23,6 +23,7 @@ export default function EquityChart() {
       layout: {
         background: { color: '#0a0e27' },
         textColor: '#e8eaed',
+        fontSize: 13, // הגדלת גודל טקסט
       },
       grid: {
         vertLines: { color: '#1e2436' },
@@ -32,10 +33,15 @@ export default function EquityChart() {
       height: 200,
       timeScale: {
         timeVisible: false,
-        borderColor: '#2d3548',
+        borderColor: '#2962FF', // גבול כחול לציר הזמן
+        borderVisible: true,
       },
       rightPriceScale: {
-        borderColor: '#2d3548',
+        borderColor: '#2962FF', // גבול כחול לציר המחיר
+        borderVisible: true,
+      },
+      watermark: {
+        visible: false, // הסתרת לוגו TradingView
       },
     })
 
