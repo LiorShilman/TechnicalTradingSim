@@ -1,8 +1,24 @@
-import { useState, useRef, useEffect } from 'react'
+import { useState, useRef, useEffect, memo } from 'react'
 import { TrendingUp, TrendingDown, Settings } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
 import TradeNoteModal from './TradeNoteModal'
 import type { TradeNote } from '@/types/game.types'
+
+// קומפוננטה ממוזערת לתצוגת מחיר נוכחי - מתרנדרת רק כשהמחיר משתנה
+const CurrentPriceDisplay = memo(() => {
+  const gameState = useGameStore(state => state.gameState)
+  const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
+
+  return (
+    <div className="bg-dark-bg rounded-lg p-3 mb-4">
+      <div className="text-xs text-text-secondary mb-1">מחיר נוכחי</div>
+      <div className="text-2xl font-mono font-bold" dir="ltr">
+        ${currentPrice.toLocaleString()}
+      </div>
+    </div>
+  )
+})
+CurrentPriceDisplay.displayName = 'CurrentPriceDisplay'
 
 /**
  * OrderPanel Component
@@ -507,12 +523,7 @@ export default function OrderPanel() {
       </div>
 
       {/* Current price */}
-      <div className="bg-dark-bg rounded-lg p-3 mb-4">
-        <div className="text-xs text-text-secondary mb-1">מחיר נוכחי</div>
-        <div className="text-2xl font-mono font-bold" dir="ltr">
-          ${currentPrice.toLocaleString()}
-        </div>
-      </div>
+      <CurrentPriceDisplay />
 
       {/* Quantity input */}
       <div className="mb-4">
