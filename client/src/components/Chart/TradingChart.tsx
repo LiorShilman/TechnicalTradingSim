@@ -357,6 +357,9 @@ export default function TradingChart() {
           bottom: 0.3,
         },
       },
+      watermark: {
+        visible: false, // הסתרת לוגו TradingView
+      },
       handleScale: {
         axisPressedMouseMove: {
           time: true,
