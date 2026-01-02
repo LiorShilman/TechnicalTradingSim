@@ -63,31 +63,18 @@ export default function ChartControls() {
   const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
 
   return (
-    <div className="flex items-center gap-3" dir="rtl">
-      {/* קבוצה 1: מידע נכס ומחיר (קיצוני ימין) */}
-      <div className="flex items-center gap-4 px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border">
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-text-secondary">נכס:</span>
-          <span className="text-lg font-bold text-blue-400">{gameState?.asset || 'N/A'}</span>
-        </div>
-        <div className="h-6 w-px bg-dark-border"></div>
-        <div className="flex items-center gap-2">
-          <span className="text-sm text-text-secondary">זמן:</span>
-          <span className="text-lg font-bold text-purple-400">{gameState?.timeframe || 'N/A'}</span>
-        </div>
-        <div className="h-6 w-px bg-dark-border"></div>
-        <div className="flex items-center gap-2" dir="ltr">
-          <span className="text-sm text-text-secondary">מחיר:</span>
-          <span className="text-xl font-bold text-green-400">
-            ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-          </span>
-        </div>
+    <div className="flex items-center justify-between w-full">
+      {/* ימין: מחיר נוכחי */}
+      <div className="flex items-center gap-2 px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border" dir="ltr">
+        <span className="text-sm text-text-secondary">Price:</span>
+        <span className="text-2xl font-bold text-green-400">
+          ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+        </span>
       </div>
 
-      {/* מפריד */}
-      <div className="h-8 w-px bg-dark-border mx-1"></div>
-
-      {/* קבוצה 2: עזרה והיסטוריה */}
+      {/* שמאל: כל הכפתורים */}
+      <div className="flex items-center gap-3" dir="rtl">
+      {/* קבוצה 1: עזרה והיסטוריה */}
       <button
         onClick={toggleHelp}
         className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
@@ -201,6 +188,7 @@ export default function ChartControls() {
       </button>
 
       <CandleCounter/>
+      </div>
     </div>
   )
 }
