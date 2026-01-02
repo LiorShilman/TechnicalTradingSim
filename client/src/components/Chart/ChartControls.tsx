@@ -1,8 +1,9 @@
 import { ChevronLeft, RotateCcw, Play, Pause, Save, History, HelpCircle } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
-import { useEffect } from 'react'
+import { useEffect, memo } from 'react'
 
-export function CandleCounter() {
+// קומפוננטה ממוזערת למונה נרות - מתרנדרת רק כש-currentIndex משתנה
+export const CandleCounter = memo(() => {
   const {
     gameState,
     isLoading,
@@ -37,7 +38,63 @@ export function CandleCounter() {
         נר {gameState?.currentIndex ?? 0} מתוך {gameState?.totalCandles ?? 0}
       </div>
   )
-}
+})
+CandleCounter.displayName = 'CandleCounter'
+
+// קומפוננטה ממוזערת לתצוגת מחיר - מתרנדרת רק כשהמחיר משתנה
+const PriceDisplay = memo(() => {
+  const gameState = useGameStore(state => state.gameState)
+
+  if (!gameState) return <span className="text-2xl font-mono font-bold text-green-400 inline-block min-w-[140px] text-left">-</span>
+
+  const currentPrice = gameState.candles[gameState.currentIndex]?.close || 0
+
+  // עיצוב מחיר עם padding של אפסים (4 ספרות אחרי נקודה)
+  const formatPriceWithPadding = (price: number): string => {
+    // קבע כמה ספרות לפי סוג הנכס (crypto/forex = 4, stocks = 2)
+    const isCryptoOrForex = gameState.asset?.includes('/') || false
+    const decimals = isCryptoOrForex ? 4 : 2
+
+    // תחילה עגל למספר הספרות הנכון
+    const fixed = price.toFixed(decimals)
+
+    // פצל לחלק שלם וחלק עשרוני
+    const [integerPart, decimalPart] = fixed.split('.')
+
+    // הוסף פסיקים לחלק השלם
+    const formattedInteger = parseInt(integerPart).toLocaleString('en-US')
+
+    // החזר עם החלק העשרוני (כולל אפסים!)
+    return `${formattedInteger}.${decimalPart}`
+  }
+
+  return (
+    <span className="text-2xl font-mono font-bold text-green-400 inline-block min-w-[140px] text-left">
+      ${formatPriceWithPadding(currentPrice)}
+    </span>
+  )
+})
+PriceDisplay.displayName = 'PriceDisplay'
+
+// קומפוננטה ממוזערת לתצוגת נכס וזמן - מתרנדרת רק כשהנכס משתנה
+const AssetInfo = memo(() => {
+  const gameState = useGameStore(state => state.gameState)
+
+  return (
+    <>
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-text-secondary">נכס:</span>
+        <span className="text-lg font-bold text-blue-400">{gameState?.asset || 'N/A'}</span>
+      </div>
+      <div className="h-6 w-px bg-dark-border"></div>
+      <div className="flex items-center gap-2">
+        <span className="text-sm text-text-secondary">זמן:</span>
+        <span className="text-lg font-bold text-purple-400">{gameState?.timeframe || 'N/A'}</span>
+      </div>
+    </>
+  )
+})
+AssetInfo.displayName = 'AssetInfo'
 
 export default function ChartControls() {
   const {
@@ -59,49 +116,17 @@ export default function ChartControls() {
 
   const canProgress = gameState && !gameState.isComplete
 
-  // מחיר נוכחי
-  const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
-
-  // עיצוב מחיר עם padding של אפסים (4 ספרות אחרי נקודה)
-  const formatPriceWithPadding = (price: number): string => {
-    // קבע כמה ספרות לפי סוג הנכס (crypto/forex = 4, stocks = 2)
-    const isCryptoOrForex = gameState?.asset?.includes('/') || false
-    const decimals = isCryptoOrForex ? 4 : 2
-
-    // תחילה עגל למספר הספרות הנכון
-    const fixed = price.toFixed(decimals)
-
-    // פצל לחלק שלם וחלק עשרוני
-    const [integerPart, decimalPart] = fixed.split('.')
-
-    // הוסף פסיקים לחלק השלם
-    const formattedInteger = parseInt(integerPart).toLocaleString('en-US')
-
-    // החזר עם החלק העשרוני (כולל אפסים!)
-    return `${formattedInteger}.${decimalPart}`
-  }
-
   return (
     <div className="flex items-center justify-between w-full">
       {/* ימין: מידע + עזרה/היסטוריה */}
       <div className="flex items-center gap-3">
         {/* פאנל מידע */}
         <div className="flex items-center gap-4 px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border">
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-text-secondary">נכס:</span>
-            <span className="text-lg font-bold text-blue-400">{gameState?.asset || 'N/A'}</span>
-          </div>
-          <div className="h-6 w-px bg-dark-border"></div>
-          <div className="flex items-center gap-2">
-            <span className="text-sm text-text-secondary">זמן:</span>
-            <span className="text-lg font-bold text-purple-400">{gameState?.timeframe || 'N/A'}</span>
-          </div>
+          <AssetInfo />
           <div className="h-6 w-px bg-dark-border"></div>
           <div className="flex items-center gap-2" dir="ltr">
             <span className="text-sm text-text-secondary">מחיר:</span>
-            <span className="text-2xl font-mono font-bold text-green-400 inline-block min-w-[140px] text-left">
-              ${formatPriceWithPadding(currentPrice)}
-            </span>
+            <PriceDisplay />
           </div>
         </div>
 
