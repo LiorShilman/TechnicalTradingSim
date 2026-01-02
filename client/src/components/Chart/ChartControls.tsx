@@ -64,12 +64,21 @@ export default function ChartControls() {
 
   return (
     <div className="flex items-center justify-between w-full">
-      {/* ימין: מחיר נוכחי */}
-      <div className="flex items-center gap-2 px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border" dir="ltr">
-        <span className="text-sm text-text-secondary">Price:</span>
-        <span className="text-2xl font-bold text-green-400">
-          ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-        </span>
+      {/* ימין: נכס, זמן ומחיר */}
+      <div className="flex items-center gap-4 px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border">
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold text-blue-400">{gameState?.asset || 'N/A'}</span>
+        </div>
+        <div className="h-6 w-px bg-dark-border"></div>
+        <div className="flex items-center gap-2">
+          <span className="text-lg font-bold text-purple-400">{gameState?.timeframe || 'N/A'}</span>
+        </div>
+        <div className="h-6 w-px bg-dark-border"></div>
+        <div className="flex items-center gap-2" dir="ltr">
+          <span className="text-2xl font-bold text-green-400">
+            ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+          </span>
+        </div>
       </div>
 
       {/* שמאל: כל הכפתורים */}
