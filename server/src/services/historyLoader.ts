@@ -40,10 +40,11 @@ function parseCSVLine(line: string): string[] {
  * המרת timestamp לפורמט Unix (שניות)
  */
 function parseTimestamp(value: string): number {
-  // אם זה כבר Unix timestamp (10-13 ספרות)
-  if (/^\d{10,13}$/.test(value)) {
+  // אם זה כבר Unix timestamp (9-13 ספרות)
+  // תומך גם בtimestamps משנות ה-90 (9 ספרות, כמו 877467600 = 1997)
+  if (/^\d{9,13}$/.test(value)) {
     const num = parseInt(value)
-    // אם זה milliseconds, המר לשניות
+    // אם זה milliseconds (13 ספרות), המר לשניות
     return num > 9999999999 ? Math.floor(num / 1000) : num
   }
 
