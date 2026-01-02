@@ -1,4 +1,4 @@
-import { ChevronRight, RotateCcw, Play, Pause, Save, History, HelpCircle } from 'lucide-react'
+import { ChevronLeft, RotateCcw, Play, Pause, Save, History, HelpCircle } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
 import { useEffect } from 'react'
 
@@ -64,126 +64,8 @@ export default function ChartControls() {
   const assetSymbol = gameState?.asset || 'BTC/USD'
 
   return (
-    <div className="flex items-center gap-3">
-      <CandleCounter/>
-
-      {/* כפתור Play/Pause */}
-      <button
-        onClick={toggleAutoPlay}
-        disabled={!canProgress || isLoading}
-        className={`px-4 py-2 ${
-          isAutoPlaying ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'
-        } disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-medium flex items-center gap-2 transition-colors`}
-        title={isAutoPlaying ? 'עצור' : 'הפעל אוטומטית'}
-      >
-        {isAutoPlaying ? <Pause size={20} /> : <Play size={20} />}
-        {isAutoPlaying ? 'עצור' : 'הפעל'}
-      </button>
-
-      {/* בורר מהירות */}
-      <select
-        value={autoPlaySpeed}
-        onChange={(e) => setAutoPlaySpeed(Number(e.target.value))}
-        className="px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-blue-500"
-        title="מהירות"
-      >
-        <option value={500}>מהיר מאוד (0.5s)</option>
-        <option value={1000}>מהיר (1s)</option>
-        <option value={2000}>רגיל (2s)</option>
-        <option value={3000}>איטי (3s)</option>
-      </select>
-
-      {/* כפתור נר הבא ידני */}
-      <button
-        onClick={nextCandle}
-        disabled={!canProgress || isLoading || isAutoPlaying}
-        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-medium flex items-center gap-2 transition-colors"
-      >
-        <ChevronRight size={20} />
-        נר הבא
-      </button>
-
-      {/* כפתור שמירה */}
-      <button
-        onClick={saveGameState}
-        disabled={!gameState || isLoading}
-        className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg flex items-center gap-2 transition-colors"
-        title="שמור משחק"
-      >
-        <Save size={20} />
-        שמור
-      </button>
-
-      {/* כפתור שמור וצא */}
-      <button
-        onClick={saveAndExit}
-        disabled={!gameState || isLoading}
-        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg flex items-center gap-2 transition-colors"
-        title="שמור משחק וחזור לתפריט הראשי"
-      >
-        <Save size={20} />
-        שמור וצא
-      </button>
-
-      {/* כפתור איפוס */}
-      <button
-        onClick={resetGame}
-        disabled={isLoading}
-        className="px-4 py-2 bg-dark-border hover:bg-dark-panel rounded-lg flex items-center gap-2 transition-colors"
-        title="התחל משחק חדש"
-      >
-        <RotateCcw size={20} />
-      </button>
-
-      {/* מפריד */}
-      <div className="h-8 w-px bg-dark-border mx-1"></div>
-
-      {/* כפתורי בקרת גרף */}
-      <button
-        onClick={chartFitContent || undefined}
-        disabled={!chartFitContent}
-        className="px-3 py-2 bg-blue-600/90 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors"
-        title="התאם גרף לתוכן"
-      >
-        📏 התאם
-      </button>
-      <button
-        onClick={chartResetZoom || undefined}
-        disabled={!chartResetZoom}
-        className="px-3 py-2 bg-purple-600/90 hover:bg-purple-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors"
-        title="איפוס זום"
-      >
-        🔍 איפוס
-      </button>
-
-      {/* מפריד */}
-      <div className="h-8 w-px bg-dark-border mx-1"></div>
-
-      {/* כפתור Trade History */}
-      <button
-        onClick={toggleTradeHistory}
-        disabled={!gameState || isLoading}
-        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
-        title="היסטוריית עסקאות"
-      >
-        <History size={20} />
-        היסטוריה
-      </button>
-
-      {/* כפתור Help */}
-      <button
-        onClick={toggleHelp}
-        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
-        title="מדריך למשחק"
-      >
-        <HelpCircle size={20} />
-        עזרה
-      </button>
-
-      {/* מפריד */}
-      <div className="h-8 w-px bg-dark-border mx-1"></div>
-
-      {/* כפתורי BUY/SELL מהירים */}
+    <div className="flex items-center gap-3" dir="rtl">
+      {/* קבוצה 1: BUY/SELL מהירים (קיצוני ימין) */}
       <button
         onClick={() => executeTrade('buy', 0.01, undefined, 'long')}
         disabled={!gameState || isLoading}
@@ -200,6 +82,124 @@ export default function ChartControls() {
       >
         SELL SHORT
       </button>
+
+      {/* מפריד */}
+      <div className="h-8 w-px bg-dark-border mx-1"></div>
+
+      {/* קבוצה 2: עזרה והיסטוריה */}
+      <button
+        onClick={toggleHelp}
+        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
+        title="מדריך למשחק"
+      >
+        <HelpCircle size={20} />
+        עזרה
+      </button>
+
+      <button
+        onClick={toggleTradeHistory}
+        disabled={!gameState || isLoading}
+        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
+        title="היסטוריית עסקאות"
+      >
+        <History size={20} />
+        היסטוריה
+      </button>
+
+      {/* מפריד */}
+      <div className="h-8 w-px bg-dark-border mx-1"></div>
+
+      {/* קבוצה 3: בקרת גרף */}
+      <button
+        onClick={chartResetZoom || undefined}
+        disabled={!chartResetZoom}
+        className="px-3 py-2 bg-purple-600/90 hover:bg-purple-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors"
+        title="איפוס זום"
+      >
+        🔍 איפוס
+      </button>
+      <button
+        onClick={chartFitContent || undefined}
+        disabled={!chartFitContent}
+        className="px-3 py-2 bg-blue-600/90 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors"
+        title="התאם גרף לתוכן"
+      >
+        📏 התאם
+      </button>
+
+      {/* מפריד */}
+      <div className="h-8 w-px bg-dark-border mx-1"></div>
+
+      {/* קבוצה 4: שמירה ואיפוס */}
+      <button
+        onClick={resetGame}
+        disabled={isLoading}
+        className="px-4 py-2 bg-dark-border hover:bg-dark-panel rounded-lg flex items-center gap-2 transition-colors"
+        title="התחל משחק חדש"
+      >
+        <RotateCcw size={20} />
+      </button>
+
+      <button
+        onClick={saveAndExit}
+        disabled={!gameState || isLoading}
+        className="px-4 py-2 bg-orange-600 hover:bg-orange-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg flex items-center gap-2 transition-colors"
+        title="שמור משחק וחזור לתפריט הראשי"
+      >
+        <Save size={20} />
+        שמור וצא
+      </button>
+
+      <button
+        onClick={saveGameState}
+        disabled={!gameState || isLoading}
+        className="px-4 py-2 bg-green-600 hover:bg-green-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg flex items-center gap-2 transition-colors"
+        title="שמור משחק"
+      >
+        <Save size={20} />
+        שמור
+      </button>
+
+      {/* מפריד */}
+      <div className="h-8 w-px bg-dark-border mx-1"></div>
+
+      {/* קבוצה 5: ניווט בנרות (עם חץ שמאלה) */}
+      <button
+        onClick={nextCandle}
+        disabled={!canProgress || isLoading || isAutoPlaying}
+        className="px-4 py-2 bg-blue-600 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-medium flex items-center gap-2 transition-colors"
+      >
+        נר הבא
+        <ChevronLeft size={20} />
+      </button>
+
+      {/* בורר מהירות */}
+      <select
+        value={autoPlaySpeed}
+        onChange={(e) => setAutoPlaySpeed(Number(e.target.value))}
+        className="px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-blue-500"
+        title="מהירות"
+      >
+        <option value={500}>מהיר מאוד (0.5s)</option>
+        <option value={1000}>מהיר (1s)</option>
+        <option value={2000}>רגיל (2s)</option>
+        <option value={3000}>איטי (3s)</option>
+      </select>
+
+      {/* כפתור Play/Pause */}
+      <button
+        onClick={toggleAutoPlay}
+        disabled={!canProgress || isLoading}
+        className={`px-4 py-2 ${
+          isAutoPlaying ? 'bg-orange-600 hover:bg-orange-700' : 'bg-green-600 hover:bg-green-700'
+        } disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-medium flex items-center gap-2 transition-colors`}
+        title={isAutoPlaying ? 'עצור' : 'הפעל אוטומטית'}
+      >
+        {isAutoPlaying ? <Pause size={20} /> : <Play size={20} />}
+        {isAutoPlaying ? 'עצור' : 'הפעל'}
+      </button>
+
+      <CandleCounter/>
     </div>
   )
 }

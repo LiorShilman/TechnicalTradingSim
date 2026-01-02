@@ -106,7 +106,7 @@ Test server health: `curl http://localhost:5000/api/health`
 - `client/src/components/Trading/EditPositionModal.tsx` - Modal for editing SL/TP on positions and pending orders with dir="ltr" for all number inputs
 - `client/src/components/Stats/GameStats.tsx` - End-game statistics display
 - `client/src/components/Stats/TradeHistory.tsx` - Professional trade history modal with date grouping and comprehensive stats
-- `client/src/components/Chart/ChartControls.tsx` - Chart control buttons including Trade History access
+- `client/src/components/Chart/ChartControls.tsx` - RTL toolbar with 5 logical groups: BUY/SELL quick trades, Help/History, chart controls, save/reset, candle navigation (ChevronLeft for RTL)
 - `client/src/App.tsx` - Main app with CSV upload, filename parsing, and balance persistence
 
 ### Technology Stack
