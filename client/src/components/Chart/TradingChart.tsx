@@ -436,24 +436,7 @@ export default function TradingChart() {
       },
     })
 
-    // יצירת קו MA 20 לVolume - קודם! כדי שיהיה מאחורי הברים
-    const volumeMASeries = chart.addLineSeries({
-      color: '#2962FF',
-      lineWidth: 3, // עבה יותר
-      priceScaleId: '', // אותו ציר מחירים כמו Volume
-      priceLineVisible: false,
-      lastValueVisible: false,
-    })
-
-    // הגדרת המרווחים של MA להיות כמו Volume
-    volumeMASeries.priceScale().applyOptions({
-      scaleMargins: {
-        top: 0.72, // Volume מתחיל ב-72% מלמעלה (הפרדה ברורה יותר)
-        bottom: 0.08, // רווח מספיק מלמטה כדי שלא יחתך
-      },
-    })
-
-    // יצירת סדרת Volume (Histogram) - אחרי MA כדי שיהיה מעל
+    // יצירת סדרת Volume (Histogram) - קודם! כדי שה-MA יופיע מעליו
     const volumeSeries = chart.addHistogramSeries({
       color: '#26a69a',
       priceFormat: {
@@ -466,6 +449,23 @@ export default function TradingChart() {
     volumeSeries.priceScale().applyOptions({
       scaleMargins: {
         top: 0.72, // Volume מתחיל ב-72% מלמעלה (הפרדה ברורה)
+        bottom: 0.08, // רווח מספיק מלמטה כדי שלא יחתך
+      },
+    })
+
+    // יצירת קו MA 20 לVolume - אחרי ההיסטוגרמה כדי שיופיע מעליה
+    const volumeMASeries = chart.addLineSeries({
+      color: '#2962FF',
+      lineWidth: 3, // עבה יותר
+      priceScaleId: '', // אותו ציר מחירים כמו Volume
+      priceLineVisible: false,
+      lastValueVisible: false,
+    })
+
+    // הגדרת המרווחים של MA להיות כמו Volume
+    volumeMASeries.priceScale().applyOptions({
+      scaleMargins: {
+        top: 0.72, // Volume מתחיל ב-72% מלמעלה (הפרדה ברורה יותר)
         bottom: 0.08, // רווח מספיק מלמטה כדי שלא יחתך
       },
     })
