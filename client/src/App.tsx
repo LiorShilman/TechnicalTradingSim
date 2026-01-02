@@ -615,9 +615,6 @@ function App() {
       <header className="h-16 bg-dark-panel border-b border-dark-border flex items-center justify-between px-6 relative z-10">
         <div className="flex items-center gap-6">
           <h1 className="text-xl font-bold">משחק מסחר טכני</h1>
-          <div className="text-sm text-text-secondary">
-            {gameState?.asset} | {gameState?.timeframe}
-          </div>
         </div>
         <ChartControls />
       </header>
