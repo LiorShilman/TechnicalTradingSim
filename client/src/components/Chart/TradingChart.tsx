@@ -319,6 +319,7 @@ export default function TradingChart() {
       layout: {
         background: { color: '#0a0e27' },
         textColor: '#e8eaed',
+        fontSize: 13, // הגדלת גודל טקסט בציר הזמן והמחיר
       },
       grid: {
         vertLines: { color: '#1e2442' },
@@ -348,14 +349,20 @@ export default function TradingChart() {
         barSpacing: 8, // ריווח בין נרות
         fixLeftEdge: false, // מאפשר גלילה חופשית
         fixRightEdge: false, // מאפשר גלילה חופשית
+        borderVisible: true, // הצגת גבול ציר הזמן
+        borderColor: '#2962FF', // צבע כחול לגבול ציר הזמן
       },
       rightPriceScale: {
-        borderVisible: false,
+        borderVisible: true, // הצגת גבול ציר המחיר
+        borderColor: '#2962FF', // צבע כחול תואם לציר הזמן
         autoScale: true, // זום אוטומטי
         scaleMargins: {
           top: 0.1,
           bottom: 0.3,
         },
+      },
+      watermark: {
+        visible: false, // הסתרת הלוגו של TradingView
       },
       handleScale: {
         axisPressedMouseMove: {
