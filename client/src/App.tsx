@@ -8,6 +8,7 @@ import ChartControls from './components/Chart/ChartControls'
 import EquityChart from './components/Chart/EquityChart'
 import GameStats from './components/Stats/GameStats'
 import TradeHistory from './components/Stats/TradeHistory'
+import HelpModal from './components/Help/HelpModal'
 import AlertSettings from './components/Settings/AlertSettings'
 import { RulesSettingsPanel } from './components/Settings/RulesSettingsPanel'
 import { RuleCompliancePanel } from './components/Stats/RuleCompliancePanel'
@@ -36,7 +37,7 @@ function App() {
   const [refreshSavedGame, setRefreshSavedGame] = useState(0) // מונה לרענון מצב משחק שמור
   const [priceAlerts, setPriceAlerts] = useState(() => priceAlertsService.getAlerts())
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { gameState, isLoading, showStats, showTradeHistory, toggleTradeHistory, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
+  const { gameState, isLoading, showStats, showTradeHistory, showHelp, toggleTradeHistory, toggleHelp, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
 
   // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
   const savedGameInfo = useMemo(() => {
@@ -685,6 +686,9 @@ function App() {
           onClose={toggleTradeHistory}
         />
       )}
+
+      {/* Help modal */}
+      {showHelp && <HelpModal onClose={toggleHelp} />}
 
       {/* Toast notifications */}
       <Toaster

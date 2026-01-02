@@ -29,6 +29,7 @@ interface GameStore {
   chartResetZoom: (() => void) | null
   showStats: boolean // הצגת מסך סטטיסטיקות (למשל בשמירה ויציאה)
   showTradeHistory: boolean // הצגת מסך היסטוריית עסקאות
+  showHelp: boolean // הצגת מסך עזרה
 
   // Rule Violation Tracking
   tradingRules: TradingRules
@@ -71,6 +72,7 @@ interface GameStore {
 
   // UI State
   toggleTradeHistory: () => void
+  toggleHelp: () => void
 
   // Rule Violation Actions
   updateTradingRules: (rules: Partial<TradingRules>) => void
@@ -103,6 +105,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   chartResetZoom: null,
   showStats: false,
   showTradeHistory: false,
+  showHelp: false,
 
   // Rule Violation State
   tradingRules: loadTradingRules(),
@@ -915,6 +918,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   toggleTradeHistory: () => set((state) => ({ showTradeHistory: !state.showTradeHistory })),
+  toggleHelp: () => set((state) => ({ showHelp: !state.showHelp })),
 
   // Rule Violation Actions
   updateTradingRules: (rules: Partial<TradingRules>) => {
