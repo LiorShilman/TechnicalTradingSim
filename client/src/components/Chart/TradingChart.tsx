@@ -452,11 +452,11 @@ export default function TradingChart() {
       priceScaleId: '', // ציר מחירים נפרד
     })
 
-    // הגדרת ציר מחירים נפרד ל-Volume (בתחתית הגרף)
+    // הגדרת ציר מחירים נפרד ל-Volume (בתחתית הגרף מעל ציר התאריכים)
     volumeSeries.priceScale().applyOptions({
       scaleMargins: {
-        top: 0.72, // Volume מתחיל ב-72% מלמעלה (הפרדה ברורה)
-        bottom: 0.08, // רווח מספיק מלמטה כדי שלא יחתך
+        top: 0.80, // Volume מתחיל ב-80% מלמעלה (נמוך יותר - בתחתית הגרף)
+        bottom: 0.02, // רווח קטן מציר התאריכים
       },
     })
 
@@ -472,16 +472,16 @@ export default function TradingChart() {
     // הגדרת המרווחים של MA להיות כמו Volume
     volumeMASeries.priceScale().applyOptions({
       scaleMargins: {
-        top: 0.72, // Volume מתחיל ב-72% מלמעלה (הפרדה ברורה יותר)
-        bottom: 0.08, // רווח מספיק מלמטה כדי שלא יחתך
+        top: 0.80, // Volume MA מתחיל ב-80% מלמעלה (בתחתית הגרף)
+        bottom: 0.02, // רווח קטן מציר התאריכים
       },
     })
 
-    // הגדרת ציר מחירים ראשי (לנרות) - תופס 70% עליונים
+    // הגדרת ציר מחירים ראשי (לנרות) - תופס את החלק העליון
     candlestickSeries.priceScale().applyOptions({
       scaleMargins: {
         top: 0.02, // רווח קטן מלמעלה
-        bottom: 0.30, // משאיר מקום לווליום למטה
+        bottom: 0.22, // משאיר 22% מקום לווליום למטה (0.80 = 1 - 0.22 + קצת חפיפה)
       },
     })
 

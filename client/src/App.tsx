@@ -18,7 +18,7 @@ import EquityColorShift from './components/Effects/EquityColorShift'
 import { useGameStore } from './stores/gameStore'
 import { priceAlertsService } from './services/priceAlertsService'
 import { useVisualEffects } from './hooks/useVisualEffects'
-import { Play, Loader2, Upload } from 'lucide-react'
+import { Play, Loader2, Upload, Trash2 } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 import toast from 'react-hot-toast'
 
@@ -381,24 +381,38 @@ function App() {
                         ⚡ המשחק ימשיך מהנקודה בה עצרת
                       </div>
                     </div>
-                    <button
-                      onClick={() => handleStartGame(false)}
-                      disabled={isLoading}
-                      className="px-4 py-2 bg-green-600/80 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-                      title="המשך משחק שמור"
-                    >
-                      {isLoading ? (
-                        <>
-                          <Loader2 size={16} className="animate-spin" />
-                          <span>טוען...</span>
-                        </>
-                      ) : (
-                        <>
-                          <Play size={16} className="transform rotate-180" />
-                          <span>המשך משחק</span>
-                        </>
-                      )}
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => handleStartGame(false)}
+                        disabled={isLoading}
+                        className="px-4 py-2 bg-green-600/80 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="המשך משחק שמור"
+                      >
+                        {isLoading ? (
+                          <>
+                            <Loader2 size={16} className="animate-spin" />
+                            <span>טוען...</span>
+                          </>
+                        ) : (
+                          <>
+                            <Play size={16} className="transform rotate-180" />
+                            <span>המשך משחק</span>
+                          </>
+                        )}
+                      </button>
+                      <button
+                        onClick={() => {
+                          clearSavedGame()
+                          setRefreshSavedGame(prev => prev + 1)
+                          toast.success('משחק שמור נמחק בהצלחה! 🗑️')
+                        }}
+                        disabled={isLoading}
+                        className="px-3 py-2 bg-red-600/80 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
+                        title="מחק משחק שמור"
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </div>
                   </div>
                 </div>
               )}
@@ -530,12 +544,7 @@ function App() {
           <div className="text-center">
             <button
               onClick={() => {
-                // אם יש משחק שמור, מחק אותו לפני התחלת משחק חדש
-                if (savedGameInfo && uploadedFile && savedGameInfo.sourceFileName === uploadedFile.name) {
-                  clearSavedGame()
-                  setRefreshSavedGame(prev => prev + 1)
-                }
-                // כפיית משחק חדש (לא לטעון שמור)
+                // משחק חדש - לא מוחק משחק שמור אוטומטית
                 handleStartGame(true)
               }}
               disabled={isLoading || !uploadedFile}
@@ -647,7 +656,7 @@ function App() {
               currentPrice={gameState?.candles[gameState.currentIndex]?.close || 0}
             />
           </div>
-          <div style={{ flex: '0 0 300px' }}>
+          <div style={{ flex: '0 0 330px' }}>
             <EquityChart />
           </div>
         </div>
