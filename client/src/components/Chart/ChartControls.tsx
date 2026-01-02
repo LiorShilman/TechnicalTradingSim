@@ -34,7 +34,7 @@ export const CandleCounter = memo(() => {
   }, [gameState?.isComplete, isAutoPlaying, toggleAutoPlay])
 
   return (
-    <div className="text-sm text-text-secondary">
+    <div className="text-base font-mono font-bold text-secondary">
         נר {gameState?.currentIndex ?? 0} מתוך {gameState?.totalCandles ?? 0}
       </div>
   )
@@ -83,12 +83,12 @@ const AssetInfo = memo(() => {
   return (
     <>
       <div className="flex items-center gap-2">
-        <span className="text-sm text-text-secondary">נכס:</span>
+        <span className="text-base font-mono font-bold text-secondary">נכס:</span>
         <span className="text-lg font-bold text-blue-400">{gameState?.asset || 'N/A'}</span>
       </div>
       <div className="h-6 w-px bg-dark-border"></div>
       <div className="flex items-center gap-2">
-        <span className="text-sm text-text-secondary">זמן:</span>
+        <span className="text-base font-mono font-bold text-secondary">זמן:</span>
         <span className="text-lg font-bold text-purple-400">{gameState?.timeframe || 'N/A'}</span>
       </div>
     </>
@@ -124,8 +124,8 @@ export default function ChartControls() {
         <div className="flex items-center gap-4 px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border">
           <AssetInfo />
           <div className="h-6 w-px bg-dark-border"></div>
-          <div className="flex items-center gap-2" dir="ltr">
-            <span className="text-sm text-text-secondary">מחיר:</span>
+          <div className="flex items-center gap-2">
+            <span className="text-base font-mono font-bold text-secondary">מחיר:</span>
             <PriceDisplay />
           </div>
         </div>
@@ -224,6 +224,7 @@ export default function ChartControls() {
         className="px-3 py-2 bg-dark-bg border border-dark-border rounded-lg text-sm focus:outline-none focus:border-blue-500"
         title="מהירות"
       >
+        <option value={200}> ספיד(0.2s)</option>
         <option value={500}>מהיר מאוד (0.5s)</option>
         <option value={1000}>מהיר (1s)</option>
         <option value={2000}>רגיל (2s)</option>
