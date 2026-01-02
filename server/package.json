@@ -4,10 +4,10 @@
   "type": "module",
   "scripts": {
     "predev": "node scripts/kill-port.cjs",
-    "dev": "tsx watch src/server.ts",
+    "dev": "tsx watch src/index.ts",
     "kill-port": "node scripts/kill-port.cjs",
     "build": "tsc",
-    "start": "node dist/server.js"
+    "start": "node dist/index.js"
   },
   "dependencies": {
     "cors": "^2.8.5",

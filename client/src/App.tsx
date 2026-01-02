@@ -54,6 +54,15 @@ function App() {
   // Visual effects hook
   const { profitTrail } = useVisualEffects(gameState)
 
+  // כאשר gameState הופך ל-null (לאחר resetGame), חזור למסך ההתחלה
+  useEffect(() => {
+    if (gameState === null && !isStartScreen) {
+      console.log('🔄 gameState is null, returning to start screen and refreshing saved game info')
+      setIsStartScreen(true)
+      setRefreshSavedGame(prev => prev + 1) // רענון מצב משחק שמור
+    }
+  }, [gameState, isStartScreen])
+
   // Price Alerts handlers
   const handleAddAlert = (alert: Omit<import('./types/game.types').PriceAlert, 'id' | 'createdAt'>) => {
     priceAlertsService.addAlert(alert)

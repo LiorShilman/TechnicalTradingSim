@@ -30,7 +30,14 @@
       "Bash(git log:*)",
       "Bash(del clientsrccomponentsSettingsPriceAlertsPanel.tsx)",
       "Bash(results\" and separating winning\nfrom trading correctly.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
-      "Bash(git revert:*)"
+      "Bash(git revert:*)",
+      "Bash(pm2 list:*)",
+      "Bash(set NODE_ENV=production)",
+      "Bash(pm2 start:*)",
+      "Bash(pm2 logs:*)",
+      "Bash(pm2 save:*)",
+      "Bash(grep:*)",
+      "Bash(pm2 delete:*)"
     ]
   }
 }
