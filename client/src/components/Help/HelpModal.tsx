@@ -5,7 +5,7 @@ interface HelpModalProps {
   onClose: () => void
 }
 
-type TabType = 'start' | 'rules' | 'tools' | 'orders' | 'tips'
+type TabType = 'start' | 'rules' | 'tools' | 'orders' | 'journal' | 'tips'
 
 export default function HelpModal({ onClose }: HelpModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('start')
@@ -13,6 +13,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
   const tabs = [
     { id: 'start' as TabType, label: 'התחלה מהירה', icon: Zap },
     { id: 'rules' as TabType, label: 'כללי מסחר', icon: Shield },
+    { id: 'journal' as TabType, label: 'יומן מסחר', icon: BookOpen },
     { id: 'tools' as TabType, label: 'כלי גרף', icon: LineChart },
     { id: 'orders' as TabType, label: 'פקודות ממתינות', icon: Target },
     { id: 'tips' as TabType, label: 'טיפים למסחר', icon: TrendingUp },
@@ -61,6 +62,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === 'start' && <QuickStartTab />}
           {activeTab === 'rules' && <TradingRulesTab />}
+          {activeTab === 'journal' && <TradeJournalTab />}
           {activeTab === 'tools' && <ChartToolsTab />}
           {activeTab === 'orders' && <PendingOrdersTab />}
           {activeTab === 'tips' && <TradingTipsTab />}
@@ -123,6 +125,22 @@ function QuickStartTab() {
           <div className="flex items-start gap-3">
             <div className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">3</div>
             <div>
+              <h5 className="font-bold text-white mb-1">תעד מחשבות לפני העסקה (מומלץ מאוד!)</h5>
+              <p className="text-gray-400 text-sm">
+                לפני כל עסקה, תוכל לפתוח <strong className="text-purple-400">יומן מסחר</strong> ולענות על 3 שאלות:<br/>
+                • מדוע אתה נכנס לעסקה זו?<br/>
+                • מה הציפייה שלך? (רווח/הפסד/איזון)<br/>
+                • רמת הביטחון שלך (1-5 כוכבים)<br/>
+                <span className="text-yellow-300">בסיום המשחק תראה כמה מדויקות היו התחזיות שלך!</span>
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">4</div>
+            <div>
               <h5 className="font-bold text-white mb-1">פתח עסקאות</h5>
               <p className="text-gray-400 text-sm">
                 <strong className="text-green-400">BUY LONG</strong> - קנייה (רווח כשהמחיר עולה)<br/>
@@ -135,7 +153,7 @@ function QuickStartTab() {
 
         <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
           <div className="flex items-start gap-3">
-            <div className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">4</div>
+            <div className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">5</div>
             <div>
               <h5 className="font-bold text-white mb-1">עקוב אחר הביצועים</h5>
               <p className="text-gray-400 text-sm">
@@ -438,6 +456,138 @@ function PendingOrdersTab() {
             • ניתן לערוך SL/TP גם אחרי יצירת הפקודה<br/>
             • הפקודה תבוטל אוטומטית אם תסגור את המשחק ותתחיל חדש
           </p>
+        </div>
+      </div>
+    </div>
+  )
+}
+
+function TradeJournalTab() {
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-600/40 rounded-lg p-6">
+        <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+          <BookOpen className="w-6 h-6 text-purple-400" />
+          יומן מסחר (Trade Journal)
+        </h3>
+        <p className="text-gray-300 text-lg leading-relaxed">
+          תכונה חדשה! תעד את המחשבות שלך לפני כל עסקה וקבל משוב על דיוק התחזיות שלך.
+          <strong className="text-purple-400"> רפלקציה = למידה עמוקה!</strong>
+        </p>
+      </div>
+
+      <div className="space-y-4">
+        <h4 className="text-xl font-bold text-purple-400">איך זה עובד?</h4>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <div className="flex items-start gap-3">
+            <div className="bg-purple-600 text-white rounded-full w-8 h-8 flex items-center justify-center font-bold flex-shrink-0">1</div>
+            <div>
+              <h5 className="font-bold text-white mb-1">המודאל מופיע לפני כל עסקה</h5>
+              <p className="text-gray-400 text-sm">
+                כשאתה לוחץ על <strong className="text-green-400">Buy Long</strong> או <strong className="text-red-400">Sell Short</strong>,
+                יופיע מודאל יומן מסחר עם 3 שאלות.
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <h4 className="text-xl font-bold text-purple-400 mt-6">3 השאלות ביומן:</h4>
+
+        <div className="bg-gradient-to-r from-purple-900/40 to-blue-900/40 border-l-4 border-purple-500 rounded-lg p-4">
+          <h5 className="font-bold text-purple-300 mb-2 text-lg">📝 שאלה 1: מדוע נכנס לעסקה?</h5>
+          <p className="text-gray-300 text-sm leading-relaxed mb-3">
+            תאר במילים שלך למה אתה נכנס לעסקה הזו. מה ראית בגרף? איזו תבנית? איזה אינדיקטור?
+          </p>
+          <div className="bg-gray-800/60 rounded p-3 text-sm text-gray-400">
+            <strong className="text-white">דוגמה:</strong> "זיהיתי breakout מעל קו התנגדות עם ווליום גבוה. SL מתחת לשפל, TP ליד ההתנגדות הבאה."
+          </div>
+          <p className="text-yellow-300 text-xs mt-2">
+            ✅ מינימום 10 תווים, מקסימום 300
+          </p>
+        </div>
+
+        <div className="bg-gradient-to-r from-green-900/40 to-yellow-900/40 border-l-4 border-green-500 rounded-lg p-4">
+          <h5 className="font-bold text-green-300 mb-2 text-lg">🎯 שאלה 2: מה הציפייה?</h5>
+          <p className="text-gray-300 text-sm leading-relaxed mb-3">
+            בחר את התוצאה הצפויה מהעסקה הזו:
+          </p>
+          <div className="space-y-2 text-sm">
+            <div className="flex items-center gap-2">
+              <span className="text-green-400 text-2xl">📈</span>
+              <strong className="text-green-400">רווח</strong>
+              <span className="text-gray-400">- אני מצפה שהעסקה תסגר ברווח</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-yellow-400 text-2xl">〰️</span>
+              <strong className="text-yellow-400">איזון</strong>
+              <span className="text-gray-400">- עסקת גידור או ניסיון למזער הפסד</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <span className="text-red-400 text-2xl">📉</span>
+              <strong className="text-red-400">הפסד</strong>
+              <span className="text-gray-400">- החלטה רגשית/אימפולסיבית (תיעוד לשם למידה)</span>
+            </div>
+          </div>
+        </div>
+
+        <div className="bg-gradient-to-r from-yellow-900/40 to-orange-900/40 border-l-4 border-yellow-500 rounded-lg p-4">
+          <h5 className="font-bold text-yellow-300 mb-2 text-lg">⭐ שאלה 3: רמת ביטחון</h5>
+          <p className="text-gray-300 text-sm leading-relaxed mb-3">
+            דרג את רמת הביטחון שלך בעסקה הזו (1-5 כוכבים):
+          </p>
+          <div className="space-y-1 text-sm text-gray-400">
+            <div>⭐ <strong className="text-white">1 כוכב</strong> - נמוך מאוד, לא בטוח בכלל</div>
+            <div>⭐⭐ <strong className="text-white">2 כוכבים</strong> - נמוך, יש ספקות</div>
+            <div>⭐⭐⭐ <strong className="text-white">3 כוכבים</strong> - בינוני, setup סביר</div>
+            <div>⭐⭐⭐⭐ <strong className="text-white">4 כוכבים</strong> - גבוה, setup טוב</div>
+            <div>⭐⭐⭐⭐⭐ <strong className="text-white">5 כוכבים</strong> - גבוה מאוד, setup מצוין!</div>
+          </div>
+        </div>
+
+        <h4 className="text-xl font-bold text-purple-400 mt-6">מה קורה עם המידע?</h4>
+
+        <div className="bg-blue-900/30 border-l-4 border-blue-500 rounded-lg p-4">
+          <h5 className="font-bold text-blue-300 mb-2">📊 Reflection Accuracy</h5>
+          <p className="text-blue-100 text-sm leading-relaxed">
+            בסיום המשחק, המערכת תחשב את <strong>דיוק התחזיות</strong> שלך:<br/>
+            • כמה עסקאות שציפית לרווח - באמת הרוויחו?<br/>
+            • כמה עסקאות שציפית להפסד - באמת הפסידו?<br/>
+            <br/>
+            <strong className="text-green-400">60%+ דיוק</strong> = מעולה! 🎯<br/>
+            <strong className="text-yellow-400">40-60% דיוק</strong> = סביר, צריך שיפור 📈<br/>
+            <strong className="text-red-400">&lt;40% דיוק</strong> = התחזיות לא מדויקות ❌
+          </p>
+        </div>
+
+        <div className="bg-purple-900/30 border-l-4 border-purple-500 rounded-lg p-4">
+          <h5 className="font-bold text-purple-300 mb-2">📈 Overconfidence Bias</h5>
+          <p className="text-purple-100 text-sm leading-relaxed">
+            המערכת תזהה אם אתה סובל מ-<strong>ביטחון יתר</strong>:<br/>
+            • עסקאות עם ביטחון גבוה (4-5 כוכבים) שהפסידו = ביטחון יתר<br/>
+            • למד לזהות מתי אתה יותר מדי בטוח ביכולות שלך
+          </p>
+        </div>
+
+        <div className="bg-orange-900/30 border border-orange-600/40 rounded-lg p-4">
+          <h5 className="font-bold text-orange-300 mb-2">💡 למה זה חשוב?</h5>
+          <p className="text-orange-200 text-sm leading-relaxed">
+            <strong>תיעוד מחשבות לפני העסקה</strong> מאלץ אותך לחשוב בצורה מובנית ולא אימפולסיבית!<br/>
+            • מונע החלטות FOMO (Fear Of Missing Out)<br/>
+            • מחייב תכנון ברור לפני כניסה<br/>
+            • יוצר תהליך למידה מתמשך<br/>
+            <br/>
+            <strong className="text-yellow-300">אפשר לדלג על היומן</strong> (כפתור "דלג"), אבל מומלץ מאוד להשתמש בו!
+          </p>
+        </div>
+
+        <div className="bg-green-900/30 border border-green-600/40 rounded-lg p-4">
+          <h5 className="font-bold text-green-300 mb-2">🏆 בסטטיסטיקות הסיום תראה:</h5>
+          <div className="text-green-100 text-sm space-y-1">
+            <div>✅ <strong>דיוק תחזיות:</strong> אחוז ההצלחה שלך לחזות את התוצאה</div>
+            <div>✅ <strong>עסקאות מתועדות:</strong> כמה עסקאות תיעדת מתוך הכל</div>
+            <div>✅ <strong>ממוצע ביטחון:</strong> כמה כוכבים בממוצע נתת לעסקאות שלך</div>
+          </div>
         </div>
       </div>
     </div>
