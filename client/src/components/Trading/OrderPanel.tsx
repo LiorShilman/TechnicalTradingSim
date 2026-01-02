@@ -1,6 +1,8 @@
 import { useState, useRef, useEffect } from 'react'
 import { TrendingUp, TrendingDown, Settings } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
+import TradeNoteModal from './TradeNoteModal'
+import type { TradeNote } from '@/types/game.types'
 
 /**
  * OrderPanel Component
@@ -72,6 +74,10 @@ export default function OrderPanel() {
 
   // שם הנכס המלא (למשל: SP/SPX, BTC/USD)
   const assetSymbol = gameState?.asset || 'BTC/USD'
+
+  // === Trade Journal State ===
+  const [showNoteModal, setShowNoteModal] = useState(false)
+  const [pendingTradeType, setPendingTradeType] = useState<'long' | 'short' | null>(null)
 
   // === Trading State ===
   /** Quantity of asset to trade (supports fractional amounts like 0.001) */
@@ -403,6 +409,7 @@ export default function OrderPanel() {
    * Handle LONG position entry (Buy)
    *
    * Opens a LONG position with optional SL/TP using frozen prices.
+   * Shows Trade Journal modal first (optional but recommended).
    *
    * **LONG Position Mechanics:**
    * - Profit when price goes UP
@@ -413,9 +420,11 @@ export default function OrderPanel() {
    * - SL at $49,000 (2% below) → Exit if price drops
    * - TP at $52,500 (5% above) → Exit if price rises
    */
-  const handleBuyLong = async () => {
+  const handleBuyLong = () => {
     if (quantityNum > 0) {
-      await executeTrade('buy', quantityNum, undefined, 'long', stopLossPrice, takeProfitPrice)
+      // הצג מודאל יומן מסחר
+      setPendingTradeType('long')
+      setShowNoteModal(true)
     }
   }
 
@@ -423,6 +432,7 @@ export default function OrderPanel() {
    * Handle SHORT position entry (Sell)
    *
    * Opens a SHORT position with optional SL/TP using INVERTED prices.
+   * Shows Trade Journal modal first (optional but recommended).
    *
    * **SHORT Position Mechanics:**
    * - Profit when price goes DOWN
@@ -445,21 +455,39 @@ export default function OrderPanel() {
    * - SL at $49,000 (2% BELOW)
    * - TP at $52,500 (5% ABOVE)
    */
-  const handleSellShort = async () => {
+  const handleSellShort = () => {
     if (quantityNum > 0) {
+      // הצג מודאל יומן מסחר
+      setPendingTradeType('short')
+      setShowNoteModal(true)
+    }
+  }
+
+  /**
+   * Execute trade after journal note (or skip)
+   */
+  const executeTradeWithNote = async (note?: Omit<TradeNote, 'positionId' | 'createdAt'>) => {
+    if (!pendingTradeType || quantityNum <= 0) return
+
+    if (pendingTradeType === 'long') {
+      // Execute LONG trade with frozen SL/TP
+      await executeTrade('buy', quantityNum, undefined, 'long', stopLossPrice, takeProfitPrice, note)
+    } else {
       // Calculate inverted SL/TP for SHORT positions using current price
-      // SL is ABOVE entry (exit if price rises - bad for SHORT)
       const shortStopLoss = useStopLoss && currentPrice
         ? currentPrice * (1 + parseFloat(stopLossPercent || '0') / 100)
         : undefined
 
-      // TP is BELOW entry (exit if price drops - good for SHORT)
       const shortTakeProfit = useTakeProfit && currentPrice
         ? currentPrice * (1 - parseFloat(takeProfitPercent || '0') / 100)
         : undefined
 
-      await executeTrade('buy', quantityNum, undefined, 'short', shortStopLoss, shortTakeProfit)
+      await executeTrade('buy', quantityNum, undefined, 'short', shortStopLoss, shortTakeProfit, note)
     }
+
+    // סגירת המודאל
+    setShowNoteModal(false)
+    setPendingTradeType(null)
   }
 
   /** Can execute trades - game active, not loading, not completed */
@@ -702,6 +730,19 @@ export default function OrderPanel() {
           Sell Short
         </button>
       </div>
+
+      {/* Trade Journal Modal */}
+      {showNoteModal && pendingTradeType && (
+        <TradeNoteModal
+          positionType={pendingTradeType}
+          onSubmit={(note) => executeTradeWithNote({
+            preTradeThoughts: note.thoughts,
+            expectedOutcome: note.expectedOutcome,
+            confidence: note.confidence
+          })}
+          onSkip={() => executeTradeWithNote()}
+        />
+      )}
     </div>
   )
 }

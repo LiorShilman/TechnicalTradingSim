@@ -28,6 +28,19 @@ export interface Pattern {
 
 export type PositionType = 'long' | 'short'
 
+/**
+ * הערת מסחר (Trade Journal)
+ * מתעדת מחשבות לפני ואחרי העסקה למטרות למידה
+ */
+export interface TradeNote {
+  positionId: string
+  preTradeThoughts: string              // מדוע נכנסתי לעסקה?
+  expectedOutcome: 'win' | 'loss' | 'breakeven'  // תוצאה צפויה
+  confidence: number                    // רמת ביטחון 1-5
+  postTradeReflection?: string          // מה למדתי? (לאחר סגירה)
+  createdAt: number
+}
+
 export interface Position {
   id: string
   type: PositionType
@@ -49,6 +62,7 @@ export interface Position {
     patternType: PatternType
     entryQuality: number
   }
+  note?: TradeNote         // הערת מסחר (Trade Journal)
 }
 
 export interface Account {

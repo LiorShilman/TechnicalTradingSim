@@ -62,6 +62,25 @@ export default function ChartControls() {
   // מחיר נוכחי
   const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
 
+  // עיצוב מחיר עם padding של אפסים (4 ספרות אחרי נקודה)
+  const formatPriceWithPadding = (price: number): string => {
+    // קבע כמה ספרות לפי סוג הנכס (crypto/forex = 4, stocks = 2)
+    const isCryptoOrForex = gameState?.asset?.includes('/') || false
+    const decimals = isCryptoOrForex ? 4 : 2
+
+    // תחילה עגל למספר הספרות הנכון
+    const fixed = price.toFixed(decimals)
+
+    // פצל לחלק שלם וחלק עשרוני
+    const [integerPart, decimalPart] = fixed.split('.')
+
+    // הוסף פסיקים לחלק השלם
+    const formattedInteger = parseInt(integerPart).toLocaleString('en-US')
+
+    // החזר עם החלק העשרוני (כולל אפסים!)
+    return `${formattedInteger}.${decimalPart}`
+  }
+
   return (
     <div className="flex items-center justify-between w-full">
       {/* ימין: מידע + עזרה/היסטוריה */}
@@ -80,8 +99,8 @@ export default function ChartControls() {
           <div className="h-6 w-px bg-dark-border"></div>
           <div className="flex items-center gap-2" dir="ltr">
             <span className="text-sm text-text-secondary">מחיר:</span>
-            <span className="text-2xl font-bold text-green-400">
-              ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+            <span className="text-2xl font-mono font-bold text-green-400 inline-block min-w-[140px] text-left">
+              ${formatPriceWithPadding(currentPrice)}
             </span>
           </div>
         </div>

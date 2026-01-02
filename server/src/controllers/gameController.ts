@@ -688,7 +688,7 @@ export const nextCandle = async (req: Request, res: Response) => {
 export const executeTrade = async (req: Request, res: Response) => {
   try {
     const { gameId } = req.params
-    const { type, quantity, positionId, positionType, stopLoss, takeProfit } = req.body
+    const { type, quantity, positionId, positionType, stopLoss, takeProfit, note } = req.body
     const game = games.get(gameId)
 
     if (!game) {
@@ -714,8 +714,10 @@ export const executeTrade = async (req: Request, res: Response) => {
 
       // 2. יצירת פוזיציה חדשה (LONG או SHORT)
       const actualPositionType = positionType || 'long' // ברירת מחדל LONG
+      const positionId = uuidv4()
+
       const newPosition = {
-        id: uuidv4(),
+        id: positionId,
         type: actualPositionType as 'long' | 'short',
         entryPrice: currentPrice,
         entryTime: currentCandle.time,
@@ -725,6 +727,16 @@ export const executeTrade = async (req: Request, res: Response) => {
         currentPnLPercent: 0,
         stopLoss: stopLoss,
         takeProfit: takeProfit,
+        // הוספת הערת מסחר אם קיימת
+        ...(note && {
+          note: {
+            positionId,
+            preTradeThoughts: note.preTradeThoughts,
+            expectedOutcome: note.expectedOutcome,
+            confidence: note.confidence,
+            createdAt: Date.now(),
+          }
+        })
       }
 
       console.log(`📍 New ${newPosition.type} position created:`, {
@@ -732,8 +744,17 @@ export const executeTrade = async (req: Request, res: Response) => {
         stopLoss,
         takeProfit,
         slDirection: newPosition.type === 'long' ? 'below' : 'above',
-        tpDirection: newPosition.type === 'long' ? 'above' : 'below'
+        tpDirection: newPosition.type === 'long' ? 'above' : 'below',
+        hasNote: !!note
       })
+
+      if (note) {
+        console.log(`📝 Trade Journal entry added:`, {
+          expectedOutcome: note.expectedOutcome,
+          confidence: note.confidence,
+          thoughtsLength: note.preTradeThoughts.length
+        })
+      }
 
       // 3. בדיקה אם נכנסו בתבנית
       let entryQuality = 50 // ברירת מחדל

@@ -1,5 +1,6 @@
-import { Trophy, TrendingUp, Target, Award } from 'lucide-react'
+import { Trophy, TrendingUp, Target, Award, BookOpen } from 'lucide-react'
 import { useGameStore } from '@/stores/gameStore'
+import { getJournalStats } from '@/utils/journalAnalysis'
 
 export default function GameStats() {
   const { gameState, showStats, resetGame } = useGameStore()
@@ -11,6 +12,9 @@ export default function GameStats() {
   const { stats, account } = gameState
   const totalReturn = ((account.equity - account.initialBalance) / account.initialBalance) * 100
   const isWinner = totalReturn > 0
+
+  // חישוב סטטיסטיקות יומן מסחר
+  const journalStats = getJournalStats(gameState.closedPositions)
 
   return (
     <div className="fixed inset-0 bg-black/80 flex items-center justify-center z-50 p-4">
@@ -110,25 +114,33 @@ export default function GameStats() {
 
           {/* Secondary row - 3 equal columns */}
           <div className="grid grid-cols-3 gap-6">
-            {/* Pattern Recognition */}
+            {/* Trade Journal Stats */}
             <div className="bg-dark-bg rounded-lg p-4 border border-dark-border">
               <div className="flex items-center gap-2 mb-3">
-                <Award size={16} className="text-yellow-400" />
-                <h3 className="font-semibold text-sm">זיהוי תבניות</h3>
+                <BookOpen size={16} className="text-purple-400" />
+                <h3 className="font-semibold text-sm">יומן מסחר</h3>
               </div>
               <div className="space-y-2">
                 <div>
-                  <div className="text-xs text-text-secondary">ציון זיהוי</div>
-                  <div className={`text-2xl font-mono font-bold ${stats.patternRecognitionScore >= 70 ? 'text-profit' : 'text-loss'}`} dir="ltr">
-                    {stats.patternRecognitionScore.toFixed(0)}/100
+                  <div className="text-xs text-text-secondary">דיוק תחזיות</div>
+                  <div className={`text-2xl font-mono font-bold ${journalStats.reflectionAccuracy >= 60 ? 'text-profit' : journalStats.reflectionAccuracy >= 40 ? 'text-yellow-400' : 'text-loss'}`} dir="ltr">
+                    {journalStats.reflectionAccuracy.toFixed(0)}%
                   </div>
                 </div>
                 <div>
-                  <div className="text-xs text-text-secondary">איכות כניסות</div>
-                  <div className={`text-2xl font-mono font-bold ${stats.averageEntryQuality >= 70 ? 'text-profit' : 'text-loss'}`} dir="ltr">
-                    {stats.averageEntryQuality.toFixed(0)}/100
+                  <div className="text-xs text-text-secondary">עסקאות מתועדות</div>
+                  <div className="text-lg font-mono font-bold text-text-primary" dir="ltr">
+                    {journalStats.totalNotes}/{stats.totalTrades}
                   </div>
                 </div>
+                {journalStats.totalNotes > 0 && (
+                  <div>
+                    <div className="text-xs text-text-secondary">ממוצע ביטחון</div>
+                    <div className="text-sm font-mono text-yellow-400" dir="ltr">
+                      {'⭐'.repeat(Math.round(journalStats.averageConfidence))}
+                    </div>
+                  </div>
+                )}
               </div>
             </div>
 

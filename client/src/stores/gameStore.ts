@@ -45,7 +45,8 @@ interface GameStore {
     positionId?: string,
     positionType?: 'long' | 'short',
     stopLoss?: number,
-    takeProfit?: number
+    takeProfit?: number,
+    note?: Omit<import('@/types/game.types').TradeNote, 'positionId' | 'createdAt'>
   ) => Promise<void>
   createPendingOrder: (
     type: 'long' | 'short',
@@ -329,7 +330,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
   },
 
-  executeTrade: async (type, quantity, positionId, positionType, stopLoss, takeProfit) => {
+  executeTrade: async (type, quantity, positionId, positionType, stopLoss, takeProfit, note) => {
     const { gameState, tradingRules, ruleViolations } = get()
     if (!gameState) return
 
@@ -438,7 +439,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     set({ isLoading: true, error: null })
     try {
-      const response = await api.trade(gameState.id, { type, quantity, positionId, positionType, stopLoss, takeProfit })
+      const response = await api.trade(gameState.id, { type, quantity, positionId, positionType, stopLoss, takeProfit, note })
 
       const updatedPositions = type === 'buy'
         ? [...gameState.positions, response.position!]

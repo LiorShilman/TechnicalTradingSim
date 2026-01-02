@@ -42,6 +42,18 @@ export interface Pattern {
 export type PositionType = 'long' | 'short';
 
 /**
+ * הערת מסחר (Trade Journal)
+ */
+export interface TradeNote {
+  positionId: string;
+  preTradeThoughts: string;        // מדוע נכנסתי?
+  expectedOutcome: 'win' | 'loss' | 'breakeven';  // מה הציפייה?
+  confidence: number;              // רמת ביטחון 1-5
+  postTradeReflection?: string;    // מה למדתי? (לאחר סגירה)
+  createdAt: number;               // Unix timestamp
+}
+
+/**
  * פוזיציית מסחר
  */
 export interface Position {
@@ -65,6 +77,7 @@ export interface Position {
     patternType: PatternType;
     entryQuality: number;     // 0-100 איכות הכניסה
   };
+  note?: TradeNote;           // הערת מסחר (Trade Journal)
 }
 
 /**
@@ -270,6 +283,7 @@ export interface TradeRequest {
   positionType?: 'long' | 'short';  // סוג פוזיציה לפתיחה (buy)
   stopLoss?: number;          // מחיר Stop Loss (buy)
   takeProfit?: number;        // מחיר Take Profit (buy)
+  note?: Omit<TradeNote, 'positionId' | 'createdAt'>;  // הערת מסחר (אופציונלי)
 }
 
 /**
