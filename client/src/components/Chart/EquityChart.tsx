@@ -176,18 +176,18 @@ export default function EquityChart() {
 
       <div ref={chartContainerRef} className="w-full" />
 
-      <div className="grid grid-cols-3 gap-2 mt-3 text-xs">
-        <div className="bg-dark-bg rounded p-2 text-center">
-          <div className="text-text-secondary mb-1">התחלה</div>
-          <div className="font-mono font-semibold" dir="ltr">${initialBalance.toLocaleString()}</div>
+      <div className="grid grid-cols-3 gap-3 mt-4">
+        <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-600/30 rounded-lg p-3 text-center">
+          <div className="text-blue-300 text-xs font-semibold mb-2">התחלה</div>
+          <div className="font-mono font-bold text-base text-white" dir="ltr">${initialBalance.toLocaleString()}</div>
         </div>
-        <div className="bg-dark-bg rounded p-2 text-center">
-          <div className="text-text-secondary mb-1">נוכחי</div>
-          <div className="font-mono font-semibold" dir="ltr">${currentEquity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
+        <div className="bg-gradient-to-br from-purple-900/30 to-purple-800/20 border border-purple-600/30 rounded-lg p-3 text-center">
+          <div className="text-purple-300 text-xs font-semibold mb-2">נוכחי</div>
+          <div className="font-mono font-bold text-base text-white" dir="ltr">${currentEquity.toLocaleString(undefined, { maximumFractionDigits: 2 })}</div>
         </div>
-        <div className="bg-dark-bg rounded p-2 text-center">
-          <div className="text-text-secondary mb-1">שינוי</div>
-          <div className={`font-mono font-semibold ${isProfit ? 'text-profit' : 'text-loss'}`} dir="ltr">
+        <div className={`bg-gradient-to-br ${isProfit ? 'from-green-900/30 to-green-800/20 border-green-600/30' : 'from-red-900/30 to-red-800/20 border-red-600/30'} border rounded-lg p-3 text-center`}>
+          <div className={`${isProfit ? 'text-green-300' : 'text-red-300'} text-xs font-semibold mb-2`}>שינוי</div>
+          <div className={`font-mono font-bold text-base ${isProfit ? 'text-green-400' : 'text-red-400'}`} dir="ltr">
             {isProfit ? '+' : ''}${(currentEquity - initialBalance).toLocaleString(undefined, { maximumFractionDigits: 2 })}
           </div>
         </div>
