@@ -51,7 +51,6 @@ export default function ChartControls() {
     setAutoPlaySpeed,
     chartFitContent,
     chartResetZoom,
-    executeTrade,
     saveGameState,
     saveAndExit,
     toggleTradeHistory,
@@ -60,28 +59,30 @@ export default function ChartControls() {
 
   const canProgress = gameState && !gameState.isComplete
 
-  // שם הנכס המלא (למשל: SP/SPX, BTC/USD)
-  const assetSymbol = gameState?.asset || 'BTC/USD'
+  // מחיר נוכחי
+  const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
 
   return (
     <div className="flex items-center gap-3" dir="rtl">
-      {/* קבוצה 1: BUY/SELL מהירים (קיצוני ימין) */}
-      <button
-        onClick={() => executeTrade('buy', 0.01, undefined, 'long')}
-        disabled={!gameState || isLoading}
-        className="px-3 py-2 bg-green-600 hover:bg-green-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold text-sm transition-all"
-        title={`קנייה מהירה LONG (0.01 ${assetSymbol})`}
-      >
-        BUY LONG
-      </button>
-      <button
-        onClick={() => executeTrade('buy', 0.01, undefined, 'short')}
-        disabled={!gameState || isLoading}
-        className="px-3 py-2 bg-red-600 hover:bg-red-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold text-sm transition-all"
-        title={`מכירה מהירה SHORT (0.01 ${assetSymbol})`}
-      >
-        SELL SHORT
-      </button>
+      {/* קבוצה 1: מידע נכס ומחיר (קיצוני ימין) */}
+      <div className="flex items-center gap-4 px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border">
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-text-secondary">נכס:</span>
+          <span className="text-lg font-bold text-blue-400">{gameState?.asset || 'N/A'}</span>
+        </div>
+        <div className="h-6 w-px bg-dark-border"></div>
+        <div className="flex items-center gap-2">
+          <span className="text-sm text-text-secondary">זמן:</span>
+          <span className="text-lg font-bold text-purple-400">{gameState?.timeframe || 'N/A'}</span>
+        </div>
+        <div className="h-6 w-px bg-dark-border"></div>
+        <div className="flex items-center gap-2" dir="ltr">
+          <span className="text-sm text-text-secondary">מחיר:</span>
+          <span className="text-xl font-bold text-green-400">
+            ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+          </span>
+        </div>
+      </div>
 
       {/* מפריד */}
       <div className="h-8 w-px bg-dark-border mx-1"></div>
