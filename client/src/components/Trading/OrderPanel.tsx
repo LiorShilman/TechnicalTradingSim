@@ -20,6 +20,43 @@ const CurrentPriceDisplay = memo(() => {
 })
 CurrentPriceDisplay.displayName = 'CurrentPriceDisplay'
 
+// קומפוננטה ממוזערת לכפתורי המסחר - מתרנדרת רק כשמצב המשחק משתנה
+interface TradeButtonsProps {
+  onBuyLong: () => void
+  onSellShort: () => void
+  quantityNum: number
+}
+
+const TradeButtons = memo(({ onBuyLong, onSellShort, quantityNum }: TradeButtonsProps) => {
+  const isLoading = useGameStore(state => state.isLoading)
+  const isComplete = useGameStore(state => state.gameState?.isComplete ?? false)
+
+  const canTrade = !isComplete && !isLoading
+
+  return (
+    <div className="space-y-3">
+      <button
+        onClick={onBuyLong}
+        disabled={!canTrade || quantityNum <= 0}
+        className="w-full px-4 py-3 bg-profit hover:bg-green-600 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+      >
+        <TrendingUp size={20} />
+        Buy Long
+      </button>
+
+      <button
+        onClick={onSellShort}
+        disabled={!canTrade || quantityNum <= 0}
+        className="w-full px-4 py-3 bg-loss hover:bg-red-600 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
+      >
+        <TrendingDown size={20} />
+        Sell Short
+      </button>
+    </div>
+  )
+})
+TradeButtons.displayName = 'TradeButtons'
+
 /**
  * OrderPanel Component
  *
@@ -86,7 +123,9 @@ CurrentPriceDisplay.displayName = 'CurrentPriceDisplay'
  * ```
  */
 export default function OrderPanel() {
-  const { gameState, executeTrade, isLoading } = useGameStore()
+  const gameState = useGameStore(state => state.gameState)
+  const executeTrade = useGameStore(state => state.executeTrade)
+  const isLoading = useGameStore(state => state.isLoading)
 
   // שם הנכס המלא (למשל: SP/SPX, BTC/USD)
   const assetSymbol = gameState?.asset || 'BTC/USD'
@@ -722,25 +761,11 @@ export default function OrderPanel() {
       )}
 
       {/* Trade buttons */}
-      <div className="space-y-3">
-        <button
-          onClick={handleBuyLong}
-          disabled={!canTrade || quantityNum <= 0}
-          className="w-full px-4 py-3 bg-profit hover:bg-green-600 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
-        >
-          <TrendingUp size={20} />
-          Buy Long
-        </button>
-
-        <button
-          onClick={handleSellShort}
-          disabled={!canTrade || quantityNum <= 0}
-          className="w-full px-4 py-3 bg-loss hover:bg-red-600 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-semibold flex items-center justify-center gap-2 transition-colors"
-        >
-          <TrendingDown size={20} />
-          Sell Short
-        </button>
-      </div>
+      <TradeButtons
+        onBuyLong={handleBuyLong}
+        onSellShort={handleSellShort}
+        quantityNum={quantityNum}
+      />
 
       {/* Trade Journal Modal */}
       {showNoteModal && pendingTradeType && (
