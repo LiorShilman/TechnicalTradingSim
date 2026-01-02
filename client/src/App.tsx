@@ -647,7 +647,7 @@ function App() {
               currentPrice={gameState?.candles[gameState.currentIndex]?.close || 0}
             />
           </div>
-          <div style={{ flex: '0 0 250px' }}>
+          <div style={{ flex: '0 0 300px' }}>
             <EquityChart />
           </div>
         </div>

@@ -319,6 +319,7 @@ export default function TradingChart() {
       layout: {
         background: { color: '#0a0e27' },
         textColor: '#e8eaed',
+        fontSize: 13, // הגדלת גודל טקסט בציר הזמן והמחיר
       },
       grid: {
         vertLines: { color: '#1e2442' },
@@ -348,9 +349,12 @@ export default function TradingChart() {
         barSpacing: 8, // ריווח בין נרות
         fixLeftEdge: false, // מאפשר גלילה חופשית
         fixRightEdge: false, // מאפשר גלילה חופשית
+        borderVisible: true, // הצגת גבול ציר הזמן
+        borderColor: '#2962FF', // צבע כחול לגבול ציר הזמן
       },
       rightPriceScale: {
-        borderVisible: false,
+        borderVisible: true, // הצגת גבול ציר המחיר
+        borderColor: '#2962FF', // צבע כחול תואם לציר הזמן
         autoScale: true, // זום אוטומטי
         scaleMargins: {
           top: 0.1,
@@ -358,7 +362,7 @@ export default function TradingChart() {
         },
       },
       watermark: {
-        visible: false, // הסתרת לוגו TradingView
+        visible: false, // הסתרת הלוגו של TradingView
       },
       handleScale: {
         axisPressedMouseMove: {
@@ -2694,8 +2698,11 @@ if (sl && tp) {
     <div className="w-full h-full bg-dark-panel rounded-lg overflow-hidden relative">
       <div
         ref={chartContainerRef}
-        className="w-full h-full"
-        style={{ cursor: activeTool !== 'none' ? 'crosshair' : 'default' }}
+        className="w-full"
+        style={{
+          height: 'calc(100% - 110px)', // מקום מספיק לציר התאריכים
+          cursor: activeTool !== 'none' ? 'crosshair' : 'default'
+        }}
       />
 
       {/* Risk/Reward Zones (DOM overlay) */}

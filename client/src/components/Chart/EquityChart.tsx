@@ -174,7 +174,13 @@ export default function EquityChart() {
         </div>
       </div>
 
-      <div ref={chartContainerRef} className="w-full" />
+      <div ref={chartContainerRef} className="w-full relative" style={{ overflow: 'hidden' }}>
+        <style>{`
+          #tv-attr-logo {
+            display: none !important;
+          }
+        `}</style>
+      </div>
 
       <div className="grid grid-cols-3 gap-3 mt-4">
         <div className="bg-gradient-to-br from-blue-900/30 to-blue-800/20 border border-blue-600/30 rounded-lg p-3 text-center">
