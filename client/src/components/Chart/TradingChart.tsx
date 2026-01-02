@@ -2700,7 +2700,7 @@ if (sl && tp) {
         ref={chartContainerRef}
         className="w-full"
         style={{
-          height: 'calc(100% - 110px)', // מקום מספיק לציר התאריכים
+          height: 'calc(100% - 30px)', // מקום לציר התאריכים
           cursor: activeTool !== 'none' ? 'crosshair' : 'default'
         }}
       />
