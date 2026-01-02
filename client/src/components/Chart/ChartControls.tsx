@@ -64,49 +64,52 @@ export default function ChartControls() {
 
   return (
     <div className="flex items-center justify-between w-full">
-      {/* ימין: נכס, זמן ומחיר */}
-      <div className="flex items-center gap-4 px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border">
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-blue-400">{gameState?.asset || 'N/A'}</span>
+      {/* ימין: מידע + עזרה/היסטוריה */}
+      <div className="flex items-center gap-3">
+        {/* פאנל מידע */}
+        <div className="flex items-center gap-4 px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border">
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-text-secondary">נכס:</span>
+            <span className="text-lg font-bold text-blue-400">{gameState?.asset || 'N/A'}</span>
+          </div>
+          <div className="h-6 w-px bg-dark-border"></div>
+          <div className="flex items-center gap-2">
+            <span className="text-sm text-text-secondary">זמן:</span>
+            <span className="text-lg font-bold text-purple-400">{gameState?.timeframe || 'N/A'}</span>
+          </div>
+          <div className="h-6 w-px bg-dark-border"></div>
+          <div className="flex items-center gap-2" dir="ltr">
+            <span className="text-sm text-text-secondary">מחיר:</span>
+            <span className="text-2xl font-bold text-green-400">
+              ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
+            </span>
+          </div>
         </div>
-        <div className="h-6 w-px bg-dark-border"></div>
-        <div className="flex items-center gap-2">
-          <span className="text-lg font-bold text-purple-400">{gameState?.timeframe || 'N/A'}</span>
-        </div>
-        <div className="h-6 w-px bg-dark-border"></div>
-        <div className="flex items-center gap-2" dir="ltr">
-          <span className="text-2xl font-bold text-green-400">
-            ${currentPrice.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 4 })}
-          </span>
-        </div>
+
+        {/* כפתורי עזרה והיסטוריה */}
+        <button
+          onClick={toggleHelp}
+          className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
+          title="מדריך למשחק"
+        >
+          <HelpCircle size={20} />
+          עזרה
+        </button>
+
+        <button
+          onClick={toggleTradeHistory}
+          disabled={!gameState || isLoading}
+          className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
+          title="היסטוריית עסקאות"
+        >
+          <History size={20} />
+          היסטוריה
+        </button>
       </div>
 
-      {/* שמאל: כל הכפתורים */}
+      {/* שמאל: כפתורי בקרה */}
       <div className="flex items-center gap-3" dir="rtl">
-      {/* קבוצה 1: עזרה והיסטוריה */}
-      <button
-        onClick={toggleHelp}
-        className="px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
-        title="מדריך למשחק"
-      >
-        <HelpCircle size={20} />
-        עזרה
-      </button>
-
-      <button
-        onClick={toggleTradeHistory}
-        disabled={!gameState || isLoading}
-        className="px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-bold flex items-center gap-2 transition-all shadow-md hover:shadow-lg"
-        title="היסטוריית עסקאות"
-      >
-        <History size={20} />
-        היסטוריה
-      </button>
-
-      {/* מפריד */}
-      <div className="h-8 w-px bg-dark-border mx-1"></div>
-
-      {/* קבוצה 3: בקרת גרף */}
+      {/* קבוצה 1: בקרת גרף */}
       <button
         onClick={chartResetZoom || undefined}
         disabled={!chartResetZoom}
