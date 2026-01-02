@@ -11,7 +11,7 @@ const PORT = process.env.PORT || 5000
 // CORS configuration for production
 const corsOptions = {
   origin: process.env.NODE_ENV === 'production'
-    ? 'http://shilmanlior2608.ddns.net:17500'
+    ? 'http://shilmanlior2608.ddns.net:17000'
     : '*',
   credentials: true,
   optionsSuccessStatus: 200
@@ -25,12 +25,12 @@ app.use(express.json())
 app.use('/api/game', gameRoutes)
 
 // Health check
-app.get('/api/health', (req, res) => {
+app.get('/api/health', (_req, res) => {
   res.json({ status: 'ok', message: 'Trading game server is running' })
 })
 
 // Error handling
-app.use((err: Error, req: express.Request, res: express.Response, next: express.NextFunction) => {
+app.use((err: Error, _req: express.Request, res: express.Response, _next: express.NextFunction) => {
   console.error('Error:', err)
   res.status(500).json({
     error: 'Internal server error',

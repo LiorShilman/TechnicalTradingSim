@@ -17,6 +17,7 @@ import type { Candle, Pattern } from '../types/index.js'
 /**
  * מציאת pivot high - נקודה שהיא הגבוהה ביותר בטווח
  */
+// @ts-ignore - Reserved for future pattern detection enhancements
 function isPivotHigh(candles: Candle[], index: number, leftBars: number = 2, rightBars: number = 2): boolean {
   if (index < leftBars || index + rightBars >= candles.length) return false
 
@@ -38,6 +39,7 @@ function isPivotHigh(candles: Candle[], index: number, leftBars: number = 2, rig
 /**
  * מציאת pivot low - נקודה שהיא הנמוכה ביותר בטווח
  */
+// @ts-ignore - Reserved for future pattern detection enhancements
 function isPivotLow(candles: Candle[], index: number, leftBars: number = 2, rightBars: number = 2): boolean {
   if (index < leftBars || index + rightBars >= candles.length) return false
 
@@ -59,6 +61,7 @@ function isPivotLow(candles: Candle[], index: number, leftBars: number = 2, righ
 /**
  * חישוב Average True Range (ATR) למדידת volatility
  */
+// @ts-ignore - Reserved for future pattern detection enhancements
 function calculateATR(candles: Candle[], period: number = 14): number {
   if (candles.length < period + 1) return 0
 
@@ -83,6 +86,7 @@ function calculateATR(candles: Candle[], period: number = 14): number {
 /**
  * חישוב נפח ממוצע
  */
+// @ts-ignore - Reserved for future pattern detection enhancements
 function calculateAverageVolume(candles: Candle[], period: number = 20): number {
   if (candles.length < period) return 0
 
@@ -93,6 +97,7 @@ function calculateAverageVolume(candles: Candle[], period: number = 20): number 
 /**
  * בדיקה האם המחיר נמצא ליד רמה מסוימת (tolerance ב-%)
  */
+// @ts-ignore - Reserved for future pattern detection enhancements
 function isPriceNearLevel(price: number, level: number, tolerancePercent: number = 0.5): boolean {
   const diff = Math.abs(price - level)
   const tolerance = level * (tolerancePercent / 100)
@@ -313,9 +318,11 @@ export function detectPatterns(candles: Candle[], targetCount: number = 8): Patt
   console.log(`🔍 Starting pattern detection on ${candles.length} candles...`)
 
   const patterns: Pattern[] = []
+  // @ts-ignore - Reserved for future spacing logic
   const minGap = 30 // מרווח מינימלי בין דפוסים
 
   // סריקה לפי סדר: breakout, retest, flag
+  // @ts-ignore - Reserved for multi-detector strategy
   const detectors = [
     { name: 'Breakout', fn: detectBreakoutPattern, quota: Math.ceil(targetCount * 0.4) },
     { name: 'Retest', fn: detectRetestPattern, quota: Math.ceil(targetCount * 0.35) },

@@ -38,7 +38,7 @@ export function useGameEffects(gameState: GameState | null) {
 
       // הצגת הבזק רק עבור עסקאות רווחיות עם כניסה מצוינת
       if (lastPosition.exitPnL && lastPosition.exitPnL > 0) {
-        const entryQuality = lastPosition.entryQuality || 0
+        const entryQuality = lastPosition.patternEntry?.entryQuality || 0
 
         if (entryQuality >= 80) {
           setEffects(prev => ({
@@ -176,7 +176,7 @@ export function useGameEffects(gameState: GameState | null) {
             id: `big-win-${Date.now()}`,
             type: 'big_win',
             title: 'Big Win! 💰',
-            description: `+${lastPosition.exitPnLPercent.toFixed(1)}% רווח במכה אחת!`,
+            description: `+${lastPosition.exitPnLPercent?.toFixed(1)}% רווח במכה אחת!`,
             icon: 'trending',
             color: 'green',
           },
@@ -191,7 +191,7 @@ export function useGameEffects(gameState: GameState | null) {
             id: `huge-win-${Date.now()}`,
             type: 'big_win',
             title: 'JACKPOT! 💎',
-            description: `+${lastPosition.exitPnLPercent.toFixed(1)}% רווח - מכה של פעם בחיים!`,
+            description: `+${lastPosition.exitPnLPercent?.toFixed(1)}% רווח - מכה של פעם בחיים!`,
             icon: 'trophy',
             color: 'gold',
           },

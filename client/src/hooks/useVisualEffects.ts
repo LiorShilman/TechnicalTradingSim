@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from 'react'
-import type { GameState, Position } from '../types/game.types'
+import type { GameState } from '../types/game.types'
 
 interface VisualEffectsState {
   profitTrail: {

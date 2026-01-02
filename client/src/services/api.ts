@@ -8,7 +8,11 @@ import type {
   PendingOrderType,
 } from '@/types/game.types'
 
-const BASE_URL = '/api'
+// In production, use the server URL from environment variable
+// In development, use relative path (proxied by Vite)
+const BASE_URL = import.meta.env.VITE_SERVER_URL
+  ? `${import.meta.env.VITE_SERVER_URL}/api`
+  : '/api'
 
 const apiClient = axios.create({
   baseURL: BASE_URL,

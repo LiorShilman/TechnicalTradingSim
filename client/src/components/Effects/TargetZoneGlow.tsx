@@ -20,7 +20,7 @@ export default function TargetZoneGlow({ position }: TargetZoneGlowProps) {
       return
     }
 
-    const { currentPrice, takeProfit, type } = position
+    const { currentPrice, takeProfit } = position
 
     // חישוב מרחק מה-TP
     const distanceToTP = Math.abs(currentPrice - takeProfit)

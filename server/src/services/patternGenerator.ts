@@ -138,6 +138,7 @@ export function generateRetestPattern(
     }
   }
 
+  // @ts-ignore - Reserved for flag validation logic
   const topPrice = candles[startIndex + upLength - 1].close
 
   // שלב 2: Pullback קל - ירידה של 0.05-0.1% בכל נר

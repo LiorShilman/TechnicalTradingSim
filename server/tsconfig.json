@@ -2,8 +2,8 @@
   "compilerOptions": {
     "target": "ES2022",
     "module": "ESNext",
-    "ignoreDeprecations": "6.0",
     "lib": ["ES2022"],
+    "ignoreDeprecations": "5.0",
     "moduleResolution": "bundler",
     "rootDir": "./src",
     "outDir": "./dist",
