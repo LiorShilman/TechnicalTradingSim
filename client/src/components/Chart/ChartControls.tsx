@@ -118,22 +118,12 @@ export default function ChartControls() {
 
   return (
     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between w-full gap-2 lg:gap-0">
-      {/* שורה 1 (מובייל) / ימין (דסקטופ): מידע + עזרה/היסטוריה */}
-      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto">
-        {/* פאנל מידע - מתכווץ על מובייל */}
-        <div className="flex flex-wrap items-center gap-2 lg:gap-4 px-2 lg:px-4 py-1 lg:py-2 bg-dark-panel/50 rounded-lg border border-dark-border text-xs lg:text-base">
-          <AssetInfo />
-          <div className="hidden lg:block h-6 w-px bg-dark-border"></div>
-          <div className="flex items-center gap-1 lg:gap-2">
-            <span className="text-xs lg:text-base font-mono font-bold text-secondary">מחיר:</span>
-            <PriceDisplay />
-          </div>
-        </div>
-
-        {/* כפתורי עזרה והיסטוריה - קטנים יותר על מובייל */}
+      {/* שורה 1 (מובייל) / שמאל (דסקטופ): כפתורי בקרה */}
+      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto" dir="rtl">
+        {/* כפתורי עזרה והיסטוריה */}
         <button
           onClick={toggleHelp}
-          className="px-2 lg:px-4 py-1 lg:py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg text-xs lg:text-base font-bold flex items-center gap-1 lg:gap-2 transition-all shadow-md hover:shadow-lg min-h-[44px] lg:min-h-0"
+          className="px-2 lg:px-4 py-2 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg text-xs lg:text-base font-bold flex items-center gap-1 lg:gap-2 transition-all shadow-md hover:shadow-lg min-h-[44px] lg:min-h-0"
           title="מדריך למשחק"
         >
           <HelpCircle size={18} className="lg:w-5 lg:h-5" />
@@ -143,33 +133,33 @@ export default function ChartControls() {
         <button
           onClick={toggleTradeHistory}
           disabled={!gameState || isLoading}
-          className="px-2 lg:px-4 py-1 lg:py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-xs lg:text-base font-bold flex items-center gap-1 lg:gap-2 transition-all shadow-md hover:shadow-lg min-h-[44px] lg:min-h-0"
+          className="px-2 lg:px-4 py-2 bg-gradient-to-r from-purple-600 to-blue-600 hover:from-purple-700 hover:to-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-xs lg:text-base font-bold flex items-center gap-1 lg:gap-2 transition-all shadow-md hover:shadow-lg min-h-[44px] lg:min-h-0"
           title="היסטוריית עסקאות"
         >
           <History size={18} className="lg:w-5 lg:h-5" />
           <span className="hidden sm:inline">היסטוריה</span>
         </button>
-      </div>
 
-      {/* שורה 2 (מובייל) / שמאל (דסקטופ): כפתורי בקרה */}
-      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto" dir="rtl">
-      {/* קבוצה 1: בקרת גרף */}
-      <button
-        onClick={chartResetZoom || undefined}
-        disabled={!chartResetZoom}
-        className="px-2 lg:px-3 py-2 bg-purple-600/90 hover:bg-purple-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-xs lg:text-sm font-semibold transition-colors min-h-[44px] lg:min-h-0"
-        title="איפוס זום"
-      >
-        🔍 <span className="hidden sm:inline">איפוס</span>
-      </button>
-      <button
-        onClick={chartFitContent || undefined}
-        disabled={!chartFitContent}
-        className="px-2 lg:px-3 py-2 bg-blue-600/90 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-xs lg:text-sm font-semibold transition-colors min-h-[44px] lg:min-h-0"
-        title="התאם גרף לתוכן"
-      >
-        📏 <span className="hidden sm:inline">התאם</span>
-      </button>
+        {/* מפריד - מוסתר על מובייל */}
+        <div className="hidden lg:block h-8 w-px bg-dark-border mx-1"></div>
+
+        {/* קבוצה 1: בקרת גרף - עכשיו באותו גודל כמו שאר הכפתורים */}
+        <button
+          onClick={chartResetZoom || undefined}
+          disabled={!chartResetZoom}
+          className="px-2 lg:px-4 py-2 bg-purple-600/90 hover:bg-purple-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-xs lg:text-base font-semibold flex items-center gap-1 lg:gap-2 transition-colors min-h-[44px] lg:min-h-0"
+          title="איפוס זום"
+        >
+          🔍 <span className="hidden sm:inline">איפוס</span>
+        </button>
+        <button
+          onClick={chartFitContent || undefined}
+          disabled={!chartFitContent}
+          className="px-2 lg:px-4 py-2 bg-blue-600/90 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-xs lg:text-base font-semibold flex items-center gap-1 lg:gap-2 transition-colors min-h-[44px] lg:min-h-0"
+          title="התאם גרף לתוכן"
+        >
+          📏 <span className="hidden sm:inline">התאם</span>
+        </button>
 
       {/* מפריד - מוסתר על מובייל */}
       <div className="hidden lg:block h-8 w-px bg-dark-border mx-1"></div>
@@ -245,6 +235,19 @@ export default function ChartControls() {
       </button>
 
       <CandleCounter/>
+      </div>
+
+      {/* שורה 2 (מובייל) / ימין (דסקטופ): מידע על הנכס והמחיר - מוצמד לימין */}
+      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto lg:mr-auto">
+        {/* פאנל מידע - מתכווץ על מובייל */}
+        <div className="flex flex-wrap items-center gap-2 lg:gap-4 px-2 lg:px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border text-xs lg:text-base">
+          <AssetInfo />
+          <div className="hidden lg:block h-6 w-px bg-dark-border"></div>
+          <div className="flex items-center gap-1 lg:gap-2">
+            <span className="text-xs lg:text-base font-mono font-bold text-secondary">מחיר:</span>
+            <PriceDisplay />
+          </div>
+        </div>
       </div>
     </div>
   )
