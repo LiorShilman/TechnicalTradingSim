@@ -119,7 +119,7 @@ export default function ChartControls() {
   return (
     <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between w-full gap-2 lg:gap-0">
       {/* שורה 1 (מובייל) / ימין (דסקטופ): מידע + עזרה/היסטוריה */}
-      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto order-2 lg:order-1">
+      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto order-2 lg:order-1 lg:ml-auto">
         {/* פאנל מידע - מתכווץ על מובייל */}
         <div className="flex flex-wrap items-center gap-2 lg:gap-4 px-2 lg:px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border text-xs lg:text-base">
           <AssetInfo />
