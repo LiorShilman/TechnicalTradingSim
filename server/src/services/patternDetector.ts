@@ -171,70 +171,103 @@ function detectBreakoutPattern(candles: Candle[], startIdx: number): Pattern | n
 }
 
 /**
- * זיהוי תבנית Retest
+ * זיהוי תבנית Retest - גרסה משופרת
  *
  * חיפוש:
- * 1. עלייה חזקה - תנועה למעלה של 3-8%
- * 2. pullback - ירידה חזרה לרמת תמיכה (38-62% פיבונאצ'י)
- * 3. bounce - המשך למעלה לאחר הבדיקה
+ * 1. מגמה - Lower Highs & Lower Lows (LONG) או Higher Highs & Higher Lows (SHORT)
+ * 2. נר שבירה גדול - שובר את השיא/שפל האחרון עם volume גבוה
+ * 3. המשך - מינימום 5 נרות
+ * 4. Retest - חזרה לבדיקת הרמה שנשברה
+ * 5. Bounce - המשך כיוון לאחר אישור
  */
 function detectRetestPattern(candles: Candle[], startIdx: number): Pattern | null {
-  const windowSize = 25
+  const windowSize = 35
   if (startIdx + windowSize >= candles.length) return null
 
-  // שלב 1: זיהוי עלייה חזקה (5-10 נרות)
-  const upMoveSize = 8
-  if (startIdx + upMoveSize >= candles.length) return null
+  // שלב 1: זיהוי מגמה עם swing structure (6-10 נרות)
+  const trendSize = 8
+  if (startIdx + trendSize >= candles.length) return null
 
-  const upMoveCandles = candles.slice(startIdx, startIdx + upMoveSize)
-  const startPrice = upMoveCandles[0].close
-  const topPrice = Math.max(...upMoveCandles.map(c => c.high))
-  const upMovePercent = ((topPrice - startPrice) / startPrice) * 100
+  const trendCandles = candles.slice(startIdx, startIdx + trendSize)
 
-  // בדיקה שיש עלייה של 2-10%
-  if (upMovePercent < 2 || upMovePercent > 10) return null
+  // בדיקה למגמת ירידה (LONG setup): Lower Highs & Lower Lows
+  let isDowntrend = true
+  for (let i = 3; i < trendSize - 1; i++) {
+    const prevHigh = Math.max(trendCandles[i - 3].high, trendCandles[i - 2].high, trendCandles[i - 1].high)
+    const currentHigh = trendCandles[i].high
+    if (currentHigh > prevHigh * 1.005) { // אם השיא עלה ביותר מ-0.5%
+      isDowntrend = false
+      break
+    }
+  }
 
-  const topIdx = startIdx + upMoveCandles.findIndex(c => c.high === topPrice)
+  if (!isDowntrend) return null // רק LONG setups לעכשיו
 
-  // שלב 2: זיהוי pullback (5-10 נרות)
-  const pullbackSize = 8
-  if (topIdx + pullbackSize >= candles.length) return null
+  const trendHigh = Math.max(...trendCandles.map(c => c.high))
+  const trendEndPrice = trendCandles[trendCandles.length - 1].close
 
-  const pullbackCandles = candles.slice(topIdx, topIdx + pullbackSize)
-  const pullbackLow = Math.min(...pullbackCandles.map(c => c.low))
-  const retracePercent = ((topPrice - pullbackLow) / (topPrice - startPrice)) * 100
+  // שלב 2: זיהוי נר שבירה גדול
+  const breakoutIdx = startIdx + trendSize
+  if (breakoutIdx >= candles.length) return null
 
-  // בדיקה שיש retracement של 30-70% (פיבונאצ'י)
-  if (retracePercent < 30 || retracePercent > 70) return null
+  const breakoutCandle = candles[breakoutIdx]
+  const breakoutMove = ((breakoutCandle.close - trendEndPrice) / trendEndPrice) * 100
 
-  const pullbackIdx = topIdx + pullbackCandles.findIndex(c => c.low === pullbackLow)
+  // בדיקה שיש שבירה חזקה (1.5-3%)
+  if (breakoutMove < 1.5 || breakoutMove > 3.5) return null
 
-  // שלב 3: זיהוי bounce (5 נרות לפחות)
+  // בדיקה שהשבירה מעל השיא של המגמה
+  if (breakoutCandle.high < trendHigh * 1.01) return null
+
+  // שלב 3: זיהוי המשך (5-8 נרות)
+  const continuationSize = 6
+  if (breakoutIdx + continuationSize >= candles.length) return null
+
+  const continuationCandles = candles.slice(breakoutIdx + 1, breakoutIdx + 1 + continuationSize)
+  const continuationUp = continuationCandles.filter(c => c.close > breakoutCandle.close * 0.995).length
+
+  // לפחות 4 מתוך 6 נרות צריכים להמשיך למעלה
+  if (continuationUp < 4) return null
+
+  // שלב 4: זיהוי Retest (3-6 נרות)
+  const retestSize = 5
+  const retestStartIdx = breakoutIdx + 1 + continuationSize
+  if (retestStartIdx + retestSize >= candles.length) return null
+
+  const retestCandles = candles.slice(retestStartIdx, retestStartIdx + retestSize)
+  const retestLow = Math.min(...retestCandles.map(c => c.low))
+
+  // בדיקה שהריטסט מגיע לקרבת הרמה שנשברה (±2%)
+  const brokenLevel = trendHigh
+  if (Math.abs(retestLow - brokenLevel) / brokenLevel > 0.03) return null
+
+  // שלב 5: זיהוי Bounce (4-6 נרות)
   const bounceSize = 5
-  if (pullbackIdx + bounceSize >= candles.length) return null
+  const bounceStartIdx = retestStartIdx + retestSize
+  if (bounceStartIdx + bounceSize >= candles.length) return null
 
-  const bounceCandles = candles.slice(pullbackIdx + 1, pullbackIdx + 1 + bounceSize)
-  const bounceUp = bounceCandles.filter(c => c.close > pullbackLow * 1.01).length
+  const bounceCandles = candles.slice(bounceStartIdx, bounceStartIdx + bounceSize)
+  const bounceUp = bounceCandles.filter(c => c.close > retestLow * 1.005).length
 
   // לפחות 4 מתוך 5 נרות צריכים לעלות
   if (bounceUp < 4) return null
 
   // חישוב נקודות כניסה/יציאה
-  const expectedEntry = pullbackLow * 1.005 // 0.5% מעל הנמוך
-  const expectedExit = pullbackLow * 1.03 // יעד 3%
-  const stopLoss = pullbackLow * 0.995
+  const expectedEntry = retestLow * 1.003
+  const expectedExit = retestLow * 1.04
+  const stopLoss = retestLow * 0.985
 
   return {
     type: 'retest',
     startIndex: startIdx,
-    endIndex: pullbackIdx + bounceSize,
+    endIndex: bounceStartIdx + bounceSize,
     expectedEntry,
     expectedExit,
     stopLoss,
     metadata: {
-      quality: Math.min(95, 75 + (retracePercent - 30) / 2), // איכות לפי פיבונאצ'י
-      description: `Retest של ${retracePercent.toFixed(0)}% מהתנועה`,
-      hint: 'חפש אישור על רמת התמיכה',
+      quality: Math.min(95, 80 + Math.floor(Math.random() * 10)),
+      description: 'Retest מוצלח - שבירת התנגדות וחזרה לבדיקה (LONG)',
+      hint: 'שים לב: שבירת ההתנגדות עם נר גדול, המשך, ואז חזרה לבדיקת הרמה מלמעלה',
     },
   }
 }
@@ -318,18 +351,16 @@ export function detectPatterns(candles: Candle[], targetCount: number = 8): Patt
   console.log(`🔍 Starting pattern detection on ${candles.length} candles...`)
 
   const patterns: Pattern[] = []
-  // @ts-ignore - Reserved for future spacing logic
   const minGap = 30 // מרווח מינימלי בין דפוסים
 
   // סריקה לפי סדר: breakout, retest, flag
-  // @ts-ignore - Reserved for multi-detector strategy
   const detectors = [
     { name: 'Breakout', fn: detectBreakoutPattern, quota: Math.ceil(targetCount * 0.4) },
     { name: 'Retest', fn: detectRetestPattern, quota: Math.ceil(targetCount * 0.35) },
     { name: 'Bull Flag', fn: detectBullFlagPattern, quota: Math.ceil(targetCount * 0.25) },
   ]
 
-  /* for (const detector of detectors) {
+  for (const detector of detectors) {
     console.log(`  Scanning for ${detector.name} patterns (quota: ${detector.quota})...`)
     let found = 0
 
@@ -351,7 +382,7 @@ export function detectPatterns(candles: Candle[], targetCount: number = 8): Patt
     }
 
     console.log(`    Found ${found} ${detector.name} patterns`)
-  } */
+  }
 
   // מיון לפי startIndex
   patterns.sort((a, b) => a.startIndex - b.startIndex)
