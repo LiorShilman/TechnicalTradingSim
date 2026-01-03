@@ -360,7 +360,7 @@ export function detectPatterns(candles: Candle[], targetCount: number = 8): Patt
     { name: 'Bull Flag', fn: detectBullFlagPattern, quota: Math.ceil(targetCount * 0.25) },
   ]
 
-  for (const detector of detectors) {
+  /* for (const detector of detectors) {
     console.log(`  Scanning for ${detector.name} patterns (quota: ${detector.quota})...`)
     let found = 0
 
@@ -382,7 +382,7 @@ export function detectPatterns(candles: Candle[], targetCount: number = 8): Patt
     }
 
     console.log(`    Found ${found} ${detector.name} patterns`)
-  }
+  } */
 
   // מיון לפי startIndex
   patterns.sort((a, b) => a.startIndex - b.startIndex)

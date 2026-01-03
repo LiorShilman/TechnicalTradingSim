@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import { X, TrendingUp, TrendingDown } from 'lucide-react'
 import type { Position, PendingOrder } from '@/types/game.types'
+import { useGameStore } from '@/stores/gameStore'
 
 interface EditPositionModalProps {
   position?: Position
@@ -26,6 +27,7 @@ export default function EditPositionModal({
 }: EditPositionModalProps) {
   const isPosition = !!position
   const isPendingOrder = !!pendingOrder
+  const pricePrecision = useGameStore(state => state.pricePrecision)
 
   // Initialize state based on whether it's a position or pending order
   // Use string state for inputs to preserve decimal formatting (e.g., "0.7550")
@@ -152,8 +154,8 @@ export default function EditPositionModal({
             )}
             <div className="text-xs text-text-secondary" dir="ltr">
               {isPosition
-                ? `Entry: $${position!.entryPrice.toFixed(4)}`
-                : `Target: $${parseFloat(targetPrice || '0').toFixed(4)}`}
+                ? `Entry: $${position!.entryPrice.toFixed(pricePrecision)}`
+                : `Target: $${parseFloat(targetPrice || '0').toFixed(pricePrecision)}`}
             </div>
           </div>
           <div className="text-xs text-text-secondary" dir="ltr">
@@ -161,7 +163,7 @@ export default function EditPositionModal({
           </div>
           {isPosition && (
             <div className="text-xs text-text-secondary" dir="ltr">
-              מחיר נוכחי: ${currentPrice.toFixed(4)}
+              מחיר נוכחי: ${currentPrice.toFixed(pricePrecision)}
             </div>
           )}
         </div>

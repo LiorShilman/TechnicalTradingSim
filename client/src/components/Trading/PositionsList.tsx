@@ -15,6 +15,7 @@ interface PositionCardProps {
 
 const PositionCard = memo(({ position, assetSymbol, onEdit, onClose, isLoading }: PositionCardProps) => {
   const isProfitable = position.currentPnL >= 0
+  const pricePrecision = useGameStore(state => state.pricePrecision)
 
   return (
     <div
@@ -55,7 +56,7 @@ const PositionCard = memo(({ position, assetSymbol, onEdit, onClose, isLoading }
       <div className="grid grid-cols-2 gap-2 text-xs mb-2">
         <div>
           <span className="text-text-secondary">כניסה: </span>
-          <span className="font-mono" dir="ltr">${position.entryPrice.toFixed(4)}</span>
+          <span className="font-mono" dir="ltr">${position.entryPrice.toFixed(pricePrecision)}</span>
         </div>
         <div>
           <span className="text-text-secondary">נר: </span>
@@ -76,13 +77,13 @@ const PositionCard = memo(({ position, assetSymbol, onEdit, onClose, isLoading }
           {position.stopLoss && (
             <div>
               <span className="text-red-400">🛑 SL: </span>
-              <span className="font-mono" dir="ltr">${position.stopLoss.toFixed(4)}</span>
+              <span className="font-mono" dir="ltr">${position.stopLoss.toFixed(pricePrecision)}</span>
             </div>
           )}
           {position.takeProfit && (
             <div>
               <span className="text-green-400">🎯 TP: </span>
-              <span className="font-mono" dir="ltr">${position.takeProfit.toFixed(4)}</span>
+              <span className="font-mono" dir="ltr">${position.takeProfit.toFixed(pricePrecision)}</span>
             </div>
           )}
         </div>

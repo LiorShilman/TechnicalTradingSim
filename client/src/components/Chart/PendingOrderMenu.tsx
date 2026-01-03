@@ -12,10 +12,10 @@ interface PendingOrderMenuProps {
 }
 
 export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, onClose, onPreviewUpdate }: PendingOrderMenuProps) {
-  const { gameState, createPendingOrder } = useGameStore()
+  const { gameState, createPendingOrder, pricePrecision } = useGameStore()
 
-  // מחיר יעד עריך - מעוגל ל-4 ספרות
-  const [targetPrice, setTargetPrice] = useState(parseFloat(initialPrice.toFixed(4)))
+  // מחיר יעד עריך - מעוגל לפי precision של המשחק
+  const [targetPrice, setTargetPrice] = useState(parseFloat(initialPrice.toFixed(pricePrecision)))
 
   // קבלת המחיר הנוכחי
   const currentPrice = gameState?.candles[gameState.currentIndex]?.close || 0
@@ -132,14 +132,14 @@ export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, on
             value={targetPrice}
             onChange={(e) => {
               const value = parseFloat(e.target.value) || 0
-              setTargetPrice(parseFloat(value.toFixed(4)))
+              setTargetPrice(parseFloat(value.toFixed(pricePrecision)))
             }}
             step="0.0001"
             className="w-full px-3 py-2 bg-dark-bg border border-dark-border rounded text-lg font-bold text-blue-400 focus:outline-none focus:border-blue-500"
             dir="ltr"
           />
           <div className="text-xs text-text-secondary mt-1" dir="ltr">
-            מחיר נוכחי: ${currentPrice.toFixed(4)}
+            מחיר נוכחי: ${currentPrice.toFixed(pricePrecision)}
           </div>
         </div>
 
@@ -288,12 +288,12 @@ export default function PendingOrderMenu({ price: initialPrice, x: _x, y: _y, on
         <div className="mt-3 pt-3 border-t border-dark-border text-xs text-text-secondary">
           {targetPrice > currentPrice && (
             <div className="mb-1">
-              <span className="font-semibold">Stop Order:</span> הפקודה תבוצע כשהמחיר יעלה ל-${targetPrice.toFixed(4)}
+              <span className="font-semibold">Stop Order:</span> הפקודה תבוצע כשהמחיר יעלה ל-${targetPrice.toFixed(pricePrecision)}
             </div>
           )}
           {targetPrice < currentPrice && (
             <div className="mb-1">
-              <span className="font-semibold">Stop Order:</span> הפקודה תבוצע כשהמחיר ירד ל-${targetPrice.toFixed(4)}
+              <span className="font-semibold">Stop Order:</span> הפקודה תבוצע כשהמחיר ירד ל-${targetPrice.toFixed(pricePrecision)}
             </div>
           )}
           {targetPrice === currentPrice && (

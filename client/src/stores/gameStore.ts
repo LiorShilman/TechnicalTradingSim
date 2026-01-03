@@ -30,6 +30,7 @@ interface GameStore {
   showStats: boolean // הצגת מסך סטטיסטיקות (למשל בשמירה ויציאה)
   showTradeHistory: boolean // הצגת מסך היסטוריית עסקאות
   showHelp: boolean // הצגת מסך עזרה
+  pricePrecision: number // מספר ספרות עשרוניות למחירים (מחושב אוטומטית מהנתונים)
 
   // Rule Violation Tracking
   tradingRules: TradingRules
@@ -107,6 +108,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showStats: false,
   showTradeHistory: false,
   showHelp: false,
+  pricePrecision: 2, // ברירת מחדל 2 ספרות, יתעדכן אוטומטית מהנתונים
 
   // Rule Violation State
   tradingRules: loadTradingRules(),
@@ -147,7 +149,31 @@ export const useGameStore = create<GameStore>((set, get) => ({
         asset: response.game?.asset,
         timeframe: response.game?.timeframe
       })
-      set({ gameState: response.game, isLoading: false })
+
+      // חישוב precision אוטומטי מהנתונים
+      const calculatePrecision = (candles: typeof response.game.candles): number => {
+        if (!candles || candles.length === 0) return 2
+        const sampleCandles = candles.slice(0, Math.min(10, candles.length))
+        let maxDecimals = 0
+
+        for (const candle of sampleCandles) {
+          const prices = [candle.open, candle.high, candle.low, candle.close]
+          for (const price of prices) {
+            const priceStr = price.toString()
+            const decimalPart = priceStr.split('.')[1]
+            if (decimalPart) {
+              const significantDecimals = decimalPart.replace(/0+$/, '').length
+              maxDecimals = Math.max(maxDecimals, significantDecimals)
+            }
+          }
+        }
+        return Math.min(Math.max(maxDecimals, 2), 4)
+      }
+
+      const precision = calculatePrecision(response.game.candles)
+      console.log(`💎 Calculated price precision: ${precision} decimals`)
+
+      set({ gameState: response.game, isLoading: false, pricePrecision: precision })
 
       // Auto-fit chart after game loads
       setTimeout(() => {
@@ -184,7 +210,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const response = await api.nextCandle(gameState.id)
       const newGame = (response as any).game || response
 
-      console.log('🔍 nextCandle response debug:', {
+      /* console.log('🔍 nextCandle response debug:', {
         currentIndex: newGame.currentIndex,
         totalCandles: newGame.candles?.length,
         gameId: newGame.id,
@@ -192,7 +218,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         closedPositions: newGame.closedPositions?.length,
         firstCandleTime: newGame.candles?.[0]?.time,
         lastCandleTime: newGame.candles?.[newGame.candles.length - 1]?.time,
-      })
+      }) */
 
       // בדיקה אם נסגרו פוזיציות ב-SL/TP (מוצהר מוקדם כדי לשמש גם את הבדיקה למשחק טעון)
       const newClosedCount = newGame.closedPositions.length

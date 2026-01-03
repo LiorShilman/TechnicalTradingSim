@@ -423,11 +423,8 @@ export default function TradingChart() {
     }
     setChartControls(handleFitContent, handleResetZoom)
 
-    // חישוב precision דינמי על פי סוג הנכס
-    // קריפטו ופורקס: 4 ספרות, מניות: 2 ספרות
-    const asset = gameState?.asset || 'BTC/USD'
-    const isCryptoOrForex = asset.includes('/') // כל זוג מטבעות (BTC/USD, EUR/GBP וכו')
-    const pricePrecision = isCryptoOrForex ? 4 : 2
+    // שימוש ב-precision שחושב ב-store (מהנתונים בפועל)
+    const pricePrecision = useGameStore.getState().pricePrecision
 
     // יצירת סדרת נרות עם precision מותאם
     const candlestickSeries = chart.addCandlestickSeries({
@@ -2221,7 +2218,7 @@ if (sl && tp) {
       return timeA - timeB
     })
 
-    console.log('createPatternMarkers: Merging', markers.length, 'pattern markers +', tradeMarkers.length, 'trade markers +', drawnMarkersRef.current.length, 'drawn markers =', allMarkers.length, 'total (sorted by time)')
+    //console.log('createPatternMarkers: Merging', markers.length, 'pattern markers +', tradeMarkers.length, 'trade markers +', drawnMarkersRef.current.length, 'drawn markers =', allMarkers.length, 'total (sorted by time)')
 
     // הגדרת כל ה-markers בבת אחת
     if (allMarkers.length > 0 && candlestickSeriesRef.current) {
@@ -2430,12 +2427,12 @@ if (sl && tp) {
 
     const currentIndex = gameState.currentIndex
     const currentGameId = gameState.id
-    console.log('TradingChart: Update triggered', {
+    /* console.log('TradingChart: Update triggered', {
       currentIndex,
       lastIndex: lastCandleIndexRef.current,
       currentGameId,
       lastGameId: lastGameIdRef.current
-    })
+    }) */
 
     // זיהוי משחק חדש/טעון - אם ה-gameId השתנה, זה אומר שנטען משחק חדש
     const isNewGame = currentGameId !== lastGameIdRef.current
@@ -2632,7 +2629,7 @@ if (sl && tp) {
               value: volumeMA,
             })
 
-            console.log(`📊 MA Update: idx=${currentIndex}, range=[${startIdx}, ${endIdx}), MA=${volumeMA.toFixed(2)}`)
+            //console.log(`📊 MA Update: idx=${currentIndex}, range=[${startIdx}, ${endIdx}), MA=${volumeMA.toFixed(2)}`)
           }
         }
 
