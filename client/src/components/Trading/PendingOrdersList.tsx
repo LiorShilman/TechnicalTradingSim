@@ -144,7 +144,7 @@ export default function PendingOrdersList() {
 
   if (pendingOrders.length === 0) {
     return (
-      <div className="flex-shrink-0 p-4 bg-dark-panel border-t border-dark-border border-2 border-purple-500/30 rounded-lg bg-dark-panel/20">
+      <div className="flex-shrink-0 p-4 border-2 border-purple-500/30 rounded-lg bg-dark-panel/20 mb-4">
         <div className="flex items-center justify-between mb-3">
           <h3 className="text-sm font-bold flex items-center gap-2">
             <Clock size={16} className="text-blue-400" />
@@ -175,7 +175,7 @@ export default function PendingOrdersList() {
   }
 
   return (
-    <div className="flex-shrink-0 p-4 bg-dark-panel border-t border-dark-border border-2 border-purple-500/30 rounded-lg bg-dark-panel/20">
+    <div className="flex-shrink-0 p-4 border-2 border-purple-500/30 rounded-lg bg-dark-panel/20 mb-4">
       <div className="flex items-center justify-between mb-3">
         <h3 className="text-sm font-bold flex items-center gap-2">
           <Clock size={16} className="text-blue-400" />
