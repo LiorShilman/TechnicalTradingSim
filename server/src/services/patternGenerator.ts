@@ -100,84 +100,164 @@ export function generateBreakoutPattern(
 }
 
 /**
- * יצירת תבנית Retest עדינה
+ * יצירת תבנית Retest מציאותית - LONG
  *
- * תהליך:
- * 1. עלייה הדרגתית (5-8 נרות)
- * 2. ירידה קלה (6-9 נרות)
- * 3. המשך למעלה (6-9 נרות)
+ * תהליך (LONG Retest):
+ * 1. מגמת ירידה מובהקת (6-10 נרות, -0.3% עד -0.6% כל נר)
+ * 2. נר שבירה גדול עם volume גבוה (1.5-2.5% למעלה, volume x2-3)
+ * 3. המשך כיוון (5-8 נרות, 0.2-0.5% כל נר)
+ * 4. Retest - חזרה לבדיקת השיא שנשבר (3-6 נרות ירידה קלה)
+ * 5. Bounce - המשך למעלה לאחר אישור
+ *
+ * SHORT Retest: הפוך - uptrend, שבירת שפל למטה, חזרה מלמטה
  */
 export function generateRetestPattern(
   candles: Candle[],
   startIndex: number
 ): Pattern {
-  const upLength = 5 + Math.floor(Math.random() * 4) // 5-8 נרות
-  const pullbackLength = 6 + Math.floor(Math.random() * 4) // 6-9 נרות
-  const bounceLength = 6 + Math.floor(Math.random() * 4) // 6-9 נרות
-  const endIndex = startIndex + upLength + pullbackLength + bounceLength
+  // קביעה אקראית: LONG (true) או SHORT (false)
+  const isLong = Math.random() > 0.5
+
+  const downtrendLength = 6 + Math.floor(Math.random() * 5) // 6-10 נרות
+  const continuationLength = 5 + Math.floor(Math.random() * 4) // 5-8 נרות
+  const retestLength = 3 + Math.floor(Math.random() * 4) // 3-6 נרות
+  const bounceLength = 4 + Math.floor(Math.random() * 3) // 4-6 נרות
+
+  const endIndex = startIndex + downtrendLength + 1 + continuationLength + retestLength + bounceLength
 
   if (endIndex >= candles.length) {
     throw new Error('Not enough candles for pattern generation')
   }
 
   const startPrice = candles[startIndex].close
+  let avgVolume = 1500 // volume ממוצע
 
-  // שלב 1: עלייה הדרגתית - 0.1-0.2% בכל נר
-  for (let i = 0; i < upLength; i++) {
+  // שלב 1: מגמה (ירידה ל-LONG, עלייה ל-SHORT)
+  for (let i = 0; i < downtrendLength; i++) {
     const idx = startIndex + i
     const prevClose = i === 0 ? startPrice : candles[idx - 1].close
-    const change = 0.001 + Math.random() * 0.001 // 0.1-0.2%
+    // LONG: ירידה -0.3% עד -0.6%, SHORT: עלייה 0.3% עד 0.6%
+    const change = isLong
+      ? -0.003 - Math.random() * 0.003 // -0.3% עד -0.6%
+      : 0.003 + Math.random() * 0.003  // 0.3% עד 0.6%
+
+    const close = prevClose * (1 + change)
+    const volume = 1000 + Math.random() * 1000
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * (1 + change) * 1.0005,
-      low: prevClose * 0.9995,
-      close: prevClose * (1 + change),
-      volume: 2000 + Math.random() * 1500,
+      high: Math.max(prevClose, close) * 1.002,
+      low: Math.min(prevClose, close) * 0.998,
+      close,
+      volume,
     }
   }
 
-  // @ts-ignore - Reserved for flag validation logic
-  const topPrice = candles[startIndex + upLength - 1].close
+  const trendEndPrice = candles[startIndex + downtrendLength - 1].close
 
-  // שלב 2: Pullback קל - ירידה של 0.05-0.1% בכל נר
-  for (let i = 0; i < pullbackLength; i++) {
-    const idx = startIndex + upLength + i
+  // שלב 2: נר שבירה גדול עם volume גבוה
+  const breakoutIdx = startIndex + downtrendLength
+  const breakoutOpen = trendEndPrice
+  // LONG: שבירה למעלה 1.5-2.5%, SHORT: שבירה למטה -1.5% עד -2.5%
+  const breakoutMove = isLong
+    ? 0.015 + Math.random() * 0.01  // 1.5-2.5% למעלה
+    : -0.015 - Math.random() * 0.01 // -1.5% עד -2.5% למטה
+
+  const breakoutClose = breakoutOpen * (1 + breakoutMove)
+  const breakoutVolume = avgVolume * (2 + Math.random()) // פי 2-3 מהממוצע
+
+  candles[breakoutIdx] = {
+    time: candles[breakoutIdx].time,
+    open: breakoutOpen,
+    high: Math.max(breakoutOpen, breakoutClose) * 1.003,
+    low: Math.min(breakoutOpen, breakoutClose) * 0.997,
+    close: breakoutClose,
+    volume: breakoutVolume,
+  }
+
+  // שמירת מחיר השבירה (זה יהיה רמת ה-Retest)
+  const breakoutLevel = isLong
+    ? Math.max(breakoutOpen, breakoutClose) // השיא שנשבר (LONG)
+    : Math.min(breakoutOpen, breakoutClose) // השפל שנשבר (SHORT)
+
+  // שלב 3: המשך כיוון (5-8 נרות)
+  for (let i = 1; i <= continuationLength; i++) {
+    const idx = breakoutIdx + i
     const prevClose = candles[idx - 1].close
-    const change = -0.0005 - Math.random() * 0.0005 // -0.05% עד -0.1%
+    // LONG: המשך למעלה 0.2-0.5%, SHORT: המשך למטה -0.2% עד -0.5%
+    const change = isLong
+      ? 0.002 + Math.random() * 0.003  // 0.2-0.5%
+      : -0.002 - Math.random() * 0.003 // -0.2% עד -0.5%
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * 1.001,
-      low: prevClose * (1 + change) * 0.9995,
+      high: prevClose * (1 + Math.abs(change)) * 1.001,
+      low: prevClose * (1 - Math.abs(change)) * 0.999,
       close: prevClose * (1 + change),
       volume: 1200 + Math.random() * 800,
     }
   }
 
-  const retestPrice = candles[startIndex + upLength + pullbackLength - 1].close
+  const continuationEndIdx = breakoutIdx + continuationLength
 
-  // שלב 3: Bounce - המשך למעלה
-  for (let i = 0; i < bounceLength; i++) {
-    const idx = startIndex + upLength + pullbackLength + i
+  // שלב 4: Retest - חזרה לבדיקת רמת השבירה
+  for (let i = 1; i <= retestLength; i++) {
+    const idx = continuationEndIdx + i
     const prevClose = candles[idx - 1].close
-    const change = 0.0005 + Math.random() * 0.001 // 0.05-0.15%
+
+    // חישוב המרחק לרמת ה-Retest
+    const distanceToLevel = breakoutLevel - prevClose
+    const progressRatio = i / retestLength
+
+    // LONG: ירידה הדרגתית חזרה לרמה, SHORT: עלייה הדרגתית חזרה לרמה
+    const targetClose = prevClose + (distanceToLevel * progressRatio * 0.7) // 70% מהדרך
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: prevClose * (1 + change) * 1.0005,
-      low: prevClose * 0.9995,
-      close: prevClose * (1 + change),
-      volume: 1800 + Math.random() * 1200,
+      high: Math.max(prevClose, targetClose) * 1.001,
+      low: Math.min(prevClose, targetClose) * 0.999,
+      close: targetClose,
+      volume: 900 + Math.random() * 600,
     }
   }
 
-  const expectedEntry = retestPrice * 1.002
-  const expectedExit = retestPrice * 1.03 // יעד צנוע של 3%
-  const stopLoss = startPrice * 0.995
+  const retestEndIdx = continuationEndIdx + retestLength
+  const retestPrice = candles[retestEndIdx].close
+
+  // שלב 5: Bounce - המשך המגמה החדשה לאחר אישור
+  for (let i = 1; i <= bounceLength; i++) {
+    const idx = retestEndIdx + i
+    const prevClose = candles[idx - 1].close
+    // LONG: bounce למעלה, SHORT: bounce למטה
+    const change = isLong
+      ? 0.003 + Math.random() * 0.004  // 0.3-0.7%
+      : -0.003 - Math.random() * 0.004 // -0.3% עד -0.7%
+
+    candles[idx] = {
+      time: candles[idx].time,
+      open: prevClose,
+      high: prevClose * (1 + Math.abs(change)) * 1.001,
+      low: prevClose * (1 - Math.abs(change)) * 0.999,
+      close: prevClose * (1 + change),
+      volume: 1500 + Math.random() * 1000,
+    }
+  }
+
+  // קביעת נקודות כניסה/יציאה
+  const expectedEntry = isLong
+    ? retestPrice * 1.003  // כניסה מעל ה-Retest (LONG)
+    : retestPrice * 0.997  // כניסה מתחת ל-Retest (SHORT)
+
+  const expectedExit = isLong
+    ? retestPrice * 1.04   // יעד 4% למעלה (LONG)
+    : retestPrice * 0.96   // יעד 4% למטה (SHORT)
+
+  const stopLoss = isLong
+    ? retestPrice * 0.985  // SL 1.5% מתחת (LONG)
+    : retestPrice * 1.015  // SL 1.5% מעל (SHORT)
 
   return {
     type: 'retest',
@@ -188,8 +268,12 @@ export function generateRetestPattern(
     stopLoss,
     metadata: {
       quality: 80 + Math.floor(Math.random() * 15),
-      description: 'Retest מוצלח של רמת תמיכה',
-      hint: 'חפש אישור על רמת התמיכה',
+      description: isLong
+        ? 'Retest מוצלח - שבירת התנגדות וחזרה לבדיקה (LONG)'
+        : 'Retest מוצלח - שבירת תמיכה וחזרה לבדיקה (SHORT)',
+      hint: isLong
+        ? 'שים לב: שבירת ההתנגדות עם נר גדול ו-volume גבוה, ואז חזרה לבדיקת הרמה מלמעלה'
+        : 'שים לב: שבירת התמיכה עם נר גדול ו-volume גבוה, ואז חזרה לבדיקת הרמה מלמטה',
     },
   }
 }
