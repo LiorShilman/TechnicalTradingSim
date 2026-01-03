@@ -1,17 +1,18 @@
 import { useState } from 'react'
-import { X, BookOpen, TrendingUp, Target, Shield, Zap, LineChart, Bell } from 'lucide-react'
+import { X, BookOpen, TrendingUp, Target, Shield, Zap, LineChart, Bell, BarChart3 } from 'lucide-react'
 
 interface HelpModalProps {
   onClose: () => void
 }
 
-type TabType = 'start' | 'rules' | 'tools' | 'orders' | 'journal' | 'tips'
+type TabType = 'start' | 'rules' | 'tools' | 'orders' | 'journal' | 'tips' | 'assets'
 
 export default function HelpModal({ onClose }: HelpModalProps) {
   const [activeTab, setActiveTab] = useState<TabType>('start')
 
   const tabs = [
     { id: 'start' as TabType, label: 'התחלה מהירה', icon: Zap },
+    { id: 'assets' as TabType, label: 'בחירת נכסים', icon: BarChart3 },
     { id: 'rules' as TabType, label: 'כללי מסחר', icon: Shield },
     { id: 'journal' as TabType, label: 'יומן מסחר', icon: BookOpen },
     { id: 'tools' as TabType, label: 'כלי גרף', icon: LineChart },
@@ -61,6 +62,7 @@ export default function HelpModal({ onClose }: HelpModalProps) {
         {/* Content */}
         <div className="flex-1 overflow-y-auto p-6">
           {activeTab === 'start' && <QuickStartTab />}
+          {activeTab === 'assets' && <AssetSelectionTab />}
           {activeTab === 'rules' && <TradingRulesTab />}
           {activeTab === 'journal' && <TradeJournalTab />}
           {activeTab === 'tools' && <ChartToolsTab />}
@@ -80,6 +82,347 @@ export default function HelpModal({ onClose }: HelpModalProps) {
 }
 
 // ===== Tab Components =====
+
+function AssetSelectionTab() {
+  return (
+    <div className="space-y-6">
+      <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 border border-purple-600/40 rounded-lg p-6">
+        <h3 className="text-2xl font-bold text-white mb-4 flex items-center gap-2">
+          <BarChart3 className="w-6 h-6 text-blue-400" />
+          מדריך בחירת נכסים למסחר
+        </h3>
+        <p className="text-gray-300 text-lg leading-relaxed">
+          בחירת הנכס הנכון חיונית להצלחה במסחר טכני. להלן מדריך מקיף לסוגי הנכסים השונים ומה מתאים לכל רמה.
+        </p>
+      </div>
+
+      {/* Stock Indices */}
+      <div className="space-y-4">
+        <h4 className="text-xl font-bold text-blue-400 flex items-center gap-2">
+          <span>📊</span>
+          מדדי מניות (Stock Indices)
+        </h4>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <h5 className="font-bold text-white mb-3">למה מתאים?</h5>
+          <p className="text-gray-300 text-sm leading-relaxed mb-3">
+            מדדים הם הבחירה המומלצת ביותר למתחילים ומסחר טכני. הם מייצגים סל של חברות ולכן פחות תנודתיים ויותר צפויים מבחינת דפוסים טכניים.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-blue-900/30">
+                <tr>
+                  <th className="px-3 py-2 text-right text-blue-300">מדד</th>
+                  <th className="px-3 py-2 text-right text-blue-300">תיאור</th>
+                  <th className="px-3 py-2 text-right text-blue-300">רמת קושי</th>
+                  <th className="px-3 py-2 text-right text-blue-300">תנודתיות</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-green-400">SP500 (SPX)</td>
+                  <td className="px-3 py-2 text-gray-300">מדד 500 החברות הגדולות בארה"ב</td>
+                  <td className="px-3 py-2"><span className="bg-green-900/40 text-green-400 px-2 py-1 rounded text-xs">קל</span></td>
+                  <td className="px-3 py-2 text-gray-400">נמוכה-בינונית</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-green-400">NASDAQ (NQ)</td>
+                  <td className="px-3 py-2 text-gray-300">מדד טכנולוגיה אמריקאי</td>
+                  <td className="px-3 py-2"><span className="bg-yellow-900/40 text-yellow-400 px-2 py-1 rounded text-xs">בינוני</span></td>
+                  <td className="px-3 py-2 text-gray-400">בינונית</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-green-400">DOW JONES (DJI)</td>
+                  <td className="px-3 py-2 text-gray-300">30 החברות המובילות בארה"ב</td>
+                  <td className="px-3 py-2"><span className="bg-green-900/40 text-green-400 px-2 py-1 rounded text-xs">קל</span></td>
+                  <td className="px-3 py-2 text-gray-400">נמוכה</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-green-400">TA-35 (TA35)</td>
+                  <td className="px-3 py-2 text-gray-300">מדד המניות המוביל בישראל</td>
+                  <td className="px-3 py-2"><span className="bg-green-900/40 text-green-400 px-2 py-1 rounded text-xs">קל</span></td>
+                  <td className="px-3 py-2 text-gray-400">בינונית</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 bg-green-900/30 border border-green-600/40 rounded p-3">
+            <p className="text-green-200 text-xs leading-relaxed">
+              ✅ <strong>מומלץ למתחילים:</strong> SP500 או Dow Jones - תנודתיות נמוכה, דפוסים ברורים, נתונים זמינים.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Individual Stocks */}
+      <div className="space-y-4">
+        <h4 className="text-xl font-bold text-purple-400 flex items-center gap-2">
+          <span>🏢</span>
+          מניות בודדות (Individual Stocks)
+        </h4>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <h5 className="font-bold text-white mb-3">למה מתאים?</h5>
+          <p className="text-gray-300 text-sm leading-relaxed mb-3">
+            מניות בודדות מציעות הזדמנויות רווח גבוהות יותר אך דורשות ניתוח עמוק יותר. מתאימות למסחר יום-יומי או swing trading.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-purple-900/30">
+                <tr>
+                  <th className="px-3 py-2 text-right text-purple-300">קטגוריה</th>
+                  <th className="px-3 py-2 text-right text-purple-300">דוגמאות</th>
+                  <th className="px-3 py-2 text-right text-purple-300">יתרונות</th>
+                  <th className="px-3 py-2 text-right text-purple-300">חסרונות</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-blue-400">מניות טכנולוגיה</td>
+                  <td className="px-3 py-2 text-gray-300">AAPL, MSFT, NVDA, TSLA</td>
+                  <td className="px-3 py-2 text-green-400 text-xs">תנועה טובה, ליקווידיות גבוהה</td>
+                  <td className="px-3 py-2 text-red-400 text-xs">תנודתיות גבוהה, פערי מחיר</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-blue-400">מניות פיננסיות</td>
+                  <td className="px-3 py-2 text-gray-300">JPM, BAC, GS, WFC</td>
+                  <td className="px-3 py-2 text-green-400 text-xs">יציבות, דפוסים ברורים</td>
+                  <td className="px-3 py-2 text-red-400 text-xs">תנועה איטית יותר</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-blue-400">מניות אנרגיה</td>
+                  <td className="px-3 py-2 text-gray-300">XOM, CVX, COP</td>
+                  <td className="px-3 py-2 text-green-400 text-xs">קורלציה לנפט, ניתנות לניתוח</td>
+                  <td className="px-3 py-2 text-red-400 text-xs">תלויות במחיר נפט</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 bg-yellow-900/30 border border-yellow-600/40 rounded p-3">
+            <p className="text-yellow-200 text-xs leading-relaxed">
+              ⚠️ <strong>המלצה:</strong> התחל עם blue-chip stocks (חברות גדולות) לפני מניות קטנות יותר.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Forex */}
+      <div className="space-y-4">
+        <h4 className="text-xl font-bold text-cyan-400 flex items-center gap-2">
+          <span>💱</span>
+          מט"ח (Forex)
+        </h4>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <h5 className="font-bold text-white mb-3">למה מתאים?</h5>
+          <p className="text-gray-300 text-sm leading-relaxed mb-3">
+            שוק המט"ח הוא הגדול בעולם, פתוח 24/5, ומציע ליקווידיות ללא תחרות. מתאים למסחר טכני ודפוסים.
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-cyan-900/30">
+                <tr>
+                  <th className="px-3 py-2 text-right text-cyan-300">זוג מט"ח</th>
+                  <th className="px-3 py-2 text-right text-cyan-300">תיאור</th>
+                  <th className="px-3 py-2 text-right text-cyan-300">רמת קושי</th>
+                  <th className="px-3 py-2 text-right text-cyan-300">ממוצע תנועה יומית</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-cyan-400">EUR/USD</td>
+                  <td className="px-3 py-2 text-gray-300">הזוג הנסחר ביותר בעולם</td>
+                  <td className="px-3 py-2"><span className="bg-green-900/40 text-green-400 px-2 py-1 rounded text-xs">קל</span></td>
+                  <td className="px-3 py-2 text-gray-400">70-100 pips</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-cyan-400">GBP/USD</td>
+                  <td className="px-3 py-2 text-gray-300">פאונד-דולר (תנודתי יותר)</td>
+                  <td className="px-3 py-2"><span className="bg-yellow-900/40 text-yellow-400 px-2 py-1 rounded text-xs">בינוני</span></td>
+                  <td className="px-3 py-2 text-gray-400">120-150 pips</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-cyan-400">USD/JPY</td>
+                  <td className="px-3 py-2 text-gray-300">דולר-ין יפני</td>
+                  <td className="px-3 py-2"><span className="bg-green-900/40 text-green-400 px-2 py-1 rounded text-xs">קל</span></td>
+                  <td className="px-3 py-2 text-gray-400">60-80 pips</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-cyan-400">AUD/USD</td>
+                  <td className="px-3 py-2 text-gray-300">דולר אוסטרלי-אמריקאי</td>
+                  <td className="px-3 py-2"><span className="bg-yellow-900/40 text-yellow-400 px-2 py-1 rounded text-xs">בינוני</span></td>
+                  <td className="px-3 py-2 text-gray-400">70-90 pips</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 bg-blue-900/30 border border-blue-600/40 rounded p-3">
+            <p className="text-blue-200 text-xs leading-relaxed">
+              💡 <strong>טיפ:</strong> EUR/USD הוא הכי מתאים למתחילים - ספרדים נמוכים, ליקווידיות מעולה, דפוסים ברורים.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Crypto */}
+      <div className="space-y-4">
+        <h4 className="text-xl font-bold text-orange-400 flex items-center gap-2">
+          <span>₿</span>
+          קריפטו (Cryptocurrency)
+        </h4>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <h5 className="font-bold text-white mb-3">למה מתאים?</h5>
+          <p className="text-gray-300 text-sm leading-relaxed mb-3">
+            מטבעות קריפטו מציעים תנועות מחיר דרמטיות ומסחר 24/7. מצוין לאנליזה טכנית אך דורש ניהול סיכון קפדני!
+          </p>
+
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-orange-900/30">
+                <tr>
+                  <th className="px-3 py-2 text-right text-orange-300">מטבע</th>
+                  <th className="px-3 py-2 text-right text-orange-300">תיאור</th>
+                  <th className="px-3 py-2 text-right text-orange-300">רמת קושי</th>
+                  <th className="px-3 py-2 text-right text-orange-300">תנודתיות</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-700">
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-orange-400">BTC/USD</td>
+                  <td className="px-3 py-2 text-gray-300">ביטקוין - "המלך"</td>
+                  <td className="px-3 py-2"><span className="bg-yellow-900/40 text-yellow-400 px-2 py-1 rounded text-xs">בינוני</span></td>
+                  <td className="px-3 py-2 text-red-400">גבוהה מאוד</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-orange-400">ETH/USD</td>
+                  <td className="px-3 py-2 text-gray-300">אתריום - הקריפטו השני</td>
+                  <td className="px-3 py-2"><span className="bg-orange-900/40 text-orange-400 px-2 py-1 rounded text-xs">מאתגר</span></td>
+                  <td className="px-3 py-2 text-red-400">גבוהה מאוד</td>
+                </tr>
+                <tr className="hover:bg-gray-700/30">
+                  <td className="px-3 py-2 font-bold text-orange-400">Altcoins</td>
+                  <td className="px-3 py-2 text-gray-300">מטבעות קטנים יותר</td>
+                  <td className="px-3 py-2"><span className="bg-red-900/40 text-red-400 px-2 py-1 rounded text-xs">מתקדמים בלבד</span></td>
+                  <td className="px-3 py-2 text-red-400">קיצונית</td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+
+          <div className="mt-3 bg-red-900/30 border border-red-600/40 rounded p-3">
+            <p className="text-red-200 text-xs leading-relaxed">
+              ⚠️ <strong>אזהרה:</strong> קריפטו יכול לעבור 10-20% ביום אחד! השתמש ב-SL קפדני ואל תסכן יותר מ-1% בעסקה.
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Commodities */}
+      <div className="space-y-4">
+        <h4 className="text-xl font-bold text-yellow-400 flex items-center gap-2">
+          <span>🛢️</span>
+          סחורות (Commodities)
+        </h4>
+
+        <div className="bg-gray-800/50 border border-gray-700 rounded-lg p-4">
+          <p className="text-gray-300 text-sm leading-relaxed mb-3">
+            שוק הסחורות כולל נפט, זהב, כסף, נחושת ועוד. דורש הבנה של גורמי היצע-ביקוש.
+          </p>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+            <div className="bg-yellow-900/20 border border-yellow-600/30 rounded p-3">
+              <h6 className="font-bold text-yellow-400 mb-2 text-sm">⚡ זהב (GOLD/XAU)</h6>
+              <p className="text-gray-400 text-xs leading-relaxed">
+                נחשב "מקלט בטוח" בזמני משבר. דפוסים טכניים ברורים, תנודתיות בינונית.
+                <br/><strong className="text-yellow-300">מומלץ למסחר טכני!</strong>
+              </p>
+            </div>
+
+            <div className="bg-gray-700/30 border border-gray-600/30 rounded p-3">
+              <h6 className="font-bold text-gray-300 mb-2 text-sm">🛢️ נפט (WTI/Brent)</h6>
+              <p className="text-gray-400 text-xs leading-relaxed">
+                תלוי בגאופוליטיקה, OPEC, אירועים עולמיים. תנודתי מאוד.
+                <br/><strong className="text-orange-300">דורש ניסיון!</strong>
+              </p>
+            </div>
+
+            <div className="bg-blue-900/20 border border-blue-600/30 rounded p-3">
+              <h6 className="font-bold text-blue-400 mb-2 text-sm">🥈 כסף (SILVER/XAG)</h6>
+              <p className="text-gray-400 text-xs leading-relaxed">
+                "אחיו הקטן" של הזהב, תנודתי יותר, מושפע גם מביקוש תעשייתי.
+                <br/><strong className="text-blue-300">מתאים למנוסים!</strong>
+              </p>
+            </div>
+
+            <div className="bg-red-900/20 border border-red-600/30 rounded p-3">
+              <h6 className="font-bold text-red-400 mb-2 text-sm">🌽 חקלאות (Corn, Wheat)</h6>
+              <p className="text-gray-400 text-xs leading-relaxed">
+                תלוי במזג אוויר, עונתיות, יבולים. קשה לחיזוי.
+                <br/><strong className="text-red-300">לא מומלץ למתחילים!</strong>
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Recommendations by level */}
+      <div className="bg-gradient-to-r from-green-600/20 to-blue-600/20 border border-green-600/40 rounded-lg p-6">
+        <h4 className="font-bold text-green-300 mb-4 text-xl flex items-center gap-2">
+          <span>🎯</span>
+          המלצות לפי רמה
+        </h4>
+
+        <div className="space-y-3">
+          <div className="bg-green-900/30 border-l-4 border-green-500 rounded p-3">
+            <h5 className="font-bold text-green-400 mb-1">🟢 מתחילים (0-6 חודשים)</h5>
+            <p className="text-green-100 text-sm">
+              <strong>מומלץ:</strong> SP500, EUR/USD, זהב<br/>
+              <strong>טיימפריים:</strong> 1H, 4H, 1D (פחות רעש)<br/>
+              <strong>למה?</strong> תנודתיות נמוכה-בינונית, דפוסים ברורים, מידע רב זמין
+            </p>
+          </div>
+
+          <div className="bg-yellow-900/30 border-l-4 border-yellow-500 rounded p-3">
+            <h5 className="font-bold text-yellow-400 mb-1">🟡 ביניים (6-18 חודשים)</h5>
+            <p className="text-yellow-100 text-sm">
+              <strong>מומלץ:</strong> NASDAQ, GBP/USD, מניות בודדות (AAPL, MSFT), BTC/USD<br/>
+              <strong>טיימפריים:</strong> 15m, 30m, 1H (מסחר יום)<br/>
+              <strong>למה?</strong> הזדמנויות יותר, תנועה טובה, צריך ניהול סיכון טוב
+            </p>
+          </div>
+
+          <div className="bg-red-900/30 border-l-4 border-red-500 rounded p-3">
+            <h5 className="font-bold text-red-400 mb-1">🔴 מתקדמים (18+ חודשים)</h5>
+            <p className="text-red-100 text-sm">
+              <strong>מומלץ:</strong> ETH/USD, מניות טכנולוגיה תנודתיות (TSLA, NVDA), אופציות, נפט<br/>
+              <strong>טיימפריים:</strong> 1m, 5m, 15m (scalping)<br/>
+              <strong>למה?</strong> רווחים גבוהים, דורש משמעת קפדנית, SL הדוק
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* Final tips */}
+      <div className="bg-purple-900/30 border border-purple-600/40 rounded-lg p-4">
+        <h5 className="font-bold text-purple-300 mb-2">💡 טיפים אחרונים:</h5>
+        <ul className="text-purple-100 text-sm space-y-1 leading-relaxed">
+          <li>• <strong>התמחות:</strong> בחר 1-2 נכסים ולמד אותם לעומק במקום לקפוץ בין הרבה</li>
+          <li>• <strong>תקופות:</strong> התחל עם טיימפריים גדולים (4H, 1D) ורד לקטנים רק אחרי שליטה</li>
+          <li>• <strong>ווליום:</strong> בחר נכסים עם ליקווידיות גבוהה (ספרדים נמוכים, ביצוע מהיר)</li>
+          <li>• <strong>שעות:</strong> למד את שעות המסחר האקטיביות (London session, NY session)</li>
+          <li>• <strong>קורלציות:</strong> הבן קשרים (USD↑ = זהב↓, נפט ↔ קנדי דולר)</li>
+        </ul>
+      </div>
+    </div>
+  )
+}
 
 function QuickStartTab() {
   return (

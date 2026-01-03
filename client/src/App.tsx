@@ -18,7 +18,7 @@ import EquityColorShift from './components/Effects/EquityColorShift'
 import { useGameStore } from './stores/gameStore'
 import { priceAlertsService } from './services/priceAlertsService'
 import { useVisualEffects } from './hooks/useVisualEffects'
-import { Play, Loader2, Upload, Trash2 } from 'lucide-react'
+import { Play, Loader2, Upload, Trash2, HelpCircle } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
 import toast from 'react-hot-toast'
 
@@ -305,6 +305,18 @@ function App() {
   if (isStartScreen) {
     return (
       <div className="min-h-screen bg-gradient-to-br from-dark-bg via-blue-950/20 to-purple-950/20 overflow-y-auto" dir="rtl">
+        {/* Help Icon - Top Right Corner */}
+        <div className="fixed top-4 left-4 z-50">
+          <button
+            onClick={toggleHelp}
+            className="px-4 py-3 bg-gradient-to-r from-blue-600 to-cyan-600 hover:from-blue-700 hover:to-cyan-700 rounded-lg font-bold flex items-center gap-2 transition-all shadow-lg hover:shadow-xl"
+            title="מדריך למשחק"
+          >
+            <HelpCircle className="w-5 h-5" />
+            <span>עזרה</span>
+          </button>
+        </div>
+
         <div className="max-w-4xl w-full mx-auto px-4 py-12">
           {/* כותרת ראשית */}
           <div className="text-center mb-12">
@@ -582,6 +594,35 @@ function App() {
             )}
           </div>
         </div>
+
+        {/* Help modal - also available on start screen */}
+        {showHelp && <HelpModal onClose={toggleHelp} />}
+
+        {/* Toast notifications */}
+        <Toaster
+          position="top-center"
+          toastOptions={{
+            duration: 3000,
+            style: {
+              background: '#1a1f3a',
+              color: '#e8eaed',
+              border: '1px solid #2d3548',
+              direction: 'rtl',
+            },
+            success: {
+              iconTheme: {
+                primary: '#00c853',
+                secondary: '#1a1f3a',
+              },
+            },
+            error: {
+              iconTheme: {
+                primary: '#ff1744',
+                secondary: '#1a1f3a',
+              },
+            },
+          }}
+        />
       </div>
     )
   }
