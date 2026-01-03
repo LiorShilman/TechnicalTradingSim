@@ -49,7 +49,7 @@ export const RuleCompliancePanel = () => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-purple-600/40 rounded-lg p-4">
+    <div className="border-2 border-purple-600/40 rounded-lg p-4">
       {/* Header */}
       <div className="flex items-center justify-between mb-4">
         <div className="flex items-center gap-2">

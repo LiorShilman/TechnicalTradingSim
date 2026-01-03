@@ -30,7 +30,7 @@ export const RulesSettingsPanel = () => {
   }
 
   return (
-    <div className="bg-gradient-to-br from-gray-900 to-gray-800 border-2 border-purple-600/40 rounded-lg p-4">
+    <div className="border-2 border-purple-600/40 rounded-lg p-4">
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
         <Settings className="w-6 h-6 text-purple-400" />
@@ -97,7 +97,7 @@ export const RulesSettingsPanel = () => {
         </div>
 
         {/* 4. חובת Stop Loss */}
-        <div className="flex items-center justify-between p-3 bg-gray-800 rounded border border-gray-700">
+        <div className="flex items-center justify-between p-3 rounded border border-gray-700">
           <div>
             <p className="font-medium text-white">חובת Stop Loss</p>
             <p className="text-xs text-gray-400">אסור לפתוח עסקה ללא SL</p>
@@ -115,7 +115,7 @@ export const RulesSettingsPanel = () => {
         </div>
 
         {/* 5. חובת Take Profit */}
-        <div className="flex items-center justify-between p-3 bg-gray-800 rounded border border-gray-700">
+        <div className="flex items-center justify-between p-3 rounded border border-gray-700">
           <div>
             <p className="font-medium text-white">חובת Take Profit</p>
             <p className="text-xs text-gray-400">אסור לפתוח עסקה ללא TP</p>
