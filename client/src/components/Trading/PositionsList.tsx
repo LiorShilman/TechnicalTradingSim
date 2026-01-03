@@ -136,7 +136,7 @@ export default function PositionsList() {
   }
 
   return (
-    <div className="flex-shrink-0 p-4 bg-dark-panel border-t border-dark-border">
+    <div className="flex-shrink-0 p-4 bg-dark-panel border-t border-dark-border border-2 border-purple-500/30 rounded-lg bg-dark-panel/20">
       <h3 className="font-semibold mb-4">פוזיציות פתוחות ({positions.length})</h3>
 
       {positions.length === 0 ? (
