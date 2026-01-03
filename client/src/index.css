@@ -49,3 +49,13 @@ body {
 .preload * {
   transition: none !important;
 }
+
+/* Hide scrollbar but keep functionality (for horizontal tab scrolling) */
+.scrollbar-hide {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+.scrollbar-hide::-webkit-scrollbar {
+  display: none;
+}

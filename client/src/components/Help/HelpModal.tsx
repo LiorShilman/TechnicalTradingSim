@@ -21,46 +21,46 @@ export default function HelpModal({ onClose }: HelpModalProps) {
   ]
 
   return (
-    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm">
-      <div className="w-[90vw] max-w-5xl h-[85vh] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-2 border-purple-600/40 rounded-xl shadow-2xl flex flex-col overflow-hidden">
-        {/* Header */}
-        <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-6 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <BookOpen className="w-8 h-8 text-white" />
-            <h2 className="text-3xl font-bold text-white">מדריך למשחק</h2>
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-sm p-2 sm:p-4">
+      <div className="w-full max-w-5xl h-[95vh] sm:h-[85vh] bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 border-2 border-purple-600/40 rounded-xl shadow-2xl flex flex-col overflow-hidden">
+        {/* Header - Responsive */}
+        <div className="bg-gradient-to-r from-purple-600 to-blue-600 p-3 sm:p-6 flex items-center justify-between">
+          <div className="flex items-center gap-2 sm:gap-3">
+            <BookOpen className="w-5 h-5 sm:w-8 sm:h-8 text-white" />
+            <h2 className="text-lg sm:text-3xl font-bold text-white">מדריך למשחק</h2>
           </div>
           <button
             onClick={onClose}
-            className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors"
+            className="text-white hover:bg-white/20 p-2 rounded-lg transition-colors min-h-[44px] min-w-[44px] flex items-center justify-center"
             title="סגור"
           >
-            <X className="w-6 h-6" />
+            <X className="w-5 h-5 sm:w-6 sm:h-6" />
           </button>
         </div>
 
-        {/* Tabs */}
-        <div className="flex border-b border-gray-700 bg-gray-800/50">
+        {/* Tabs - Responsive: Scrollable on mobile, wrapped on tablet+ */}
+        <div className="flex overflow-x-auto border-b border-gray-700 bg-gray-800/50 scrollbar-hide">
           {tabs.map((tab) => {
             const Icon = tab.icon
             return (
               <button
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex-1 px-4 py-3 flex items-center justify-center gap-2 font-semibold transition-all ${
+                className={`flex-shrink-0 px-2 sm:px-4 py-3 flex items-center justify-center gap-1 sm:gap-2 font-semibold transition-all text-xs sm:text-base min-h-[44px] ${
                   activeTab === tab.id
                     ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white border-b-2 border-purple-400'
                     : 'text-gray-400 hover:text-white hover:bg-gray-700/50'
                 }`}
               >
-                <Icon className="w-5 h-5" />
-                <span>{tab.label}</span>
+                <Icon className="w-4 h-4 sm:w-5 sm:h-5" />
+                <span className="whitespace-nowrap">{tab.label}</span>
               </button>
             )
           })}
         </div>
 
-        {/* Content */}
-        <div className="flex-1 overflow-y-auto p-6">
+        {/* Content - Responsive padding */}
+        <div className="flex-1 overflow-y-auto p-3 sm:p-6">
           {activeTab === 'start' && <QuickStartTab />}
           {activeTab === 'assets' && <AssetSelectionTab />}
           {activeTab === 'rules' && <TradingRulesTab />}
@@ -70,9 +70,9 @@ export default function HelpModal({ onClose }: HelpModalProps) {
           {activeTab === 'tips' && <TradingTipsTab />}
         </div>
 
-        {/* Footer */}
-        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-4 border-t border-gray-700">
-          <p className="text-center text-gray-300 text-sm">
+        {/* Footer - Responsive */}
+        <div className="bg-gradient-to-r from-purple-600/20 to-blue-600/20 p-2 sm:p-4 border-t border-gray-700">
+          <p className="text-center text-gray-300 text-xs sm:text-sm">
             💡 <strong>טיפ:</strong> השתמש בכפתור "שמור וצא" כדי לשמור את ההתקדמות שלך בכל עת
           </p>
         </div>
