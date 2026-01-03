@@ -117,9 +117,9 @@ export default function ChartControls() {
   const canProgress = gameState && !gameState.isComplete
 
   return (
-    <div className="flex flex-col lg:flex-row items-start lg:items-center justify-between w-full gap-2 lg:gap-0">
+    <div className="flex flex-col lg:flex-row items-start lg:items-center lg:justify-between w-full gap-2 lg:gap-0">
       {/* שורה 1 (מובייל) / ימין (דסקטופ): מידע + עזרה/היסטוריה */}
-      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto order-2 lg:order-1 lg:ml-auto">
+      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto order-2 lg:order-none">
         {/* פאנל מידע - מתכווץ על מובייל */}
         <div className="flex flex-wrap items-center gap-2 lg:gap-4 px-2 lg:px-4 py-2 bg-dark-panel/50 rounded-lg border border-dark-border text-xs lg:text-base">
           <AssetInfo />
@@ -152,7 +152,7 @@ export default function ChartControls() {
       </div>
 
       {/* שורה 2 (מובייל) / שמאל (דסקטופ): כפתורי בקרה */}
-      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto order-1 lg:order-2" dir="rtl">
+      <div className="flex flex-wrap items-center gap-2 lg:gap-3 w-full lg:w-auto order-1 lg:order-none" dir="rtl">
       {/* קבוצה 1: בקרת גרף - עכשיו באותו גודל כמו שאר הכפתורים */}
       <button
         onClick={chartResetZoom || undefined}
