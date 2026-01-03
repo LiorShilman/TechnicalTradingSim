@@ -157,7 +157,7 @@ export default function ChartControls() {
       <button
         onClick={chartResetZoom || undefined}
         disabled={!chartResetZoom}
-        className="px-3 py-2 bg-purple-600/90 hover:bg-purple-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors"
+        className="px-4 py-2 bg-purple-600/90 hover:bg-purple-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-semibold flex items-center gap-2 transition-colors"
         title="איפוס זום"
       >
         🔍 איפוס
@@ -165,7 +165,7 @@ export default function ChartControls() {
       <button
         onClick={chartFitContent || undefined}
         disabled={!chartFitContent}
-        className="px-3 py-2 bg-blue-600/90 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg text-sm font-semibold transition-colors"
+        className="px-4 py-2 bg-blue-600/90 hover:bg-blue-700 disabled:bg-dark-border disabled:cursor-not-allowed rounded-lg font-semibold flex items-center gap-2 transition-colors"
         title="התאם גרף לתוכן"
       >
         📏 התאם
