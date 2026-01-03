@@ -132,25 +132,58 @@ export function generateRetestPattern(
   const startPrice = candles[startIndex].close
   let avgVolume = 1500 // volume ממוצע
 
-  // שלב 1: מגמה (ירידה ל-LONG, עלייה ל-SHORT)
+  // שלב 1: מגמה עם Lower Highs & Lower Lows (LONG) או Higher Highs & Higher Lows (SHORT)
+  let swingHigh = startPrice
+  let swingLow = startPrice
+  const swingSize = 3 // גודל כל swing (3 נרות)
+
   for (let i = 0; i < downtrendLength; i++) {
     const idx = startIndex + i
     const prevClose = i === 0 ? startPrice : candles[idx - 1].close
-    // LONG: ירידה -0.3% עד -0.6%, SHORT: עלייה 0.3% עד 0.6%
-    const change = isLong
-      ? -0.003 - Math.random() * 0.003 // -0.3% עד -0.6%
-      : 0.003 + Math.random() * 0.003  // 0.3% עד 0.6%
+
+    // קביעה אם אנחנו ב-swing עולה או יורד
+    const currentSwingNum = Math.floor(i / swingSize)
+    const isUpSwing = currentSwingNum % 2 === 0
+
+    let change: number
+    if (isLong) {
+      // LONG: Lower Highs & Lower Lows (מגמת ירידה)
+      if (isUpSwing) {
+        // Swing למעלה - ליצור high שנמוך מה-swing הקודם
+        change = 0.001 + Math.random() * 0.002 // 0.1-0.3% למעלה
+      } else {
+        // Swing למטה - ליצור low שנמוך מה-swing הקודם
+        change = -0.004 - Math.random() * 0.003 // -0.4% עד -0.7% למטה
+      }
+    } else {
+      // SHORT: Higher Highs & Higher Lows (מגמת עלייה)
+      if (isUpSwing) {
+        // Swing למעלה - ליצור high שגבוה מה-swing הקודם
+        change = 0.004 + Math.random() * 0.003 // 0.4-0.7% למעלה
+      } else {
+        // Swing למטה - ליצור low שגבוה מה-swing הקודם
+        change = -0.001 - Math.random() * 0.002 // -0.1% עד -0.3% למטה
+      }
+    }
 
     const close = prevClose * (1 + change)
-    const volume = 1000 + Math.random() * 1000
+    const high = Math.max(prevClose, close) * (1.001 + Math.random() * 0.001)
+    const low = Math.min(prevClose, close) * (0.999 - Math.random() * 0.001)
 
     candles[idx] = {
       time: candles[idx].time,
       open: prevClose,
-      high: Math.max(prevClose, close) * 1.002,
-      low: Math.min(prevClose, close) * 0.998,
+      high,
+      low,
       close,
-      volume,
+      volume: 1000 + Math.random() * 1000,
+    }
+
+    // עדכון swing highs/lows
+    if (isUpSwing) {
+      if (high > swingHigh) swingHigh = high
+    } else {
+      if (low < swingLow) swingLow = low
     }
   }
 
