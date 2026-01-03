@@ -686,7 +686,7 @@ function App() {
       <div className="flex-1 flex flex-col landscape:flex-row lg:flex-row overflow-hidden relative z-10">
         {/* Left sidebar - Account, Order, Lists */}
         {/* Portrait: full width + max-h-[40vh], Landscape (tablet): w-72, Desktop (lg+): w-96 full height */}
-        <div className="w-full landscape:w-72 lg:w-96 bg-dark-panel border-l border-dark-border flex flex-col max-h-[40vh] portrait:max-h-[40vh] landscape:max-h-none lg:max-h-none overflow-y-auto landscape:overflow-y-visible lg:overflow-y-visible">
+        <div className="w-full landscape:w-72 lg:!w-96 bg-dark-panel border-l border-dark-border flex flex-col max-h-[40vh] portrait:max-h-[40vh] landscape:max-h-none lg:max-h-none overflow-y-auto landscape:overflow-y-visible lg:overflow-y-visible">
           <AccountInfo />
           <OrderPanel />
 
@@ -718,7 +718,7 @@ function App() {
 
         {/* Right sidebar - כללים ומשמעת */}
         {/* Portrait: hidden, Landscape (tablet): w-64, Desktop (lg+): w-[420px] */}
-        <div className="hidden landscape:flex lg:flex landscape:w-64 lg:w-[420px] bg-dark-panel border-r border-dark-border flex-col overflow-y-auto">
+        <div className="hidden landscape:flex lg:flex landscape:w-64 lg:!w-[420px] bg-dark-panel border-r border-dark-border flex-col overflow-y-auto">
           {/* כללי מסחר */}
           <div className="p-2 landscape:p-3 lg:p-4 border-b border-dark-border">
             <RulesSettingsPanel />
