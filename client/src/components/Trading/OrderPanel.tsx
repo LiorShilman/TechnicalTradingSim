@@ -549,7 +549,7 @@ export default function OrderPanel() {
   const canTrade = gameState && !gameState.isComplete && !isLoading
 
   return (
-    <div className="p-4 border-2 border-purple-500/30 rounded-lg bg-dark-panel/20 max-h-[calc(100vh-100px)] overflow-y-auto mb-4">
+    <div className="p-4 border-2 border-purple-500/30 rounded-lg bg-dark-panel/20 max-h-[calc(100vh-100px)] overflow-y-auto mb-4 mx-4">
       <div className="flex items-center justify-between mb-4">
         <h3 className="font-semibold">פאנל מסחר</h3>
         <button
