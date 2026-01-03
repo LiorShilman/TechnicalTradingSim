@@ -1,5 +1,6 @@
 import { X, TrendingUp, TrendingDown, Calendar, Clock } from 'lucide-react'
 import type { Position } from '@/types/game.types'
+import { useGameStore } from '@/stores/gameStore'
 
 interface TradeHistoryProps {
   closedPositions: Position[]
@@ -16,6 +17,7 @@ export default function TradeHistory({
   assetSymbol,
   onClose,
 }: TradeHistoryProps) {
+  const pricePrecision = useGameStore(state => state.pricePrecision)
   // Group trades by date
   const groupedTrades = closedPositions.reduce((groups, position) => {
     if (!position.exitTime) return groups
@@ -196,7 +198,7 @@ export default function TradeHistory({
                                   </span>
                                   <span className="text-text-secondary">•</span>
                                   <span className="font-mono text-blue-400 font-semibold" dir="ltr">
-                                    ${position.entryPrice.toFixed(4)}
+                                    ${position.entryPrice.toFixed(pricePrecision)}
                                   </span>
                                 </div>
 
@@ -215,7 +217,7 @@ export default function TradeHistory({
                                   </span>
                                   <span className="text-text-secondary">•</span>
                                   <span className="font-mono text-purple-400 font-semibold" dir="ltr">
-                                    ${(position.exitPrice || 0).toFixed(4)}
+                                    ${(position.exitPrice || 0).toFixed(pricePrecision)}
                                   </span>
                                 </div>
 

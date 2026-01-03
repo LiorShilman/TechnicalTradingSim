@@ -1,5 +1,6 @@
 import { useEffect, useState } from 'react'
 import { Target } from 'lucide-react'
+import { useGameStore } from '@/stores/gameStore'
 
 interface TargetZoneGlowProps {
   position: {
@@ -11,6 +12,7 @@ interface TargetZoneGlowProps {
 }
 
 export default function TargetZoneGlow({ position }: TargetZoneGlowProps) {
+  const pricePrecision = useGameStore(state => state.pricePrecision)
   const [isNearTarget, setIsNearTarget] = useState(false)
   const [glowIntensity, setGlowIntensity] = useState(0)
 
@@ -70,7 +72,7 @@ export default function TargetZoneGlow({ position }: TargetZoneGlowProps) {
               מרחק: {Math.abs(distancePercent).toFixed(2)}% | ${Math.abs(distanceToTP).toFixed(2)}
             </div>
             <div className="text-xs text-text-secondary mt-0.5">
-              TP: ${position.takeProfit.toFixed(4)}
+              TP: ${position.takeProfit.toFixed(pricePrecision)}
             </div>
           </div>
         </div>

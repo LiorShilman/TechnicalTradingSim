@@ -106,15 +106,17 @@ class TelegramNotificationService {
     pnl: number
     pnlPercent: number
     asset?: string
+    pricePrecision?: number
   }) {
     const emoji = params.type === 'LONG' ? '📉' : '📈'
     const assetSymbol = params.asset || 'BTC/USD'
+    const precision = params.pricePrecision ?? 2
     const message = `
 ${emoji} <b>Stop Loss Hit!</b>
 
 Type: ${params.type}
-Entry: $${params.entryPrice.toFixed(4)}
-Exit: $${params.exitPrice.toFixed(4)}
+Entry: $${params.entryPrice.toFixed(precision)}
+Exit: $${params.exitPrice.toFixed(precision)}
 Quantity: ${params.quantity.toFixed(4)} ${assetSymbol}
 
 <b>P&L: $${params.pnl.toFixed(2)} (${params.pnlPercent.toFixed(2)}%)</b>
@@ -134,15 +136,17 @@ Quantity: ${params.quantity.toFixed(4)} ${assetSymbol}
     pnl: number
     pnlPercent: number
     asset?: string
+    pricePrecision?: number
   }) {
     const emoji = '🎯'
     const assetSymbol = params.asset || 'BTC/USD'
+    const precision = params.pricePrecision ?? 2
     const message = `
 ${emoji} <b>Take Profit Hit!</b>
 
 Type: ${params.type}
-Entry: $${params.entryPrice.toFixed(4)}
-Exit: $${params.exitPrice.toFixed(4)}
+Entry: $${params.entryPrice.toFixed(precision)}
+Exit: $${params.exitPrice.toFixed(precision)}
 Quantity: ${params.quantity.toFixed(4)} ${assetSymbol}
 
 <b>P&L: $${params.pnl.toFixed(2)} (${params.pnlPercent.toFixed(2)}%)</b>
@@ -162,15 +166,17 @@ Quantity: ${params.quantity.toFixed(4)} ${assetSymbol}
     pnl: number
     pnlPercent: number
     asset?: string
+    pricePrecision?: number
   }) {
     const emoji = params.pnl >= 0 ? '✅' : '❌'
     const assetSymbol = params.asset || 'BTC/USD'
+    const precision = params.pricePrecision ?? 2
     const message = `
 ${emoji} <b>Position Closed</b>
 
 Type: ${params.type}
-Entry: $${params.entryPrice.toFixed(4)}
-Exit: $${params.exitPrice.toFixed(4)}
+Entry: $${params.entryPrice.toFixed(precision)}
+Exit: $${params.exitPrice.toFixed(precision)}
 Quantity: ${params.quantity.toFixed(4)} ${assetSymbol}
 
 <b>P&L: $${params.pnl.toFixed(2)} (${params.pnlPercent.toFixed(2)}%)</b>
@@ -188,15 +194,17 @@ Quantity: ${params.quantity.toFixed(4)} ${assetSymbol}
     targetPrice: number
     quantity: number
     asset?: string
+    pricePrecision?: number
   }) {
     const emoji = params.type === 'LONG' ? '🟢' : '🔴'
     const assetSymbol = params.asset || 'BTC/USD'
+    const precision = params.pricePrecision ?? 2
     const message = `
 ${emoji} <b>Pending Order Filled!</b>
 
 Order: ${params.orderType}
 Type: ${params.type}
-Price: $${params.targetPrice.toFixed(4)}
+Price: $${params.targetPrice.toFixed(precision)}
 Quantity: ${params.quantity.toFixed(4)} ${assetSymbol}
     `.trim()
 
@@ -211,17 +219,19 @@ Quantity: ${params.quantity.toFixed(4)} ${assetSymbol}
     targetPrice: number
     currentPrice: number
     asset?: string
+    pricePrecision?: number
   }) {
     const emoji = params.direction === 'above' ? '📈' : '📉'
     const directionText = params.direction === 'above' ? 'עלה מעל' : 'ירד מתחת'
     const assetText = params.asset || 'BTC/USD'
+    const precision = params.pricePrecision ?? 2
 
     const message = `
 ${emoji} <b>Price Alert Hit!</b>
 
-${assetText} ${directionText} $${params.targetPrice.toFixed(4)}
+${assetText} ${directionText} $${params.targetPrice.toFixed(precision)}
 
-<b>Current Price: $${params.currentPrice.toFixed(4)}</b>
+<b>Current Price: $${params.currentPrice.toFixed(precision)}</b>
     `.trim()
 
     return this.sendMessage(message)

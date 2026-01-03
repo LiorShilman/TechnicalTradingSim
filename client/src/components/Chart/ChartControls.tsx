@@ -44,19 +44,16 @@ CandleCounter.displayName = 'CandleCounter'
 // קומפוננטה ממוזערת לתצוגת מחיר - מתרנדרת רק כשהמחיר משתנה
 const PriceDisplay = memo(() => {
   const gameState = useGameStore(state => state.gameState)
+  const pricePrecision = useGameStore(state => state.pricePrecision)
 
   if (!gameState) return <span className="text-2xl font-mono font-bold text-green-400 inline-block min-w-[140px] text-left">-</span>
 
   const currentPrice = gameState.candles[gameState.currentIndex]?.close || 0
 
-  // עיצוב מחיר עם padding של אפסים (4 ספרות אחרי נקודה)
+  // עיצוב מחיר עם padding של אפסים - precision מחושב אוטומטית מהנתונים
   const formatPriceWithPadding = (price: number): string => {
-    // קבע כמה ספרות לפי סוג הנכס (crypto/forex = 4, stocks = 2)
-    const isCryptoOrForex = gameState.asset?.includes('/') || false
-    const decimals = isCryptoOrForex ? 4 : 2
-
-    // תחילה עגל למספר הספרות הנכון
-    const fixed = price.toFixed(decimals)
+    // תחילה עגל למספר הספרות הנכון (מה-store)
+    const fixed = price.toFixed(pricePrecision)
 
     // פצל לחלק שלם וחלק עשרוני
     const [integerPart, decimalPart] = fixed.split('.')

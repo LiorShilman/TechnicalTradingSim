@@ -289,6 +289,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               pnl: pnl,
               pnlPercent: closedPos.exitPnLPercent || 0,
               asset: newGame.asset,
+              pricePrecision: get().pricePrecision,
             })
           } else if (closedPos.exitReason === 'take_profit') {
             const pnl = closedPos.exitPnL || 0
@@ -305,6 +306,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
               pnl: pnl,
               pnlPercent: closedPos.exitPnLPercent || 0,
               asset: newGame.asset,
+              pricePrecision: get().pricePrecision,
             })
           }
         }
@@ -335,6 +337,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             targetPrice: alert.targetPrice,
             currentPrice: currentCandle.close,
             asset: newGame.asset,
+            pricePrecision: get().pricePrecision,
           })
         }
       }
@@ -503,6 +506,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
           pnl: pnl,
           pnlPercent: response.closedPosition.exitPnLPercent || 0,
           asset: get().gameState?.asset,
+          pricePrecision: get().pricePrecision,
         })
 
         // 📊 עדכון PnL בהפרות שקשורות לעסקה זו (אם יש)

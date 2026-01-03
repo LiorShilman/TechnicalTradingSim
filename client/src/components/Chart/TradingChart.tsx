@@ -2051,6 +2051,7 @@ if (sl && tp) {
           targetPrice: linePrice,
           currentPrice: currClose,
           asset: gameState?.asset,
+          pricePrecision: useGameStore.getState().pricePrecision,
         })
 
         // סימון שההתראה הופעלה
