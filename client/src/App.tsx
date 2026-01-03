@@ -677,7 +677,7 @@ function App() {
             משחק מסחר טכני
           </h1>
         </div>
-        <div className="w-full lg:w-auto overflow-x-auto">
+        <div className="w-full overflow-x-auto">
           <ChartControls />
         </div>
       </header>
