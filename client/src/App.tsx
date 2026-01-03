@@ -685,7 +685,7 @@ function App() {
       {/* Main content - Responsive: stacked on portrait, 3-column on landscape/desktop */}
       <div className="flex-1 flex flex-col landscape:flex-row lg:flex-row overflow-hidden relative z-10">
         {/* Left sidebar - Account, Order, Lists */}
-        {/* Portrait: full width, Landscape/Desktop: fixed width */}
+        {/* Portrait: full width + max-h-[40vh], Landscape (tablet): w-72, Desktop (lg+): w-96 full height */}
         <div className="w-full landscape:w-72 lg:w-96 bg-dark-panel border-l border-dark-border flex flex-col max-h-[40vh] portrait:max-h-[40vh] landscape:max-h-none lg:max-h-none overflow-y-auto landscape:overflow-y-visible lg:overflow-y-visible">
           <AccountInfo />
           <OrderPanel />
@@ -698,7 +698,7 @@ function App() {
         </div>
 
         {/* Chart area - אמצע */}
-        {/* Portrait: full width, Landscape/Desktop: flexible */}
+        {/* Portrait: full width, Landscape (tablet): flex-1, Desktop (lg+): flex-1 with EquityChart */}
         <div className="flex-1 flex flex-col p-2 landscape:p-3 lg:p-4 gap-2 landscape:gap-3 lg:gap-4 overflow-hidden">
           <div style={{ flex: '1 1 0', minHeight: '0' }}>
             <TradingChart />
@@ -710,14 +710,15 @@ function App() {
               currentPrice={gameState?.candles[gameState.currentIndex]?.close || 0}
             />
           </div>
-          <div style={{ flex: '0 0 330px' }} className="hidden landscape:hidden lg:block">
+          {/* EquityChart - Hidden on portrait and landscape (tablets), visible only on desktop (lg+) */}
+          <div style={{ flex: '0 0 330px' }} className="hidden lg:block">
             <EquityChart />
           </div>
         </div>
 
         {/* Right sidebar - כללים ומשמעת */}
-        {/* Portrait: hidden, Landscape: 280px, Desktop: 420px */}
-        <div className="hidden landscape:flex lg:flex w-64 landscape:w-64 lg:w-[420px] bg-dark-panel border-r border-dark-border flex-col overflow-y-auto">
+        {/* Portrait: hidden, Landscape (tablet): w-64, Desktop (lg+): w-[420px] */}
+        <div className="hidden landscape:flex lg:flex landscape:w-64 lg:w-[420px] bg-dark-panel border-r border-dark-border flex-col overflow-y-auto">
           {/* כללי מסחר */}
           <div className="p-2 landscape:p-3 lg:p-4 border-b border-dark-border">
             <RulesSettingsPanel />
