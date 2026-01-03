@@ -670,20 +670,23 @@ function App() {
         />
       )}
 
-      {/* Header */}
-      <header className="h-16 bg-dark-panel border-b border-dark-border flex items-center justify-between px-6 relative z-10">
-        <div className="flex items-center gap-6 min-w-[280px]">
-          <h1 className="text-2xl font-bold bg-gradient-to-l from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent whitespace-nowrap">
+      {/* Header - Responsive */}
+      <header className="h-auto lg:h-16 bg-dark-panel border-b border-dark-border flex flex-col lg:flex-row items-start lg:items-center justify-between px-3 lg:px-6 py-2 lg:py-0 relative z-10 gap-2 lg:gap-0">
+        <div className="flex items-center gap-3 lg:gap-6 min-w-[200px] lg:min-w-[280px]">
+          <h1 className="text-lg lg:text-2xl font-bold bg-gradient-to-l from-blue-400 via-purple-400 to-pink-400 bg-clip-text text-transparent whitespace-nowrap">
             משחק מסחר טכני
           </h1>
         </div>
-        <ChartControls />
+        <div className="w-full lg:w-auto overflow-x-auto">
+          <ChartControls />
+        </div>
       </header>
 
-      {/* Main content */}
-      <div className="flex-1 flex overflow-hidden relative z-10">
+      {/* Main content - Responsive: stacked on mobile, 3-column on desktop */}
+      <div className="flex-1 flex flex-col lg:flex-row overflow-hidden relative z-10">
         {/* Left sidebar - Account, Order, Lists */}
-        <div className="w-96 bg-dark-panel border-l border-dark-border flex flex-col">
+        {/* Mobile: full width, Desktop (lg+): 384px fixed */}
+        <div className="w-full lg:w-96 bg-dark-panel border-l border-dark-border flex flex-col max-h-[40vh] lg:max-h-none overflow-y-auto lg:overflow-y-visible">
           <AccountInfo />
           <OrderPanel />
 
@@ -695,7 +698,8 @@ function App() {
         </div>
 
         {/* Chart area - אמצע */}
-        <div className="flex-1 flex flex-col p-4 gap-4 overflow-hidden">
+        {/* Mobile: full width, Desktop: flexible */}
+        <div className="flex-1 flex flex-col p-2 lg:p-4 gap-2 lg:gap-4 overflow-hidden">
           <div style={{ flex: '1 1 0', minHeight: '0' }}>
             <TradingChart />
             <AlertSettings
@@ -706,13 +710,14 @@ function App() {
               currentPrice={gameState?.candles[gameState.currentIndex]?.close || 0}
             />
           </div>
-          <div style={{ flex: '0 0 330px' }}>
+          <div style={{ flex: '0 0 330px' }} className="hidden lg:block">
             <EquityChart />
           </div>
         </div>
 
         {/* Right sidebar - כללים ומשמעת */}
-        <div className="w-[420px] bg-dark-panel border-r border-dark-border flex flex-col overflow-y-auto">
+        {/* Mobile: hidden, Desktop (lg+): 420px fixed */}
+        <div className="hidden lg:flex w-[420px] bg-dark-panel border-r border-dark-border flex-col overflow-y-auto">
           {/* כללי מסחר */}
           <div className="p-4 border-b border-dark-border">
             <RulesSettingsPanel />
