@@ -121,9 +121,9 @@ export default function AccountInfo() {
   if (!gameState || !gameState.account) return null
 
   return (
-    <div className="p-4 border-b border-dark-border">
+    <div className="p-4 border-b border-dark-border border-2 border-purple-500/30 rounded-lg bg-dark-panel/20">
       <div className="flex items-center gap-2 mb-4">
-        <Wallet size={20} className="text-blue-400" />
+        <Wallet size={20} className="text-purple-400" />
         <h3 className="font-semibold">חשבון</h3>
       </div>
 
