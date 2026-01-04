@@ -459,6 +459,82 @@ export function detectRetests(
         }
       }
     }
+
+    // ---------- LONG REVERSAL: breakout UP from last pivot high (downtrend reversal) ----------
+    // מגמת ירידה → שבירת Pivot High (התנגדות) מעלה → Retest מלמעלה → המשך למעלה
+    if (ph && trendDown) {
+      const level = ph.price
+
+      // Breakout UP through resistance (reversal!)
+      if (candles[i].close > level + breakoutBuf) {
+        const breakoutIndex = i
+
+        const start = breakoutIndex + minBarsAfterBreakout
+        const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
+
+        const res = findStrictRetestLong(candles, {
+          level,
+          tol,
+          confirmBuf,
+          invalidBuf,
+          start,
+          end,
+          retestTypeMode,
+        })
+
+        if (res) {
+          signals.push({
+            kind: res.kind,
+            side: 'LONG',
+            level,
+            pivotIndex: ph.index,
+            breakoutIndex,
+            retestIndex: res.retestIndex,
+            confirmIndex: res.confirmIndex,
+            rejectIndex: res.rejectIndex,
+            time: candles[res.confirmIndex ?? res.rejectIndex ?? breakoutIndex].time,
+          })
+        }
+      }
+    }
+
+    // ---------- SHORT REVERSAL: breakout DOWN from last pivot low (uptrend reversal) ----------
+    // מגמת עליה → שבירת Pivot Low (תמיכה) מטה → Retest מלמטה → המשך למטה
+    if (pl && trendUp) {
+      const level = pl.price
+
+      // Breakout DOWN through support (reversal!)
+      if (candles[i].close < level - breakoutBuf) {
+        const breakoutIndex = i
+
+        const start = breakoutIndex + minBarsAfterBreakout
+        const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
+
+        const res = findStrictRetestShort(candles, {
+          level,
+          tol,
+          confirmBuf,
+          invalidBuf,
+          start,
+          end,
+          retestTypeMode,
+        })
+
+        if (res) {
+          signals.push({
+            kind: res.kind,
+            side: 'SHORT',
+            level,
+            pivotIndex: pl.index,
+            breakoutIndex,
+            retestIndex: res.retestIndex,
+            confirmIndex: res.confirmIndex,
+            rejectIndex: res.rejectIndex,
+            time: candles[res.confirmIndex ?? res.rejectIndex ?? breakoutIndex].time,
+          })
+        }
+      }
+    }
   }
 
   console.log(`✅ Detected ${signals.length} retest signals (including rejections)`)
