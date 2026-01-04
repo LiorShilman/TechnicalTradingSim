@@ -107,7 +107,57 @@ Test server health: `curl http://localhost:5000/api/health`
 - `client/src/components/Stats/GameStats.tsx` - End-game statistics display
 - `client/src/components/Stats/TradeHistory.tsx` - Professional trade history modal with date grouping and comprehensive stats
 - `client/src/components/Chart/ChartControls.tsx` - RTL toolbar with 5 logical groups: BUY/SELL quick trades, Help/History, chart controls, save/reset, candle navigation (ChevronLeft for RTL)
-- `client/src/App.tsx` - Main app with CSV upload, filename parsing, and balance persistence
+- `client/src/components/Chart/PatternLegendPanel.tsx` - Pattern list with auto-scroll, jump-to-pattern, and tooltip hints
+- `client/src/App.tsx` - Main app with CSV upload, filename parsing, balance persistence, and three-column layout
+
+### Layout Architecture
+
+The main game screen uses a **three-column responsive layout** optimized for desktop trading:
+
+**Three-Column Structure** (`App.tsx` lines 625-725):
+```
+┌────────────┬─────────────────┬─────────────┐
+│ Left       │ Middle          │ Right       │
+│ (w-96)     │ (flex-1)        │ (w-[420px]) │
+├────────────┼─────────────────┼─────────────┤
+│ Account    │ TradingChart    │ Rules       │
+│ Info       │ (calc height)   │ Settings    │
+│            │                 │ Panel       │
+│ Order      │ AlertSettings   ├─────────────┤
+│ Panel      │ (floating)      │ Rule        │
+│            │                 │ Compliance  │
+│ Pending    │ EquityChart +   │ Panel       │
+│ Orders     │ Pattern Legend  │             │
+│            │ (370px fixed)   │             │
+│ Positions  │                 │             │
+│ List       │                 │             │
+└────────────┴─────────────────┴─────────────┘
+```
+
+**Middle Column - Chart Area** (explicit height separation):
+- **TradingChart**: `height: calc(100% - 386px)` - Main price chart with volume
+  - 386px = 370px (bottom panel) + 16px (gap)
+  - Uses `flexShrink: 0` to prevent compression
+  - Contains candlestick chart, volume histogram, pattern markers, drawing tools
+
+- **Bottom Section**: `height: 370px, flexShrink: 0` - Fixed height panel
+  - **EquityChart** (75% width - `flex-[3]`): Real-time account equity graph
+  - **PatternLegendPanel** (25% width - `flex-1`): Detected patterns list
+  - Horizontal layout (`flex-row`) with 4px gap
+  - Fixed height ensures Equity Chart numbers are fully readable
+  - Pattern panel includes auto-scroll, jump-to-pattern, and detailed hints
+
+**Critical Layout Rules**:
+- Main chart uses **explicit calc() height** to prevent bottom panel from compressing it
+- Bottom section uses **flexShrink: 0** to maintain fixed height
+- This creates **hard separation** - neither can compress the other
+- Volume bars remain visible at bottom of main chart
+- All numerical data in Equity Chart is readable
+
+**Responsive Behavior**:
+- Desktop (lg+): Full three-column layout with bottom panel
+- Tablet landscape: Two columns, chart area collapses bottom panel
+- Portrait: Single column, vertical stacking
 
 ### Technology Stack
 

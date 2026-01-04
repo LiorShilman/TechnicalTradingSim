@@ -6,6 +6,7 @@ import PositionsList from './components/Trading/PositionsList'
 import PendingOrdersList from './components/Trading/PendingOrdersList'
 import ChartControls from './components/Chart/ChartControls'
 import EquityChart from './components/Chart/EquityChart'
+import PatternLegendPanel from './components/Chart/PatternLegendPanel'
 import GameStats from './components/Stats/GameStats'
 import TradeHistory from './components/Stats/TradeHistory'
 import HelpModal from './components/Help/HelpModal'
@@ -700,7 +701,8 @@ function App() {
         {/* Chart area - אמצע */}
         {/* Portrait: full width, Landscape (tablet): flex-1, Desktop (lg+): flex-1 with EquityChart */}
         <div className="flex-1 flex flex-col p-2 landscape:p-3 lg:p-4 gap-2 landscape:gap-3 lg:gap-4 overflow-hidden">
-          <div style={{ flex: '1 1 0', minHeight: '0' }}>
+          {/* Main Trading Chart - Takes remaining height after bottom section */}
+          <div className="flex-1 min-h-0" style={{ height: 'calc(100% - 386px)' }}>
             <TradingChart />
             <AlertSettings
               priceAlerts={priceAlerts}
@@ -710,9 +712,14 @@ function App() {
               currentPrice={gameState?.candles[gameState.currentIndex]?.close || 0}
             />
           </div>
-          {/* EquityChart - Hidden on portrait and landscape (tablets), visible only on desktop (lg+) */}
-          <div style={{ flex: '0 0 330px' }} className="hidden lg:block">
-            <EquityChart />
+          {/* EquityChart + Pattern Legend - Fixed height bottom section */}
+          <div className="hidden lg:flex flex-row gap-4" style={{ height: '370px', flexShrink: 0 }}>
+            <div className="flex-[3] h-full">
+              <EquityChart />
+            </div>
+            <div className="flex-1 h-full">
+              <PatternLegendPanel />
+            </div>
           </div>
         </div>
 
