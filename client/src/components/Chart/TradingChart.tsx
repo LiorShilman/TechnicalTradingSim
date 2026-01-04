@@ -2133,6 +2133,7 @@ if (sl && tp) {
 
     // רשימת markers חדשה
     const markers: any[] = []
+    const markerMap = new Map<string, any>() // Track markers to prevent duplicates at same index
 
     // יצירת סימון לכל תבנית שנחשפה
     gameState.patterns.forEach((pattern) => {
@@ -2187,25 +2188,33 @@ if (sl && tp) {
       bottomLineSeries.setData(bottomLineData)
       patternLineSeriesRef.current.push(bottomLineSeries)
 
-      // הוספת marker לתחילת התבנית עם תיאור מקצועי
+      // הוספת marker לתחילת התבנית (short icon + name only for readability)
+      // Use Map to prevent duplicate markers at the same index
       if (pattern.startIndex <= gameState.currentIndex) {
         const startCandle = gameState.candles[pattern.startIndex]
+        const markerKey = `pattern-${pattern.startIndex}`
 
-        // Use the professional description from server if available, otherwise fallback to basic name
-        const defaultNames: Record<string, string> = {
-          breakout: '⚡ Breakout',
-          retest: '🔄 Retest',
-          flag: '🚩 Bull Flag',
+        // Skip if we already have a marker at this index
+        if (!markerMap.has(markerKey)) {
+          // Use short icon + name for markers (full description is in the pattern panel)
+          const defaultNames: Record<string, string> = {
+            breakout: '⚡ Breakout',
+            retest: '🔄 Retest',
+            flag: '🚩 Bull Flag',
+          }
+          const markerText = defaultNames[pattern.type] || pattern.type
+
+          const marker = {
+            time: startCandle.time as Time,
+            position: 'aboveBar' as const,
+            color,
+            shape: 'arrowDown' as const,
+            text: markerText,
+          }
+
+          markers.push(marker)
+          markerMap.set(markerKey, marker)
         }
-        const markerText = pattern.metadata.description || defaultNames[pattern.type] || pattern.type
-
-        markers.push({
-          time: startCandle.time as Time,
-          position: 'aboveBar' as const,
-          color,
-          shape: 'arrowDown' as const,
-          text: markerText,
-        })
       }
     })
 
@@ -2979,7 +2988,7 @@ if (sl && tp) {
 
       {/* Pattern Legend */}
       {gameState?.patterns && gameState.patterns.some(p => p.startIndex <= gameState.currentIndex) && (
-        <div className="absolute top-3 left-3 bg-dark-bg/95 backdrop-blur-md rounded-xl p-4 text-xs border-2 border-cyan-500/30 shadow-lg max-w-md">
+        <div className="absolute top-20 left-4 z-10 bg-dark-bg/95 backdrop-blur-md rounded-xl p-4 text-xs border-2 border-cyan-500/30 shadow-lg max-w-md">
           <div className="font-bold mb-3 text-cyan-400 text-sm flex items-center gap-2">
             <span className="text-lg">📊</span>
             <span>תבניות טכניות מזוהות</span>

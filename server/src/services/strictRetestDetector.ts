@@ -613,7 +613,7 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
 
   return {
     type: 'retest',
-    startIndex: signal.pivotIndex,
+    startIndex: signal.retestIndex,  // Start from retest touch, not breakout
     endIndex: signal.confirmIndex,
     expectedEntry,
     expectedExit,
@@ -642,15 +642,25 @@ export function detectRetestPatterns(
 
   console.log(`🎯 ${successfulRetests.length} successful retests out of ${signals.length} total signals`)
 
-  // Convert to Pattern format
+  // Convert to Pattern format with minimum gap to prevent overlaps
   const patterns: Pattern[] = []
+  const minGap = 30 // Minimum candles between patterns to prevent overlap
+
   for (const signal of successfulRetests) {
     const pattern = convertRetestSignalToPattern(signal)
-    if (pattern) patterns.push(pattern)
+    if (!pattern) continue
+
+    // Check if this pattern overlaps with existing patterns
+    const hasOverlap = patterns.some(p => Math.abs(p.startIndex - pattern.startIndex) < minGap)
+    if (hasOverlap) continue
+
+    patterns.push(pattern)
+    console.log(`   ✓ Added ${signal.isReversal ? 'Reversal' : 'Continuation'} ${signal.side} Retest at index ${pattern.startIndex}`)
 
     // Stop when we have enough patterns
     if (patterns.length >= targetCount) break
   }
 
+  console.log(`📊 Selected ${patterns.length} non-overlapping retest patterns from ${successfulRetests.length} candidates`)
   return patterns
 }
