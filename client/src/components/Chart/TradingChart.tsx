@@ -2976,9 +2976,12 @@ if (sl && tp) {
 
       {/* Pattern Legend */}
       {gameState?.patterns && gameState.patterns.some(p => p.startIndex <= gameState.currentIndex) && (
-        <div className="absolute top-3 left-3 bg-dark-bg/90 backdrop-blur-sm rounded-lg p-3 text-xs border border-dark-border">
-          <div className="font-semibold mb-2 text-text-secondary">תבניות זוהו:</div>
-          <div className="space-y-1">
+        <div className="absolute top-3 left-3 bg-dark-bg/95 backdrop-blur-md rounded-xl p-4 text-xs border-2 border-cyan-500/30 shadow-lg max-w-md">
+          <div className="font-bold mb-3 text-cyan-400 text-sm flex items-center gap-2">
+            <span className="text-lg">📊</span>
+            <span>תבניות טכניות מזוהות</span>
+          </div>
+          <div className="space-y-2">
             {gameState.patterns.filter(p => p.startIndex <= gameState.currentIndex).map((pattern, idx) => {
               const patternInfo = {
                 breakout: { icon: '⚡', name: 'Breakout', color: '#FFD700' },
@@ -2988,12 +2991,32 @@ if (sl && tp) {
               const info = patternInfo[pattern.type as keyof typeof patternInfo]
 
               return (
-                <div key={idx} className="flex items-center gap-2">
-                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: info.color }}></div>
-                  <span>{info.icon} {info.name}</span>
-                  <span className="text-text-secondary text-[10px]">
-                    (נרות {pattern.startIndex}-{Math.min(pattern.endIndex, gameState.currentIndex)})
-                  </span>
+                <div
+                  key={idx}
+                  className="group relative bg-dark-card/50 hover:bg-dark-card/80 rounded-lg p-2 border border-dark-border hover:border-cyan-500/50 transition-all cursor-help"
+                  title={pattern.metadata.hint}
+                >
+                  <div className="flex items-center gap-2 mb-1">
+                    <div className="w-2 h-2 rounded-full animate-pulse" style={{ backgroundColor: info.color }}></div>
+                    <span className="font-semibold">{info.icon} {info.name}</span>
+                    <span className="text-text-secondary text-[10px]">
+                      #{idx + 1}
+                    </span>
+                  </div>
+                  <div className="text-[11px] text-cyan-300 font-medium mb-1">
+                    {pattern.metadata.description}
+                  </div>
+                  <div className="flex items-center justify-between text-[10px] text-text-secondary">
+                    <span>נרות: {pattern.startIndex}-{Math.min(pattern.endIndex, gameState.currentIndex)}</span>
+                    <span className="bg-purple-500/20 px-2 py-0.5 rounded">איכות: {pattern.metadata.quality}%</span>
+                  </div>
+
+                  {/* Tooltip on hover */}
+                  <div className="absolute hidden group-hover:block left-0 top-full mt-2 z-50 bg-dark-bg/98 border-2 border-cyan-500/50 rounded-lg p-3 shadow-2xl w-80 backdrop-blur-md">
+                    <div className="text-xs whitespace-pre-wrap leading-relaxed text-right" dir="rtl">
+                      {pattern.metadata.hint}
+                    </div>
+                  </div>
                 </div>
               )
             })}
