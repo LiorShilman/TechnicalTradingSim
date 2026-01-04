@@ -10,9 +10,12 @@
  * - זיהוי רמות מפתח (support/resistance) באמצעות pivot points
  * - בדיקת נפח יחסי לאימות שבירות
  * - אימות מבני של התבנית (לא רק תנועות מחיר)
+ *
+ * NEW: תמיכה ב-Strict Retest Detector המקצועי
  */
 
 import type { Candle, Pattern } from '../types/index.js'
+import { detectRetestPatterns } from './strictRetestDetector.js'
 
 /**
  * מציאת pivot high - נקודה שהיא הגבוהה ביותר בטווח
@@ -346,43 +349,114 @@ function detectBullFlagPattern(candles: Candle[], startIdx: number): Pattern | n
 
 /**
  * סריקת כל הנרות וזיהוי דפוסים
+ *
+ * @param candles - מערך נרות
+ * @param targetCount - מספר תבניות מבוקש
+ * @param useStrictRetest - השתמש ב-Strict Retest Detector המקצועי (default: true)
  */
-export function detectPatterns(candles: Candle[], targetCount: number = 8): Pattern[] {
+export function detectPatterns(
+  candles: Candle[],
+  targetCount: number = 8,
+  useStrictRetest: boolean = true
+): Pattern[] {
   console.log(`🔍 Starting pattern detection on ${candles.length} candles...`)
+  console.log(`   Mode: ${useStrictRetest ? 'STRICT' : 'LEGACY'} Retest Detection`)
 
   const patterns: Pattern[] = []
-  const minGap = 30 // מרווח מינימלי בין דפוסים
 
-  // סריקה לפי סדר: breakout, retest, flag
-  const detectors = [
-    { name: 'Breakout', fn: detectBreakoutPattern, quota: Math.ceil(targetCount * 0.4) },
-    { name: 'Retest', fn: detectRetestPattern, quota: Math.ceil(targetCount * 0.35) },
-    { name: 'Bull Flag', fn: detectBullFlagPattern, quota: Math.ceil(targetCount * 0.25) },
-  ]
+  // אם Strict mode מופעל, השתמש ב-detector המקצועי לזיהוי Retest
+  if (useStrictRetest) {
+    console.log('📊 Using Strict Retest Detector (pivot-based, ATR buffers)...')
 
-  /* for (const detector of detectors) {
-    console.log(`  Scanning for ${detector.name} patterns (quota: ${detector.quota})...`)
-    let found = 0
+    // זיהוי Retest עם הדטקטור המקצועי
+    const retestQuota = Math.ceil(targetCount * 0.5) // 50% retest patterns
+    const retestPatterns = detectRetestPatterns(candles, retestQuota, {
+      pivotLeft: 2,
+      pivotRight: 2,
+      useTrendFilter: false, // כיבוי trend filter לעכשיו
+      atrPeriod: 14,
+      breakoutAtrMult: 0.10,
+      retestAtrMult: 0.20,
+      confirmAtrMult: 0.05,
+      invalidAtrMult: 0.25,
+      minBarsAfterBreakout: 5,
+      maxBarsToWaitRetest: 60,
+      retestTypeMode: 'BOTH', // WICK or CLOSE
+    })
 
-    for (let i = 50; i < candles.length - 50 && found < detector.quota; i++) {
-      // בדיקה שאין חפיפה עם דפוסים קיימים
-      const hasOverlap = patterns.some(p =>
-        Math.abs(p.startIndex - i) < minGap
-      )
+    patterns.push(...retestPatterns)
+    console.log(`   ✅ Found ${retestPatterns.length} strict retest patterns`)
 
-      if (hasOverlap) continue
+    // השאר מקום ל-Breakout ו-Bull Flag (legacy detectors)
+    const remainingQuota = targetCount - patterns.length
+    if (remainingQuota > 0) {
+      console.log(`   🔍 Scanning for ${remainingQuota} additional patterns (Breakout/Flag)...`)
 
-      const pattern = detector.fn(candles, i)
-      if (pattern && pattern.metadata.quality >= 70) {
-        patterns.push(pattern)
-        found++
-        console.log(`    ✓ Found ${detector.name} at index ${i} (quality: ${pattern.metadata.quality})`)
-        i += minGap // דילוג קדימה כדי למנוע חפיפה
+      const minGap = 30
+      const breakoutQuota = Math.ceil(remainingQuota * 0.6)
+      const flagQuota = remainingQuota - breakoutQuota
+
+      // Breakout patterns
+      let breakoutFound = 0
+      for (let i = 50; i < candles.length - 50 && breakoutFound < breakoutQuota; i++) {
+        const hasOverlap = patterns.some(p => Math.abs(p.startIndex - i) < minGap)
+        if (hasOverlap) continue
+
+        const pattern = detectBreakoutPattern(candles, i)
+        if (pattern && pattern.metadata.quality >= 70) {
+          patterns.push(pattern)
+          breakoutFound++
+          i += minGap
+        }
       }
-    }
 
-    console.log(`    Found ${found} ${detector.name} patterns`)
-  } */
+      // Bull Flag patterns
+      let flagFound = 0
+      for (let i = 50; i < candles.length - 50 && flagFound < flagQuota; i++) {
+        const hasOverlap = patterns.some(p => Math.abs(p.startIndex - i) < minGap)
+        if (hasOverlap) continue
+
+        const pattern = detectBullFlagPattern(candles, i)
+        if (pattern && pattern.metadata.quality >= 65) {
+          patterns.push(pattern)
+          flagFound++
+          i += minGap
+        }
+      }
+
+      console.log(`   ✅ Found ${breakoutFound} breakout, ${flagFound} flag patterns`)
+    }
+  } else {
+    // LEGACY mode - השתמש בדטקטורים הישנים
+    console.log('📊 Using Legacy Pattern Detection...')
+
+    const minGap = 30
+    const detectors = [
+      { name: 'Breakout', fn: detectBreakoutPattern, quota: Math.ceil(targetCount * 0.4) },
+      { name: 'Retest', fn: detectRetestPattern, quota: Math.ceil(targetCount * 0.35) },
+      { name: 'Bull Flag', fn: detectBullFlagPattern, quota: Math.ceil(targetCount * 0.25) },
+    ]
+
+    for (const detector of detectors) {
+      console.log(`  Scanning for ${detector.name} patterns (quota: ${detector.quota})...`)
+      let found = 0
+
+      for (let i = 50; i < candles.length - 50 && found < detector.quota; i++) {
+        const hasOverlap = patterns.some(p => Math.abs(p.startIndex - i) < minGap)
+        if (hasOverlap) continue
+
+        const pattern = detector.fn(candles, i)
+        if (pattern && pattern.metadata.quality >= 70) {
+          patterns.push(pattern)
+          found++
+          console.log(`    ✓ Found ${detector.name} at index ${i} (quality: ${pattern.metadata.quality})`)
+          i += minGap
+        }
+      }
+
+      console.log(`    Found ${found} ${detector.name} patterns`)
+    }
+  }
 
   // מיון לפי startIndex
   patterns.sort((a, b) => a.startIndex - b.startIndex)
