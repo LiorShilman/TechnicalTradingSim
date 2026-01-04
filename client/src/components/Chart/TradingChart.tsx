@@ -2187,21 +2187,24 @@ if (sl && tp) {
       bottomLineSeries.setData(bottomLineData)
       patternLineSeriesRef.current.push(bottomLineSeries)
 
-      // הוספת marker לתחילת התבנית
+      // הוספת marker לתחילת התבנית עם תיאור מקצועי
       if (pattern.startIndex <= gameState.currentIndex) {
         const startCandle = gameState.candles[pattern.startIndex]
-        const patternNames = {
+
+        // Use the professional description from server if available, otherwise fallback to basic name
+        const defaultNames: Record<string, string> = {
           breakout: '⚡ Breakout',
           retest: '🔄 Retest',
           flag: '🚩 Bull Flag',
         }
+        const markerText = pattern.metadata.description || defaultNames[pattern.type] || pattern.type
 
         markers.push({
           time: startCandle.time as Time,
           position: 'aboveBar' as const,
           color,
           shape: 'arrowDown' as const,
-          text: patternNames[pattern.type as keyof typeof patternNames],
+          text: markerText,
         })
       }
     })
