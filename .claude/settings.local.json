@@ -37,7 +37,11 @@
       "Bash(pm2 logs:*)",
       "Bash(pm2 save:*)",
       "Bash(grep:*)",
-      "Bash(pm2 delete:*)"
+      "Bash(pm2 delete:*)",
+      "Bash(LONG Retest)",
+      "Bash(Wick Touch\"\n\"המשך מגמה)",
+      "Bash(SHORT Retest)",
+      "Bash(Close Touch\"\n\nHints now include:\n1. Pattern type \\(reversal/continuation\\)\n2. Trend direction and pivot break\n3. Retest behavior\n4. Confirmation details\n5. Entry and SL levels\n\nExample hint:\n🔄 היפוך מגמה LONG:\n1️⃣ מגמת ירידה שוברת Pivot High \\(התנגדות\\) מעלה\n2️⃣ Retest - חזרה לבדיקת הרמה מלמעלה\n3️⃣ אישור - המשך למעלה לאחר bounce\n💡 רמת כניסה: 5123.45 | SL: 5042.10\n\nThis provides comprehensive educational feedback for pattern recognition training.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }

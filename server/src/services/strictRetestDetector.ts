@@ -63,6 +63,8 @@ export interface RetestSignal {
   confirmIndex?: number     // Where confirmation happened (if successful)
   rejectIndex?: number      // Where rejection happened (if failed)
   time: number              // Timestamp of final event
+  isReversal: boolean       // true = reversal pattern, false = continuation pattern
+  pivotType: 'high' | 'low' // Which type of pivot was broken
 }
 
 /**
@@ -417,6 +419,8 @@ export function detectRetests(
             confirmIndex: res.confirmIndex,
             rejectIndex: res.rejectIndex,
             time: candles[res.confirmIndex ?? res.rejectIndex ?? breakoutIndex].time,
+            isReversal: false, // Continuation: uptrend breaking pivot high
+            pivotType: 'high',
           })
         }
       }
@@ -455,6 +459,8 @@ export function detectRetests(
             confirmIndex: res.confirmIndex,
             rejectIndex: res.rejectIndex,
             time: candles[res.confirmIndex ?? res.rejectIndex ?? breakoutIndex].time,
+            isReversal: false, // Continuation: downtrend breaking pivot low
+            pivotType: 'low',
           })
         }
       }
@@ -493,6 +499,8 @@ export function detectRetests(
             confirmIndex: res.confirmIndex,
             rejectIndex: res.rejectIndex,
             time: candles[res.confirmIndex ?? res.rejectIndex ?? breakoutIndex].time,
+            isReversal: true, // REVERSAL: downtrend breaking resistance
+            pivotType: 'high',
           })
         }
       }
@@ -531,6 +539,8 @@ export function detectRetests(
             confirmIndex: res.confirmIndex,
             rejectIndex: res.rejectIndex,
             time: candles[res.confirmIndex ?? res.rejectIndex ?? breakoutIndex].time,
+            isReversal: true, // REVERSAL: uptrend breaking support
+            pivotType: 'low',
           })
         }
       }
@@ -562,6 +572,45 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
   // Stop loss: 1.5% beyond level
   const stopLoss = isLong ? level * 0.985 : level * 1.015
 
+  // Build detailed description
+  const patternTypeText = signal.isReversal ? 'היפוך מגמה' : 'המשך מגמה'
+  const pivotTypeText = signal.pivotType === 'high' ? 'Pivot High' : 'Pivot Low'
+  const retestType = signal.kind.includes('WICK') ? 'Wick Touch' : 'Close Touch'
+
+  const description = `${patternTypeText} | ${isLong ? 'LONG' : 'SHORT'} Retest | ${retestType}`
+
+  // Build detailed hint
+  let hint = ''
+  if (signal.isReversal) {
+    if (isLong) {
+      hint = `🔄 היפוך מגמה LONG:\n` +
+             `1️⃣ מגמת ירידה שוברת ${pivotTypeText} (התנגדות) מעלה\n` +
+             `2️⃣ Retest - חזרה לבדיקת הרמה מלמעלה\n` +
+             `3️⃣ אישור - המשך למעלה לאחר bounce\n` +
+             `💡 רמת כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
+    } else {
+      hint = `🔄 היפוך מגמה SHORT:\n` +
+             `1️⃣ מגמת עליה שוברת ${pivotTypeText} (תמיכה) מטה\n` +
+             `2️⃣ Retest - חזרה לבדיקת הרמה מלמטה\n` +
+             `3️⃣ אישור - המשך למטה לאחר bounce\n` +
+             `💡 רמת כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
+    }
+  } else {
+    if (isLong) {
+      hint = `📈 המשך מגמה LONG:\n` +
+             `1️⃣ מגמת עליה שוברת ${pivotTypeText} (התנגדות) מעלה\n` +
+             `2️⃣ Retest - חזרה לבדיקת הרמה מלמעלה\n` +
+             `3️⃣ אישור - המשך מעלה לאחר bounce\n` +
+             `💡 רמת כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
+    } else {
+      hint = `📉 המשך מגמה SHORT:\n` +
+             `1️⃣ מגמת ירידה שוברת ${pivotTypeText} (תמיכה) מטה\n` +
+             `2️⃣ Retest - חזרה לבדיקת הרמה מלמטה\n` +
+             `3️⃣ אישור - המשך מטה לאחר bounce\n` +
+             `💡 רמת כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
+    }
+  }
+
   return {
     type: 'retest',
     startIndex: signal.pivotIndex,
@@ -571,10 +620,8 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
     stopLoss,
     metadata: {
       quality: 85 + Math.floor(Math.random() * 10), // High quality for strict detection
-      description: `Retest ${isLong ? 'LONG' : 'SHORT'} מוצלח - ${signal.kind}`,
-      hint: isLong
-        ? 'תבנית Retest מקצועית: שבירת התנגדות, חזרה לבדיקה, ואישור (LONG)'
-        : 'תבנית Retest מקצועית: שבירת תמיכה, חזרה לבדיקה, ואישור (SHORT)',
+      description,
+      hint,
     },
   }
 }
