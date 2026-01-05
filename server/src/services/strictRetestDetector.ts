@@ -579,35 +579,39 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
 
   const description = `${patternTypeText} | ${isLong ? 'LONG' : 'SHORT'} Retest | ${retestType}`
 
-  // Build detailed hint
+  // Build detailed hint with correct logic for LONG/SHORT
   let hint = ''
   if (signal.isReversal) {
     if (isLong) {
+      // REVERSAL LONG: Downtrend → breaks resistance (pivot high) UP → retest from above → continue up
       hint = `🔄 היפוך מגמה LONG:\n` +
-             `1️⃣ מגמת ירידה שוברת ${pivotTypeText} (התנגדות) מעלה\n` +
-             `2️⃣ Retest - חזרה לבדיקת הרמה מלמעלה\n` +
-             `3️⃣ אישור - המשך למעלה לאחר bounce\n` +
-             `💡 רמת כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
+             `1️⃣ מגמת ירידה → שבירת Pivot High (התנגדות) כלפי מעלה\n` +
+             `2️⃣ Retest - חזרה לבדיקת רמת השבירה מלמעלה (wick/close touch)\n` +
+             `3️⃣ אישור - המשך למעלה אחרי bounce מהרמה\n` +
+             `💡 כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
     } else {
+      // REVERSAL SHORT: Uptrend → breaks support (pivot low) DOWN → retest from below → continue down
       hint = `🔄 היפוך מגמה SHORT:\n` +
-             `1️⃣ מגמת עליה שוברת ${pivotTypeText} (תמיכה) מטה\n` +
-             `2️⃣ Retest - חזרה לבדיקת הרמה מלמטה\n` +
-             `3️⃣ אישור - המשך למטה לאחר bounce\n` +
-             `💡 רמת כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
+             `1️⃣ מגמת עליה → שבירת Pivot Low (תמיכה) כלפי מטה\n` +
+             `2️⃣ Retest - חזרה לבדיקת רמת השבירה מלמטה (wick/close touch)\n` +
+             `3️⃣ אישור - המשך למטה אחרי bounce מהרמה\n` +
+             `💡 כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
     }
   } else {
     if (isLong) {
+      // CONTINUATION LONG: Uptrend → breaks resistance (pivot high) UP → retest from above → continue up
       hint = `📈 המשך מגמה LONG:\n` +
-             `1️⃣ מגמת עליה שוברת ${pivotTypeText} (התנגדות) מעלה\n` +
-             `2️⃣ Retest - חזרה לבדיקת הרמה מלמעלה\n` +
-             `3️⃣ אישור - המשך מעלה לאחר bounce\n` +
-             `💡 רמת כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
+             `1️⃣ מגמת עליה → שבירת Pivot High (התנגדות) כלפי מעלה\n` +
+             `2️⃣ Retest - חזרה לבדיקת רמת השבירה מלמעלה (wick/close touch)\n` +
+             `3️⃣ אישור - המשך מעלה אחרי bounce מהרמה\n` +
+             `💡 כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
     } else {
+      // CONTINUATION SHORT: Downtrend → breaks support (pivot low) DOWN → retest from below → continue down
       hint = `📉 המשך מגמה SHORT:\n` +
-             `1️⃣ מגמת ירידה שוברת ${pivotTypeText} (תמיכה) מטה\n` +
-             `2️⃣ Retest - חזרה לבדיקת הרמה מלמטה\n` +
-             `3️⃣ אישור - המשך מטה לאחר bounce\n` +
-             `💡 רמת כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
+             `1️⃣ מגמת ירידה → שבירת Pivot Low (תמיכה) כלפי מטה\n` +
+             `2️⃣ Retest - חזרה לבדיקת רמת השבירה מלמטה (wick/close touch)\n` +
+             `3️⃣ אישור - המשך מטה אחרי bounce מהרמה\n` +
+             `💡 כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)}`
     }
   }
 
