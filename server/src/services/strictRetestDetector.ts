@@ -247,11 +247,14 @@ function findStrictRetestLong(
   let touchedIndexWick: number | undefined = undefined
   let touchedIndexClose: number | undefined = undefined
 
+  console.log(`      🔍 Searching for LONG retest (level: ${level.toFixed(2)}, tol: ${tol.toFixed(2)})`)
+
   for (let i = start; i <= end; i++) {
     const c = candles[i]
 
     // REJECT by invalidation: close decisively below level
     if (c.close < level - invalidBuf) {
+      console.log(`      ❌ INVALIDATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - invalidBuf).toFixed(2)}`)
       return { kind: 'REJECT_LONG_INVALIDATION', rejectIndex: i }
     }
 
@@ -259,14 +262,22 @@ function findStrictRetestLong(
     const wickTouch = isLongWickTouch(c, level, tol)
     const closeTouch = isLongCloseTouch(c, level, tol)
 
-    if (wickTouch && touchedIndexWick === undefined) touchedIndexWick = i
-    if (closeTouch && touchedIndexClose === undefined) touchedIndexClose = i
+    if (wickTouch && touchedIndexWick === undefined) {
+      touchedIndexWick = i
+      console.log(`      👇 WICK TOUCH at index ${i}: low=${c.low.toFixed(2)}, close=${c.close.toFixed(2)}`)
+    }
+    if (closeTouch && touchedIndexClose === undefined) {
+      touchedIndexClose = i
+      console.log(`      📍 CLOSE TOUCH at index ${i}: close=${c.close.toFixed(2)}`)
+    }
 
     // Confirmation strict: close above level + confirmBuf AND higher than previous close
     const prev = i > 0 ? candles[i - 1] : c
     const confirmed = (c.close > level + confirmBuf) && (c.close > prev.close)
 
     if (confirmed) {
+      console.log(`      ✅ CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)} && > prev ${prev.close.toFixed(2)}`)
+
       // Determine which retest type we accept (strict ordering: must have had a touch before confirm)
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
@@ -283,6 +294,7 @@ function findStrictRetestLong(
     }
   }
 
+  console.log(`      ⏱️ TIMEOUT: No confirmation found within window`)
   return { kind: 'REJECT_LONG_TIMEOUT', rejectIndex: end }
 }
 
@@ -298,25 +310,36 @@ function findStrictRetestShort(
   let touchedIndexWick: number | undefined = undefined
   let touchedIndexClose: number | undefined = undefined
 
+  console.log(`      🔍 Searching for SHORT retest (level: ${level.toFixed(2)}, tol: ${tol.toFixed(2)})`)
+
   for (let i = start; i <= end; i++) {
     const c = candles[i]
 
     // REJECT by invalidation: close decisively above level
     if (c.close > level + invalidBuf) {
+      console.log(`      ❌ INVALIDATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + invalidBuf).toFixed(2)}`)
       return { kind: 'REJECT_SHORT_INVALIDATION', rejectIndex: i }
     }
 
     const wickTouch = isShortWickTouch(c, level, tol)
     const closeTouch = isShortCloseTouch(c, level, tol)
 
-    if (wickTouch && touchedIndexWick === undefined) touchedIndexWick = i
-    if (closeTouch && touchedIndexClose === undefined) touchedIndexClose = i
+    if (wickTouch && touchedIndexWick === undefined) {
+      touchedIndexWick = i
+      console.log(`      👆 WICK TOUCH at index ${i}: high=${c.high.toFixed(2)}, close=${c.close.toFixed(2)}`)
+    }
+    if (closeTouch && touchedIndexClose === undefined) {
+      touchedIndexClose = i
+      console.log(`      📍 CLOSE TOUCH at index ${i}: close=${c.close.toFixed(2)}`)
+    }
 
     // Confirmation strict: close below level - confirmBuf AND lower than previous close
     const prev = i > 0 ? candles[i - 1] : c
     const confirmed = (c.close < level - confirmBuf) && (c.close < prev.close)
 
     if (confirmed) {
+      console.log(`      ✅ CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)} && < prev ${prev.close.toFixed(2)}`)
+
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
 
@@ -332,6 +355,7 @@ function findStrictRetestShort(
     }
   }
 
+  console.log(`      ⏱️ TIMEOUT: No confirmation found within window`)
   return { kind: 'REJECT_SHORT_TIMEOUT', rejectIndex: end }
 }
 
@@ -394,9 +418,16 @@ export function detectRetests(
       if (candles[i].close > level + breakoutBuf) {
         const breakoutIndex = i
 
+        console.log(`🔵 LONG CONTINUATION - Breakout detected at index ${breakoutIndex}:`)
+        console.log(`   Pivot High: ${level.toFixed(2)} at index ${ph.index}`)
+        console.log(`   Breakout: ${candles[i].close.toFixed(2)} > ${(level + breakoutBuf).toFixed(2)}`)
+        console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
+
         // Search retest window
         const start = breakoutIndex + minBarsAfterBreakout
         const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
+
+        console.log(`   Retest search window: ${start} to ${end} (${end - start + 1} candles)`)
 
         const res = findStrictRetestLong(candles, {
           level,
@@ -409,6 +440,16 @@ export function detectRetests(
         })
 
         if (res) {
+          console.log(`   ✅ Result: ${res.kind}`)
+          if (res.retestIndex !== undefined) {
+            console.log(`      Retest at index ${res.retestIndex} (${res.retestIndex - breakoutIndex} bars after breakout)`)
+            console.log(`      Retest price: low=${candles[res.retestIndex].low.toFixed(2)}, close=${candles[res.retestIndex].close.toFixed(2)}`)
+          }
+          if (res.confirmIndex !== undefined) {
+            console.log(`      Confirm at index ${res.confirmIndex}`)
+            console.log(`      Confirm price: close=${candles[res.confirmIndex].close.toFixed(2)}`)
+          }
+
           signals.push({
             kind: res.kind,
             side: 'LONG',
@@ -422,6 +463,8 @@ export function detectRetests(
             isReversal: false, // Continuation: uptrend breaking pivot high
             pivotType: 'high',
           })
+        } else {
+          console.log(`   ❌ No retest found`)
         }
       }
     }
@@ -435,8 +478,15 @@ export function detectRetests(
       if (candles[i].close < level - breakoutBuf) {
         const breakoutIndex = i
 
+        console.log(`🔴 SHORT CONTINUATION - Breakout detected at index ${breakoutIndex}:`)
+        console.log(`   Pivot Low: ${level.toFixed(2)} at index ${pl.index}`)
+        console.log(`   Breakout: ${candles[i].close.toFixed(2)} < ${(level - breakoutBuf).toFixed(2)}`)
+        console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
+
         const start = breakoutIndex + minBarsAfterBreakout
         const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
+
+        console.log(`   Retest search window: ${start} to ${end} (${end - start + 1} candles)`)
 
         const res = findStrictRetestShort(candles, {
           level,
@@ -449,6 +499,16 @@ export function detectRetests(
         })
 
         if (res) {
+          console.log(`   ✅ Result: ${res.kind}`)
+          if (res.retestIndex !== undefined) {
+            console.log(`      Retest at index ${res.retestIndex} (${res.retestIndex - breakoutIndex} bars after breakout)`)
+            console.log(`      Retest price: high=${candles[res.retestIndex].high.toFixed(2)}, close=${candles[res.retestIndex].close.toFixed(2)}`)
+          }
+          if (res.confirmIndex !== undefined) {
+            console.log(`      Confirm at index ${res.confirmIndex}`)
+            console.log(`      Confirm price: close=${candles[res.confirmIndex].close.toFixed(2)}`)
+          }
+
           signals.push({
             kind: res.kind,
             side: 'SHORT',
@@ -462,6 +522,8 @@ export function detectRetests(
             isReversal: false, // Continuation: downtrend breaking pivot low
             pivotType: 'low',
           })
+        } else {
+          console.log(`   ❌ No retest found`)
         }
       }
     }
@@ -475,8 +537,16 @@ export function detectRetests(
       if (candles[i].close > level + breakoutBuf) {
         const breakoutIndex = i
 
+        console.log(`🟢 LONG REVERSAL - Breakout detected at index ${breakoutIndex}:`)
+        console.log(`   Pivot High: ${level.toFixed(2)} at index ${ph.index}`)
+        console.log(`   Breakout UP: ${candles[i].close.toFixed(2)} > ${(level + breakoutBuf).toFixed(2)}`)
+        console.log(`   (Downtrend breaking resistance)`)
+        console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
+
         const start = breakoutIndex + minBarsAfterBreakout
         const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
+
+        console.log(`   Retest search window: ${start} to ${end} (${end - start + 1} candles)`)
 
         const res = findStrictRetestLong(candles, {
           level,
@@ -489,6 +559,16 @@ export function detectRetests(
         })
 
         if (res) {
+          console.log(`   ✅ Result: ${res.kind}`)
+          if (res.retestIndex !== undefined) {
+            console.log(`      Retest at index ${res.retestIndex} (${res.retestIndex - breakoutIndex} bars after breakout)`)
+            console.log(`      Retest price: low=${candles[res.retestIndex].low.toFixed(2)}, close=${candles[res.retestIndex].close.toFixed(2)}`)
+          }
+          if (res.confirmIndex !== undefined) {
+            console.log(`      Confirm at index ${res.confirmIndex}`)
+            console.log(`      Confirm price: close=${candles[res.confirmIndex].close.toFixed(2)}`)
+          }
+
           signals.push({
             kind: res.kind,
             side: 'LONG',
@@ -502,6 +582,8 @@ export function detectRetests(
             isReversal: true, // REVERSAL: downtrend breaking resistance
             pivotType: 'high',
           })
+        } else {
+          console.log(`   ❌ No retest found`)
         }
       }
     }
@@ -515,8 +597,16 @@ export function detectRetests(
       if (candles[i].close < level - breakoutBuf) {
         const breakoutIndex = i
 
+        console.log(`🟠 SHORT REVERSAL - Breakout detected at index ${breakoutIndex}:`)
+        console.log(`   Pivot Low: ${level.toFixed(2)} at index ${pl.index}`)
+        console.log(`   Breakout DOWN: ${candles[i].close.toFixed(2)} < ${(level - breakoutBuf).toFixed(2)}`)
+        console.log(`   (Uptrend breaking support)`)
+        console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
+
         const start = breakoutIndex + minBarsAfterBreakout
         const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
+
+        console.log(`   Retest search window: ${start} to ${end} (${end - start + 1} candles)`)
 
         const res = findStrictRetestShort(candles, {
           level,
@@ -529,6 +619,16 @@ export function detectRetests(
         })
 
         if (res) {
+          console.log(`   ✅ Result: ${res.kind}`)
+          if (res.retestIndex !== undefined) {
+            console.log(`      Retest at index ${res.retestIndex} (${res.retestIndex - breakoutIndex} bars after breakout)`)
+            console.log(`      Retest price: high=${candles[res.retestIndex].high.toFixed(2)}, close=${candles[res.retestIndex].close.toFixed(2)}`)
+          }
+          if (res.confirmIndex !== undefined) {
+            console.log(`      Confirm at index ${res.confirmIndex}`)
+            console.log(`      Confirm price: close=${candles[res.confirmIndex].close.toFixed(2)}`)
+          }
+
           signals.push({
             kind: res.kind,
             side: 'SHORT',
@@ -542,6 +642,8 @@ export function detectRetests(
             isReversal: true, // REVERSAL: uptrend breaking support
             pivotType: 'low',
           })
+        } else {
+          console.log(`   ❌ No retest found`)
         }
       }
     }
@@ -574,7 +676,6 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
 
   // Build detailed description
   const patternTypeText = signal.isReversal ? 'היפוך מגמה' : 'המשך מגמה'
-  const pivotTypeText = signal.pivotType === 'high' ? 'Pivot High' : 'Pivot Low'
   const retestType = signal.kind.includes('WICK') ? 'Wick Touch' : 'Close Touch'
 
   const description = `${patternTypeText} | ${isLong ? 'LONG' : 'SHORT'} Retest | ${retestType}`
