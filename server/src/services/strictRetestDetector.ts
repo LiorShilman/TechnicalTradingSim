@@ -84,6 +84,54 @@ function calculateSMA(candles: Candle[], period: number): (number | null)[] {
 }
 
 /**
+ * Detect local trend using swing structure (without MA)
+ * Returns: 'UP' | 'DOWN' | 'NEUTRAL'
+ *
+ * Logic:
+ * - UP: Higher highs AND higher lows over lookback period
+ * - DOWN: Lower highs AND lower lows over lookback period
+ * - NEUTRAL: Mixed or choppy price action
+ */
+function detectLocalTrend(candles: Candle[], index: number, lookback: number = 20): 'UP' | 'DOWN' | 'NEUTRAL' {
+  if (index < lookback) return 'NEUTRAL'
+
+  const window = candles.slice(index - lookback, index + 1)
+
+  // Find swing highs and lows in the window
+  const swingHighs: number[] = []
+  const swingLows: number[] = []
+
+  for (let i = 2; i < window.length - 2; i++) {
+    const c = window[i]
+    const isSwingHigh = c.high > window[i-1].high && c.high > window[i-2].high &&
+                        c.high > window[i+1].high && c.high > window[i+2].high
+    const isSwingLow = c.low < window[i-1].low && c.low < window[i-2].low &&
+                       c.low < window[i+1].low && c.low < window[i+2].low
+
+    if (isSwingHigh) swingHighs.push(c.high)
+    if (isSwingLow) swingLows.push(c.low)
+  }
+
+  // Need at least 2 swings to determine trend
+  if (swingHighs.length < 2 || swingLows.length < 2) return 'NEUTRAL'
+
+  // Check if highs are rising (higher highs)
+  const higherHighs = swingHighs[swingHighs.length - 1] > swingHighs[0]
+
+  // Check if lows are rising (higher lows)
+  const higherLows = swingLows[swingLows.length - 1] > swingLows[0]
+
+  // UP trend: higher highs AND higher lows
+  if (higherHighs && higherLows) return 'UP'
+
+  // DOWN trend: lower highs AND lower lows
+  if (!higherHighs && !higherLows) return 'DOWN'
+
+  // Mixed signals
+  return 'NEUTRAL'
+}
+
+/**
  * Calculate Average True Range (ATR)
  */
 function calculateATR(candles: Candle[], period: number = 14): (number | null)[] {
@@ -400,9 +448,27 @@ export function detectRetests(
     const a = atr[i]
     if (a == null) continue
 
-    // Trend filters (optional)
-    const trendUp = !useTrendFilter || (ma![i] != null && candles[i].close > ma![i]!)
-    const trendDown = !useTrendFilter || (ma![i] != null && candles[i].close < ma![i]!)
+    // Detect local trend using swing structure (instead of MA)
+    const localTrend = detectLocalTrend(candles, i, 20)
+
+    // Trend filters
+    let trendUp: boolean
+    let trendDown: boolean
+
+    if (useTrendFilter && ma) {
+      // MA-based trend filter (original logic)
+      trendUp = ma[i] != null && candles[i].close > ma[i]!
+      trendDown = ma[i] != null && candles[i].close < ma[i]!
+    } else {
+      // Local swing-based trend detection (NEW)
+      trendUp = localTrend === 'UP'
+      trendDown = localTrend === 'DOWN'
+      // NEUTRAL trend: allow both directions (for ranging markets)
+      if (localTrend === 'NEUTRAL') {
+        trendUp = true
+        trendDown = true
+      }
+    }
 
     const breakoutBuf = a * breakoutAtrMult
     const tol = a * retestAtrMult
@@ -419,6 +485,7 @@ export function detectRetests(
         const breakoutIndex = i
 
         console.log(`🔵 LONG CONTINUATION - Breakout detected at index ${breakoutIndex}:`)
+        console.log(`   Local Trend: ${localTrend} (UP trend required for continuation)`)
         console.log(`   Pivot High: ${level.toFixed(2)} at index ${ph.index}`)
         console.log(`   Breakout: ${candles[i].close.toFixed(2)} > ${(level + breakoutBuf).toFixed(2)}`)
         console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
@@ -479,6 +546,7 @@ export function detectRetests(
         const breakoutIndex = i
 
         console.log(`🔴 SHORT CONTINUATION - Breakout detected at index ${breakoutIndex}:`)
+        console.log(`   Local Trend: ${localTrend} (DOWN trend required for continuation)`)
         console.log(`   Pivot Low: ${level.toFixed(2)} at index ${pl.index}`)
         console.log(`   Breakout: ${candles[i].close.toFixed(2)} < ${(level - breakoutBuf).toFixed(2)}`)
         console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
@@ -538,6 +606,7 @@ export function detectRetests(
         const breakoutIndex = i
 
         console.log(`🟢 LONG REVERSAL - Breakout detected at index ${breakoutIndex}:`)
+        console.log(`   Local Trend: ${localTrend} (DOWN trend required for reversal)`)
         console.log(`   Pivot High: ${level.toFixed(2)} at index ${ph.index}`)
         console.log(`   Breakout UP: ${candles[i].close.toFixed(2)} > ${(level + breakoutBuf).toFixed(2)}`)
         console.log(`   (Downtrend breaking resistance)`)
@@ -598,6 +667,7 @@ export function detectRetests(
         const breakoutIndex = i
 
         console.log(`🟠 SHORT REVERSAL - Breakout detected at index ${breakoutIndex}:`)
+        console.log(`   Local Trend: ${localTrend} (UP trend required for reversal)`)
         console.log(`   Pivot Low: ${level.toFixed(2)} at index ${pl.index}`)
         console.log(`   Breakout DOWN: ${candles[i].close.toFixed(2)} < ${(level - breakoutBuf).toFixed(2)}`)
         console.log(`   (Uptrend breaking support)`)
