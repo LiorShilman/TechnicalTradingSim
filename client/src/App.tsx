@@ -80,6 +80,18 @@ function App() {
     setPriceAlerts(priceAlertsService.getAlerts())
   }
 
+  const handleJumpToPattern = (patternIndex: number) => {
+    const gameState = useGameStore.getState().gameState
+    if (!gameState?.patterns || patternIndex >= gameState.patterns.length) return
+
+    const pattern = gameState.patterns[patternIndex]
+    const targetIndex = pattern.startIndex
+
+    // Jump to pattern location
+    useGameStore.getState().jumpToCandle(targetIndex)
+    toast.success(`קפצת לתבנית #${patternIndex + 1}`)
+  }
+
   const handleStartGame = async (forceNewGame = false) => {
     // ⭐ CRITICAL: אל תעדכן את setIsStartScreen לפני שהמשחק נטען!
     // זה גורם ל-re-render שמאפס את הגרף
@@ -718,7 +730,7 @@ function App() {
               <EquityChart />
             </div>
             <div className="flex-1 h-full">
-              <PatternLegendPanel />
+              <PatternLegendPanel onJumpToPattern={handleJumpToPattern} />
             </div>
           </div>
         </div>

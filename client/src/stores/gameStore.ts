@@ -40,6 +40,7 @@ interface GameStore {
   initializeGame: (config?: { initialBalance?: number }) => Promise<void>
   initializeGameWithCSV: (file: File, assetName?: string, timeframe?: string, initialBalance?: number, dateRange?: { start: string; end: string } | null) => Promise<void>
   nextCandle: () => Promise<void>
+  jumpToCandle: (targetIndex: number) => void
   executeTrade: (
     type: 'buy' | 'sell',
     quantity: number,
@@ -357,6 +358,25 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isLoading: false
       })
     }
+  },
+
+  jumpToCandle: (targetIndex: number) => {
+    const { gameState } = get()
+    if (!gameState) return
+
+    // Validate target index
+    if (targetIndex < 0 || targetIndex >= gameState.candles.length) {
+      toast.error('אינדקס נר לא חוקי')
+      return
+    }
+
+    // Jump to target index (update currentIndex directly)
+    set({
+      gameState: {
+        ...gameState,
+        currentIndex: targetIndex,
+      },
+    })
   },
 
   executeTrade: async (type, quantity, positionId, positionType, stopLoss, takeProfit, note) => {
