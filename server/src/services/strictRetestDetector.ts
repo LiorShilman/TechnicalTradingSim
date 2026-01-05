@@ -87,47 +87,63 @@ function calculateSMA(candles: Candle[], period: number): (number | null)[] {
  * Detect local trend using swing structure (without MA)
  * Returns: 'UP' | 'DOWN' | 'NEUTRAL'
  *
- * Logic:
- * - UP: Higher highs AND higher lows over lookback period
- * - DOWN: Lower highs AND lower lows over lookback period
- * - NEUTRAL: Mixed or choppy price action
+ * Logic (strict pivot-based):
+ * - Pivot = swing point with 2 bars on each side (5 bars total)
+ * - UP trend: Need 2 higher pivot highs AND 2 higher pivot lows
+ * - DOWN trend: Need 2 lower pivot highs AND 2 lower pivot lows
+ * - NEUTRAL: Less than 2 pivots or mixed signals
  */
-function detectLocalTrend(candles: Candle[], index: number, lookback: number = 20): 'UP' | 'DOWN' | 'NEUTRAL' {
+function detectLocalTrend(candles: Candle[], index: number, lookback: number = 30): 'UP' | 'DOWN' | 'NEUTRAL' {
   if (index < lookback) return 'NEUTRAL'
 
   const window = candles.slice(index - lookback, index + 1)
 
-  // Find swing highs and lows in the window
-  const swingHighs: number[] = []
-  const swingLows: number[] = []
+  // Find pivot highs and lows (strict: 2 bars on each side)
+  const pivotHighs: number[] = []
+  const pivotLows: number[] = []
 
   for (let i = 2; i < window.length - 2; i++) {
     const c = window[i]
-    const isSwingHigh = c.high > window[i-1].high && c.high > window[i-2].high &&
+
+    // Pivot High: higher than 2 bars on BOTH sides
+    const isPivotHigh = c.high > window[i-1].high && c.high > window[i-2].high &&
                         c.high > window[i+1].high && c.high > window[i+2].high
-    const isSwingLow = c.low < window[i-1].low && c.low < window[i-2].low &&
+
+    // Pivot Low: lower than 2 bars on BOTH sides
+    const isPivotLow = c.low < window[i-1].low && c.low < window[i-2].low &&
                        c.low < window[i+1].low && c.low < window[i+2].low
 
-    if (isSwingHigh) swingHighs.push(c.high)
-    if (isSwingLow) swingLows.push(c.low)
+    if (isPivotHigh) pivotHighs.push(c.high)
+    if (isPivotLow) pivotLows.push(c.low)
   }
 
-  // Need at least 2 swings to determine trend
-  if (swingHighs.length < 2 || swingLows.length < 2) return 'NEUTRAL'
+  // Need EXACTLY 2 or more pivots of each type to determine trend
+  if (pivotHighs.length < 2 || pivotLows.length < 2) {
+    // console.log(`   🔍 Trend detection at index ${index}: NEUTRAL (found ${pivotHighs.length} pivot highs, ${pivotLows.length} pivot lows)`)
+    return 'NEUTRAL'
+  }
 
-  // Check if highs are rising (higher highs)
-  const higherHighs = swingHighs[swingHighs.length - 1] > swingHighs[0]
+  // Compare LAST 2 pivots to determine direction
+  const recentHighs = pivotHighs.slice(-2)
+  const recentLows = pivotLows.slice(-2)
 
-  // Check if lows are rising (higher lows)
-  const higherLows = swingLows[swingLows.length - 1] > swingLows[0]
+  const higherHighs = recentHighs[1] > recentHighs[0]
+  const higherLows = recentLows[1] > recentLows[0]
 
-  // UP trend: higher highs AND higher lows
-  if (higherHighs && higherLows) return 'UP'
+  // UP trend: both higher highs AND higher lows
+  if (higherHighs && higherLows) {
+    // console.log(`   📈 Trend: UP (HH: ${recentHighs[0].toFixed(2)} → ${recentHighs[1].toFixed(2)}, HL: ${recentLows[0].toFixed(2)} → ${recentLows[1].toFixed(2)})`)
+    return 'UP'
+  }
 
-  // DOWN trend: lower highs AND lower lows
-  if (!higherHighs && !higherLows) return 'DOWN'
+  // DOWN trend: both lower highs AND lower lows
+  if (!higherHighs && !higherLows) {
+    // console.log(`   📉 Trend: DOWN (LH: ${recentHighs[0].toFixed(2)} → ${recentHighs[1].toFixed(2)}, LL: ${recentLows[0].toFixed(2)} → ${recentLows[1].toFixed(2)})`)
+    return 'DOWN'
+  }
 
-  // Mixed signals
+  // Mixed signals (choppy/ranging)
+  // console.log(`   ⚡ Trend: NEUTRAL (mixed signals - HH:${higherHighs}, HL:${higherLows})`)
   return 'NEUTRAL'
 }
 
