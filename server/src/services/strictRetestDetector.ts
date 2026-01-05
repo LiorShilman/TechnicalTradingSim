@@ -463,11 +463,8 @@ export function detectRetests(
       // Local swing-based trend detection (NEW)
       trendUp = localTrend === 'UP'
       trendDown = localTrend === 'DOWN'
-      // NEUTRAL trend: allow both directions (for ranging markets)
-      if (localTrend === 'NEUTRAL') {
-        trendUp = true
-        trendDown = true
-      }
+      // NEUTRAL trend: skip pattern detection (no clear trend)
+      // This prevents duplicate patterns at same pivot
     }
 
     const breakoutBuf = a * breakoutAtrMult
