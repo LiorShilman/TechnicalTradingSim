@@ -361,7 +361,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   jumpToCandle: (targetIndex: number) => {
-    const { gameState, chartFitContent } = get()
+    const { gameState, chartFitContent, chartResetZoom } = get()
     if (!gameState) return
 
     // Validate target index
@@ -378,8 +378,16 @@ export const useGameStore = create<GameStore>((set, get) => ({
       },
     })
 
-    // Trigger chart fit content to center on the pattern and clear visual clutter
-    if (chartFitContent) {
+    // Reset zoom first to clear visual clutter, then fit content
+    if (chartResetZoom && chartFitContent) {
+      setTimeout(() => {
+        chartResetZoom()
+        setTimeout(() => {
+          chartFitContent()
+        }, 50)
+      }, 100)
+    } else if (chartFitContent) {
+      // Fallback if resetZoom not available
       setTimeout(() => {
         chartFitContent()
       }, 100)

@@ -20,15 +20,10 @@ export default function PatternLegendPanel({ onJumpToPattern }: PatternLegendPan
     }
   }, [gameState?.patterns, gameState?.currentIndex])
 
-  if (!gameState?.patterns || gameState.patterns.length === 0) {
-    return null
-  }
-
-  const visiblePatterns = gameState.patterns.filter(p => p.startIndex <= gameState.currentIndex)
-
-  if (visiblePatterns.length === 0) {
-    return null
-  }
+  // Always show panel, even if no patterns yet
+  const visiblePatterns = gameState?.patterns
+    ? gameState.patterns.filter(p => p.startIndex <= gameState.currentIndex)
+    : []
 
   return (
     <div className="bg-dark-bg/95 backdrop-blur-md rounded-xl p-4 text-xs border-2 border-cyan-500/30 shadow-lg h-full flex flex-col">
@@ -49,7 +44,13 @@ export default function PatternLegendPanel({ onJumpToPattern }: PatternLegendPan
         className="flex-1 overflow-y-auto space-y-2 pr-2"
         style={{ maxHeight: 'calc(100% - 60px)' }}
       >
-        {visiblePatterns.map((pattern, idx) => {
+        {visiblePatterns.length === 0 ? (
+          <div className="flex flex-col items-center justify-center h-full text-text-secondary">
+            <span className="text-4xl mb-2">🔍</span>
+            <span className="text-center">אין תבניות עדיין</span>
+          </div>
+        ) : (
+          visiblePatterns.map((pattern, idx) => {
           const patternInfo = {
             breakout: { icon: '⚡', name: 'Breakout', color: '#FFD700' },
             retest: { icon: '🔄', name: 'Retest', color: '#00CED1' },
@@ -78,7 +79,7 @@ export default function PatternLegendPanel({ onJumpToPattern }: PatternLegendPan
                 {pattern.metadata.description}
               </div>
               <div className="flex items-center justify-between text-[10px] text-text-secondary">
-                <span>נרות: {pattern.startIndex}-{Math.min(pattern.endIndex, gameState.currentIndex)}</span>
+                <span>נרות: {pattern.startIndex}-{Math.min(pattern.endIndex, gameState?.currentIndex ?? pattern.endIndex)}</span>
                 <span className="bg-purple-500/20 px-2 py-0.5 rounded">איכות: {pattern.metadata.quality}%</span>
               </div>
 
@@ -93,7 +94,8 @@ export default function PatternLegendPanel({ onJumpToPattern }: PatternLegendPan
               </div>
             </div>
           )
-        })}
+        })
+        )}
       </div>
     </div>
   )
