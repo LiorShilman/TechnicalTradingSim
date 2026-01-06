@@ -361,7 +361,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   jumpToCandle: (targetIndex: number) => {
-    const { gameState } = get()
+    const { gameState, chartFitContent } = get()
     if (!gameState) return
 
     // Validate target index
@@ -377,6 +377,13 @@ export const useGameStore = create<GameStore>((set, get) => ({
         currentIndex: targetIndex,
       },
     })
+
+    // Trigger chart fit content to center on the pattern and clear visual clutter
+    if (chartFitContent) {
+      setTimeout(() => {
+        chartFitContent()
+      }, 100)
+    }
   },
 
   executeTrade: async (type, quantity, positionId, positionType, stopLoss, takeProfit, note) => {
