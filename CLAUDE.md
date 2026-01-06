@@ -107,7 +107,7 @@ Test server health: `curl http://localhost:5000/api/health`
 - `client/src/components/Stats/GameStats.tsx` - End-game statistics display
 - `client/src/components/Stats/TradeHistory.tsx` - Professional trade history modal with date grouping and comprehensive stats
 - `client/src/components/Chart/ChartControls.tsx` - RTL toolbar with 5 logical groups: BUY/SELL quick trades, Help/History, chart controls, save/reset, candle navigation (ChevronLeft for RTL)
-- `client/src/components/Chart/PatternLegendPanel.tsx` - Pattern list with auto-scroll, jump-to-pattern, and tooltip hints
+- `client/src/components/Chart/PatternLegendPanel.tsx` - Pattern list with auto-scroll, jump-to-pattern, tooltip hints, and always-visible empty state
 - `client/src/App.tsx` - Main app with CSV upload, filename parsing, balance persistence, and three-column layout
 
 ### Layout Architecture
@@ -153,6 +153,7 @@ The main game screen uses a **three-column responsive layout** optimized for des
 - This creates **hard separation** - neither can compress the other
 - Volume bars remain visible at bottom of main chart
 - All numerical data in Equity Chart is readable
+- Pattern panel always visible with empty state ("🔍 אין תבניות עדיין") when no patterns detected
 
 **Responsive Behavior**:
 - Desktop (lg+): Full three-column layout with bottom panel
@@ -420,8 +421,62 @@ Client state is derived from server responses. Never modify state locally withou
 - Positions: Server calculates PnL (client displays current values)
 - Account: Server manages balance/equity (client is read-only)
 
-### Pattern Generator Implementation
-Currently stub implementations in `patternGenerator.ts`. When implementing:
+### Pattern Detection System
+
+**Strict Retest Detector** (`server/src/services/strictRetestDetector.ts`):
+The system uses a professional pivot-based algorithm for detecting authentic retest patterns in uploaded CSV data.
+
+**Core Architecture:**
+- **Pivot Detection**: Identifies swing highs/lows with strict 5-bar structure (center bar + 2 bars on each side)
+- **Local Trend Analysis**: Uses swing structure to determine UP/DOWN/NEUTRAL trend (30-candle lookback)
+  - **UP Trend**: Requires 2+ higher pivot highs AND 2+ higher pivot lows
+  - **DOWN Trend**: Requires 2+ lower pivot highs AND 2+ lower pivot lows
+  - **NEUTRAL**: Less than 2 pivots of each type or mixed signals (rejected, no pattern created)
+- **ATR-based Buffers**: Dynamic tolerance levels based on Average True Range (14-period)
+  - Breakout buffer: 0.10 × ATR
+  - Retest tolerance: 0.20 × ATR
+  - Confirmation buffer: 0.05 × ATR
+  - Invalidation buffer: 0.25 × ATR
+
+**Pattern Types Detected:**
+1. **LONG CONTINUATION**: Uptrend → breaks pivot high (resistance) → retest from above → continues up
+2. **SHORT CONTINUATION**: Downtrend → breaks pivot low (support) → retest from below → continues down
+3. **LONG REVERSAL**: Downtrend → breaks pivot high (resistance) → retest from above → reverses up
+4. **SHORT REVERSAL**: Uptrend → breaks pivot low (support) → retest from below → reverses down
+
+**Retest Validation Logic:**
+- **Touch Detection**: Supports both "Wick Touch" (low/high reaches level ± tolerance) and "Close Touch" (close reaches level)
+- **Wait Period**: Minimum 5 bars after breakout before accepting retest
+- **Timeout**: Maximum 60 bars to find retest after breakout
+- **Confirmation**: Close must be beyond level + confirmation buffer AND higher/lower than previous close
+- **Invalidation**: Pattern rejected if close moves decisively beyond invalidation buffer in wrong direction
+
+**Pattern Quality:**
+- All detected patterns assigned 85-95% quality (high confidence from strict algorithm)
+- Includes detailed Hebrew hints with step-by-step pattern explanation
+- Entry/SL levels calculated based on retest level with percentage offsets
+
+**Jump-to-Pattern Feature** (`client/src/stores/gameStore.ts`):
+- `jumpToCandle(targetIndex)` function navigates chart to pattern location
+- Calls `chartResetZoom()` then `chartFitContent()` with staggered timeouts to clear visual clutter
+- Integrated with PatternLegendPanel for one-click navigation
+- Toast notification confirms jump: "קפצת לתבנית #X"
+
+**PatternLegendPanel Improvements**:
+- Always visible even when no patterns detected (shows "🔍 אין תבניות עדיין")
+- Auto-scroll to latest pattern when new ones appear
+- Click on pattern to jump to chart location
+- Hover tooltip shows full hint with entry/SL levels
+- Pattern count badge in header
+
+**Integration** (`server/src/services/patternDetector.ts`):
+- `detectPatterns()` function uses Strict Retest Detector by default (`useStrictRetest: true`)
+- 50% of patterns allocated to retest detection, remainder to legacy breakout/flag detectors
+- Minimum 30-candle gap between patterns to prevent overlap
+- Console logging shows detection process with emoji indicators (🔵 LONG, 🔴 SHORT, ✅ success)
+
+**Legacy Pattern Generators**:
+Stub implementations remain in `patternGenerator.ts` for Breakout and Bull Flag:
 - Modify candles array in-place at startIndex
 - Return Pattern object with accurate expectedEntry/Exit based on generated candles
 - Set quality (0-100) based on pattern clarity
