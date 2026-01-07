@@ -421,7 +421,33 @@ export default function TradingChart() {
         }
       }
     }
-    setChartControls(handleFitContent, handleResetZoom)
+
+    const handleScrollToTime = (targetTime: number) => {
+      if (!chartRef.current || !gameState) return
+
+      const timeScale = chartRef.current.timeScale()
+
+      // Find the target candle index
+      const targetIndex = gameState.candles.findIndex(c => c.time === targetTime)
+      if (targetIndex === -1) return
+
+      // Get current visible range to determine how many bars to show
+      const currentRange = timeScale.getVisibleLogicalRange()
+      const barsToShow = currentRange ? Math.ceil(currentRange.to - currentRange.from) : 100
+
+      // Calculate the logical range centered on the target
+      const halfBars = Math.floor(barsToShow / 2)
+      const from = Math.max(0, targetIndex - halfBars)
+      const to = Math.min(gameState.candles.length - 1, targetIndex + halfBars)
+
+      // Set visible logical range to center the target candle
+      timeScale.setVisibleLogicalRange({
+        from,
+        to,
+      })
+    }
+
+    setChartControls(handleFitContent, handleResetZoom, handleScrollToTime)
 
     // שימוש ב-precision שחושב ב-store (מהנתונים בפועל)
     const pricePrecision = useGameStore.getState().pricePrecision

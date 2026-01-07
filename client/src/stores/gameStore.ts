@@ -27,6 +27,7 @@ interface GameStore {
   autoPlaySpeed: number // מילישניות בין נרות
   chartFitContent: (() => void) | null
   chartResetZoom: (() => void) | null
+  chartScrollToTime: ((time: number) => void) | null
   showStats: boolean // הצגת מסך סטטיסטיקות (למשל בשמירה ויציאה)
   showTradeHistory: boolean // הצגת מסך היסטוריית עסקאות
   showHelp: boolean // הצגת מסך עזרה
@@ -64,7 +65,7 @@ interface GameStore {
   resetGame: () => Promise<void>
   toggleAutoPlay: () => void
   setAutoPlaySpeed: (speed: number) => void
-  setChartControls: (fitContent: () => void, resetZoom: () => void) => void
+  setChartControls: (fitContent: () => void, resetZoom: () => void, scrollToTime: (time: number) => void) => void
 
   // Save/Load game state
   saveGameState: () => void
@@ -106,6 +107,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   autoPlaySpeed: 1000, // 1 שנייה ברירת מחדל
   chartFitContent: null,
   chartResetZoom: null,
+  chartScrollToTime: null,
   showStats: false,
   showTradeHistory: false,
   showHelp: false,
@@ -361,7 +363,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   },
 
   jumpToCandle: (targetIndex: number) => {
-    const { gameState, chartFitContent, chartResetZoom } = get()
+    const { gameState, chartScrollToTime } = get()
     if (!gameState) return
 
     // Validate target index
@@ -370,27 +372,20 @@ export const useGameStore = create<GameStore>((set, get) => ({
       return
     }
 
-    // Jump to target index (update currentIndex directly)
-    set({
-      gameState: {
-        ...gameState,
-        currentIndex: targetIndex,
-      },
-    })
+    // IMPORTANT: Don't change currentIndex - only move the viewport
+    // This allows users to jump to pattern view without losing their progress
+    // When they click "Next", they'll continue from where they were
 
-    // Reset zoom first to clear visual clutter, then fit content
-    if (chartResetZoom && chartFitContent) {
-      setTimeout(() => {
-        chartResetZoom()
-        setTimeout(() => {
-          chartFitContent()
-        }, 50)
-      }, 100)
-    } else if (chartFitContent) {
-      // Fallback if resetZoom not available
-      setTimeout(() => {
-        chartFitContent()
-      }, 100)
+    // Stop auto-play if running
+    set({ isAutoPlaying: false })
+
+    // Get target candle time
+    const targetTime = gameState.candles[targetIndex].time
+
+    // Scroll the chart to the target time without changing currentIndex
+    if (chartScrollToTime) {
+      chartScrollToTime(targetTime)
+      console.log(`📍 Jumped to candle ${targetIndex} (time: ${targetTime}) - currentIndex remains ${gameState.currentIndex}`)
     }
   },
 
@@ -707,8 +702,8 @@ export const useGameStore = create<GameStore>((set, get) => ({
     set({ autoPlaySpeed: speed })
   },
 
-  setChartControls: (fitContent: () => void, resetZoom: () => void) => {
-    set({ chartFitContent: fitContent, chartResetZoom: resetZoom })
+  setChartControls: (fitContent: () => void, resetZoom: () => void, scrollToTime: (time: number) => void) => {
+    set({ chartFitContent: fitContent, chartResetZoom: resetZoom, chartScrollToTime: scrollToTime })
   },
 
   // שמירת מצב משחק נוכחי ל-localStorage
