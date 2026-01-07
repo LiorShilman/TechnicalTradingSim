@@ -50,6 +50,21 @@ Run in two terminals:
 
 Test server health: `curl http://localhost:5000/api/health`
 
+### LSP Plugin Support
+
+**TypeScript LSP is installed via Claude Code marketplace plugin:**
+- Plugin: `vtsls@claude-code-lsps` (enabled in `.claude/settings.json`)
+- Provides type-aware code navigation, autocomplete, and diagnostics
+- Works for both client (React) and server (Express) TypeScript code
+- Falls back to Grep/Glob for non-TypeScript files or when LSP unavailable
+
+**Installation command:**
+```bash
+claude plugin install vtsls@claude-code-lsps --scope project
+```
+
+See [LSP_SETUP.md](LSP_SETUP.md) for detailed configuration and troubleshooting.
+
 ## Architecture
 
 ### Monorepo Structure

@@ -45,7 +45,12 @@
       "Bash(Wick Touch\"\\)\n- Candle range \\(start-end\\)\n- Quality percentage \\(85-95%\\)\n\nInteractive tooltips on hover:\n- Full hint with step-by-step pattern explanation\n- Entry and SL levels\n- Proper RTL Hebrew formatting\n- Positioned below card with shadow\n- 320px width for comfortable reading\n\nVisual improvements:\n- Cyan accent color theme \\(#00CED1\\)\n- Smooth transitions on hover\n- Semi-transparent cards with backdrop blur\n- Professional spacing and typography\n- Maximum width constraint for readability \\(max-w-md\\)\n\nThe UI now provides comprehensive educational feedback that teaches traders\nhow to identify and trade each pattern type.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(Wick Touch\" instead of \"🔄 Retest\"\n- Fallback to default names if description not available\n- Uses Record<string, string> type for clean TypeScript\n\nThis provides traders with immediate context about pattern type\n\\(reversal vs continuation\\) and retest method \\(WICK vs CLOSE\\) directly\non the chart without needing to hover over the pattern list.\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")",
       "Bash(npm run lint:*)",
-      "Bash(npm search:*)"
+      "Bash(npm search:*)",
+      "Bash(claude plugin --help:*)",
+      "Bash(claude plugin marketplace --help:*)",
+      "Bash(claude plugin marketplace list)",
+      "Bash(claude plugin install --help:*)",
+      "Bash(claude plugin install vtsls@claude-code-lsps --scope project)"
     ]
   }
 }

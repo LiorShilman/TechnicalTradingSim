@@ -4,9 +4,30 @@ Language Server Protocol (LSP) support is now configured for both client and ser
 
 ## Claude Code CLI Setup
 
-### Important: No Built-in LSP
+### LSP Plugin Installed! ✅
 
-**Claude Code does NOT have LSP (Language Server Protocol) support.** Instead, it uses:
+**LSP support has been added via the marketplace plugin system:**
+- ✅ **TypeScript LSP** (`vtsls`) - Installed from `claude-code-lsps` marketplace
+- ✅ **Type-aware navigation** - Go to definition, find references, autocomplete
+- ✅ **Intelligent code understanding** - No need for manual Grep in most cases
+- ✅ **Real-time diagnostics** - TypeScript and ESLint errors shown automatically
+
+**Installation details:**
+```bash
+# Plugin installed with:
+claude plugin install vtsls@claude-code-lsps --scope project
+
+# Enabled in .claude/settings.json:
+{
+  "enabledPlugins": {
+    "vtsls@claude-code-lsps": true
+  }
+}
+```
+
+### Fallback: Grep/Glob Tools
+
+For cases where LSP doesn't work or for non-TypeScript files, Claude can still use:
 - ✅ **Grep/Glob tools** - For finding code and patterns
 - ✅ **File reading** - Direct code analysis
 - ✅ **Manual commands** - Running TypeScript/ESLint via Bash
@@ -60,13 +81,25 @@ Language Server Protocol (LSP) support is now configured for both client and ser
    ```
    Claude will execute commands and show results.
 
-### Why No LSP?
+### How LSP Plugins Work
 
-Claude Code is **language-agnostic** and lightweight:
-- Works with any programming language
-- No language-specific infrastructure needed
-- Relies on Grep/Glob for code discovery
-- Uses your IDE's LSP (VS Code, JetBrains) for diagnostics
+Claude Code is **extensible via marketplace plugins**:
+- **Core is language-agnostic** - Works with any programming language
+- **Plugins add LSP support** - TypeScript, Python, Rust, etc. available via marketplace
+- **Project-scoped installation** - Plugins can be installed per-project or globally
+- **Falls back to Grep/Glob** - If LSP unavailable or for unsupported file types
+
+**Available LSP plugins from `claude-code-lsps` marketplace:**
+- `vtsls` - TypeScript/JavaScript (installed ✅)
+- `pyright` - Python
+- `rust-analyzer` - Rust
+- `clangd` - C/C++
+- And many more...
+
+**To install additional LSPs:**
+```bash
+claude plugin install <plugin-name>@claude-code-lsps --scope project
+```
 
 ### Manual Linting
 
@@ -173,13 +206,14 @@ npm run lint:fix       # Auto-fix issues
 
 ### Claude Code Issues
 
-1. **Can't find a function/type**:
-   - Claude needs to use Grep/Glob tools
-   - Ask: "Use Grep to find the detectPatterns function"
-   - Be specific with search terms
+1. **LSP not working / Can't find a function/type**:
+   - Verify plugin is enabled: Check `.claude/settings.json` for `"vtsls@claude-code-lsps": true`
+   - Restart Claude Code session if plugin was just installed
+   - Fallback: Ask Claude to use Grep: "Use Grep to find the detectPatterns function"
 
 2. **TypeScript errors not showing**:
-   - Ask Claude to run: `cd client && npx tsc --noEmit`
+   - LSP should show errors automatically with `vtsls` plugin
+   - Manual check: `cd client && npx tsc --noEmit`
    - Or: "Run TypeScript check on both client and server"
 
 3. **ESLint not running**:
@@ -192,10 +226,10 @@ cd server && npm list eslint
 "Run lint on both client and server"
 ```
 
-4. **Want type-aware navigation**:
-   - Use VS Code with TypeScript extension (has real LSP)
-   - Claude Code uses Grep - text search only
-   - Share files with `Alt+K` in VS Code for context
+4. **Want to add more LSP support**:
+   - List available plugins: `claude plugin marketplace list`
+   - Install plugin: `claude plugin install <name>@claude-code-lsps --scope project`
+   - Check plugin status: Check `.claude/settings.json`
 
 ### LSP Not Working (VS Code)
 
