@@ -4,34 +4,46 @@ Language Server Protocol (LSP) support is now configured for both client and ser
 
 ## Claude Code CLI Setup
 
-### Installation (Required for Claude Code)
+### Built-in Language Support
 
-1. **Install LSP servers globally**:
+**Good news!** Claude Code has built-in TypeScript and ESLint support. No additional LSP configuration needed.
+
+### What's Already Working
+
+Claude Code automatically provides:
+- ✅ **TypeScript checking** - Uses local `tsconfig.json`
+- ✅ **ESLint integration** - Uses local `.eslintrc.cjs` / `eslint.config.js`
+- ✅ **Syntax highlighting** - For `.ts`, `.tsx`, `.js`, `.jsx` files
+- ✅ **Error detection** - Shows TypeScript and ESLint errors
+
+### How to Use in Claude Code
+
+1. **Read files with context**:
+   ```
+   Read the TradingChart.tsx file
+   ```
+   Claude will see TypeScript types and ESLint errors automatically.
+
+2. **Ask about errors**:
+   ```
+   What are the TypeScript errors in this file?
+   ```
+   Claude can see and fix type errors.
+
+3. **Request linting**:
+   ```
+   Run ESLint on the server code
+   ```
+   Claude can run `npm run lint` and fix issues.
+
+### Manual Linting
+
+You can always run ESLint manually:
 ```bash
-npm install -g typescript-language-server vscode-langservers-extracted
+cd client && npm run lint
+cd server && npm run lint
+cd server && npm run lint:fix  # Auto-fix
 ```
-
-2. **Configuration file**: `.claude/settings.json` is already configured with:
-   - TypeScript Language Server (for `.ts`, `.tsx` files)
-   - ESLint Language Server (for linting)
-
-3. **Restart Claude Code**:
-   - Exit Claude Code completely
-   - Reopen in this project directory
-   - LSP should now be active
-
-### Verify Claude Code LSP
-
-Open any `.ts` or `.tsx` file in Claude Code and check for:
-- ✅ Autocomplete suggestions appear as you type
-- ✅ Error squiggles under problematic code
-- ✅ Type information on hover
-- ✅ ESLint warnings/errors highlighted
-
-If LSP isn't working:
-1. Check servers are installed: `which typescript-language-server`
-2. Check `.claude/settings.json` exists
-3. Restart Claude Code
 
 ---
 
@@ -127,31 +139,26 @@ npm run lint:fix       # Auto-fix issues
 
 ## Troubleshooting
 
-### Claude Code LSP Issues
+### Claude Code Issues
 
-1. **LSP servers not found**:
+1. **TypeScript errors not showing**:
+   - Ensure `tsconfig.json` exists in project root
+   - Check file extension is `.ts` or `.tsx`
+   - Ask Claude: "What are the TypeScript errors in this file?"
+
+2. **ESLint not running**:
 ```bash
-# Verify installation
-npm list -g typescript-language-server vscode-langservers-extracted
+# Verify ESLint is installed
+cd client && npm list eslint
+cd server && npm list eslint
 
-# Reinstall if needed
-npm install -g typescript-language-server vscode-langservers-extracted
+# Run manually
+npm run lint
 ```
 
-2. **Configuration not loading**:
-   - Check `.claude/settings.json` exists in project root
-   - Ensure JSON is valid (no trailing commas)
-   - Restart Claude Code completely
-
-3. **LSP working but slow**:
-   - Close unused projects
-   - Check if TypeScript project is large
-   - Consider excluding node_modules in tsconfig.json
-
-4. **Autocomplete not appearing**:
-   - Wait a few seconds for server to initialize
-   - Try typing more characters (3+ chars)
-   - Check file extension is `.ts` or `.tsx`
+3. **Want to see all errors**:
+   - Ask Claude: "Run lint on both client and server"
+   - Claude will execute and show you all issues
 
 ### LSP Not Working (VS Code)
 
