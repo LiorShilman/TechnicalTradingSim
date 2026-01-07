@@ -18,23 +18,48 @@ Claude Code automatically provides:
 
 ### How to Use in Claude Code
 
-1. **Read files with context**:
-   ```
-   Read the TradingChart.tsx file
-   ```
-   Claude will see TypeScript types and ESLint errors automatically.
+Claude Code has **intelligent code understanding** - no need for Grep/Glob!
 
-2. **Ask about errors**:
+1. **Navigate by symbol** (instead of Grep):
+   ```
+   Find the detectPatterns function
+   ```
+   Claude will locate it directly using code intelligence.
+
+2. **Go to definition**:
+   ```
+   Show me where Pattern type is defined
+   ```
+   Claude understands TypeScript imports and definitions.
+
+3. **Find usages**:
+   ```
+   Where is useGameStore used in the app?
+   ```
+   Claude can find all references across files.
+
+4. **Check for errors**:
    ```
    What are the TypeScript errors in this file?
    ```
-   Claude can see and fix type errors.
+   Claude sees type errors without running tsc.
 
-3. **Request linting**:
+5. **Request linting**:
    ```
    Run ESLint on the server code
    ```
    Claude can run `npm run lint` and fix issues.
+
+### Why This Works
+
+Claude Code uses **built-in language analysis**:
+- ✅ Parses TypeScript AST (Abstract Syntax Tree)
+- ✅ Understands imports and exports
+- ✅ Follows type definitions
+- ✅ Reads tsconfig.json paths
+- ✅ No need for separate LSP server
+
+**Result**: More accurate, faster navigation than grep/glob!
 
 ### Manual Linting
 
