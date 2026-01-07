@@ -58,12 +58,25 @@ Test server health: `curl http://localhost:5000/api/health`
 - Works for both client (React) and server (Express) TypeScript code
 - Falls back to Grep/Glob for non-TypeScript files or when LSP unavailable
 
-**Installation command:**
+**Automated Setup (Recommended for new machines):**
+```bash
+# Windows PowerShell
+.\setup-lsp.ps1
+
+# Windows CMD
+setup-lsp.bat
+
+# Linux/macOS/Git Bash
+chmod +x setup-lsp.sh
+./setup-lsp.sh
+```
+
+**Manual installation:**
 ```bash
 claude plugin install vtsls@claude-code-lsps --scope project
 ```
 
-See [LSP_SETUP.md](LSP_SETUP.md) for detailed configuration and troubleshooting.
+See [SETUP_SCRIPTS.md](SETUP_SCRIPTS.md) for automated setup guide, or [LSP_SETUP.md](LSP_SETUP.md) for manual configuration.
 
 ## Architecture
 

@@ -15,10 +15,39 @@ trading-game/
 ## 🚀 התקנה מהירה
 
 ### דרישות מוקדמות
-- Node.js 18+ 
+- Node.js 18+
 - npm או yarn
+- Claude Code CLI (אופציונלי - עבור LSP support)
 
-### שלב 1: התקנת תלויות
+### התקנה אוטומטית (מומלץ למכונה חדשה) 🤖
+
+**Windows PowerShell:**
+```powershell
+.\setup-lsp.ps1
+```
+
+**Windows CMD:**
+```cmd
+setup-lsp.bat
+```
+
+**Linux/macOS:**
+```bash
+chmod +x setup-lsp.sh
+./setup-lsp.sh
+```
+
+הסקריפט מתקין:
+- ✅ כל תלויות npm (client + server)
+- ✅ TypeScript LSP plugin (vtsls)
+- ✅ ESLint configuration
+- ✅ Claude Code marketplace
+
+📖 ראה [SETUP_SCRIPTS.md](SETUP_SCRIPTS.md) למדריך מפורט
+
+### התקנה ידנית
+
+**שלב 1: התקנת תלויות**
 
 **Client:**
 ```bash
@@ -33,7 +62,12 @@ npm install
 cp .env.example .env
 ```
 
-### שלב 2: הרצה
+**שלב 2: התקנת LSP (אופציונלי):**
+```bash
+claude plugin install vtsls@claude-code-lsps --scope project
+```
+
+### הרצת הפרויקט
 
 **Terminal 1 - Server:**
 ```bash
