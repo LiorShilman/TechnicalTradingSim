@@ -2,6 +2,39 @@
 
 Language Server Protocol (LSP) support is now configured for both client and server.
 
+## Claude Code CLI Setup
+
+### Installation (Required for Claude Code)
+
+1. **Install LSP servers globally**:
+```bash
+npm install -g typescript-language-server vscode-langservers-extracted
+```
+
+2. **Configuration file**: `.claude/settings.json` is already configured with:
+   - TypeScript Language Server (for `.ts`, `.tsx` files)
+   - ESLint Language Server (for linting)
+
+3. **Restart Claude Code**:
+   - Exit Claude Code completely
+   - Reopen in this project directory
+   - LSP should now be active
+
+### Verify Claude Code LSP
+
+Open any `.ts` or `.tsx` file in Claude Code and check for:
+- ✅ Autocomplete suggestions appear as you type
+- ✅ Error squiggles under problematic code
+- ✅ Type information on hover
+- ✅ ESLint warnings/errors highlighted
+
+If LSP isn't working:
+1. Check servers are installed: `which typescript-language-server`
+2. Check `.claude/settings.json` exists
+3. Restart Claude Code
+
+---
+
 ## What You Get
 
 ✅ **Autocomplete & IntelliSense** - Smart code completion with type information
@@ -94,7 +127,33 @@ npm run lint:fix       # Auto-fix issues
 
 ## Troubleshooting
 
-### LSP Not Working
+### Claude Code LSP Issues
+
+1. **LSP servers not found**:
+```bash
+# Verify installation
+npm list -g typescript-language-server vscode-langservers-extracted
+
+# Reinstall if needed
+npm install -g typescript-language-server vscode-langservers-extracted
+```
+
+2. **Configuration not loading**:
+   - Check `.claude/settings.json` exists in project root
+   - Ensure JSON is valid (no trailing commas)
+   - Restart Claude Code completely
+
+3. **LSP working but slow**:
+   - Close unused projects
+   - Check if TypeScript project is large
+   - Consider excluding node_modules in tsconfig.json
+
+4. **Autocomplete not appearing**:
+   - Wait a few seconds for server to initialize
+   - Try typing more characters (3+ chars)
+   - Check file extension is `.ts` or `.tsx`
+
+### LSP Not Working (VS Code)
 
 1. **Check TypeScript version**: Both client and server use TypeScript 5.9.3
 2. **Restart Language Server**:
