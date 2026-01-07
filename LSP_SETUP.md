@@ -4,62 +4,69 @@ Language Server Protocol (LSP) support is now configured for both client and ser
 
 ## Claude Code CLI Setup
 
-### Built-in Language Support
+### Important: No Built-in LSP
 
-**Good news!** Claude Code has built-in TypeScript and ESLint support. No additional LSP configuration needed.
+**Claude Code does NOT have LSP (Language Server Protocol) support.** Instead, it uses:
+- ✅ **Grep/Glob tools** - For finding code and patterns
+- ✅ **File reading** - Direct code analysis
+- ✅ **Manual commands** - Running TypeScript/ESLint via Bash
 
-### What's Already Working
+### What IS Working
 
-Claude Code automatically provides:
-- ✅ **TypeScript checking** - Uses local `tsconfig.json`
-- ✅ **ESLint integration** - Uses local `.eslintrc.cjs` / `eslint.config.js`
-- ✅ **Syntax highlighting** - For `.ts`, `.tsx`, `.js`, `.jsx` files
-- ✅ **Error detection** - Shows TypeScript and ESLint errors
-
-### How to Use in Claude Code
-
-Claude Code has **intelligent code understanding** - no need for Grep/Glob!
-
-1. **Navigate by symbol** (instead of Grep):
+1. **ESLint via Commands**:
+   ```bash
+   cd client && npm run lint
+   cd server && npm run lint
    ```
-   Find the detectPatterns function
-   ```
-   Claude will locate it directly using code intelligence.
+   Claude can run these and see errors.
 
-2. **Go to definition**:
+2. **TypeScript Checking**:
+   ```bash
+   cd client && npx tsc --noEmit
+   cd server && npx tsc --noEmit
    ```
-   Show me where Pattern type is defined
-   ```
-   Claude understands TypeScript imports and definitions.
+   Claude can run tsc to check types.
 
-3. **Find usages**:
+3. **IDE Integration** (VS Code/JetBrains):
+   - Your IDE shows diagnostics (errors, warnings)
+   - Claude sees them when you share files
+   - Use `Alt+K` (VS Code) to share file context
+
+### How to Work with Claude Code
+
+**Finding code requires Grep/Glob:**
+
+1. **Find a function**:
    ```
-   Where is useGameStore used in the app?
+   Use Grep to find "detectPatterns" function
    ```
-   Claude can find all references across files.
+   Claude will use the Grep tool to search.
+
+2. **Find type definitions**:
+   ```
+   Use Grep to find "interface Pattern"
+   ```
+   Text-based search, not type-aware.
+
+3. **Find file by name**:
+   ```
+   Use Glob to find files matching "PatternLegend*"
+   ```
 
 4. **Check for errors**:
    ```
-   What are the TypeScript errors in this file?
+   Run TypeScript check on client
+   Run ESLint on server code
    ```
-   Claude sees type errors without running tsc.
+   Claude will execute commands and show results.
 
-5. **Request linting**:
-   ```
-   Run ESLint on the server code
-   ```
-   Claude can run `npm run lint` and fix issues.
+### Why No LSP?
 
-### Why This Works
-
-Claude Code uses **built-in language analysis**:
-- ✅ Parses TypeScript AST (Abstract Syntax Tree)
-- ✅ Understands imports and exports
-- ✅ Follows type definitions
-- ✅ Reads tsconfig.json paths
-- ✅ No need for separate LSP server
-
-**Result**: More accurate, faster navigation than grep/glob!
+Claude Code is **language-agnostic** and lightweight:
+- Works with any programming language
+- No language-specific infrastructure needed
+- Relies on Grep/Glob for code discovery
+- Uses your IDE's LSP (VS Code, JetBrains) for diagnostics
 
 ### Manual Linting
 
@@ -166,24 +173,29 @@ npm run lint:fix       # Auto-fix issues
 
 ### Claude Code Issues
 
-1. **TypeScript errors not showing**:
-   - Ensure `tsconfig.json` exists in project root
-   - Check file extension is `.ts` or `.tsx`
-   - Ask Claude: "What are the TypeScript errors in this file?"
+1. **Can't find a function/type**:
+   - Claude needs to use Grep/Glob tools
+   - Ask: "Use Grep to find the detectPatterns function"
+   - Be specific with search terms
 
-2. **ESLint not running**:
+2. **TypeScript errors not showing**:
+   - Ask Claude to run: `cd client && npx tsc --noEmit`
+   - Or: "Run TypeScript check on both client and server"
+
+3. **ESLint not running**:
 ```bash
 # Verify ESLint is installed
 cd client && npm list eslint
 cd server && npm list eslint
 
-# Run manually
-npm run lint
+# Run via Claude
+"Run lint on both client and server"
 ```
 
-3. **Want to see all errors**:
-   - Ask Claude: "Run lint on both client and server"
-   - Claude will execute and show you all issues
+4. **Want type-aware navigation**:
+   - Use VS Code with TypeScript extension (has real LSP)
+   - Claude Code uses Grep - text search only
+   - Share files with `Alt+K` in VS Code for context
 
 ### LSP Not Working (VS Code)
 
