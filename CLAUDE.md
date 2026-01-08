@@ -451,8 +451,106 @@ Client state is derived from server responses. Never modify state locally withou
 
 ### Pattern Detection System
 
-**Strict Retest Detector** (`server/src/services/strictRetestDetector.ts`):
-The system uses a professional pivot-based algorithm for detecting authentic retest patterns in uploaded CSV data.
+The system uses three professional pattern detectors for authentic pattern recognition in uploaded CSV data.
+
+#### 1. Professional Consolidation Breakout Detector (`server/src/services/consolidationBreakoutDetector.ts`)
+
+Production-ready algorithm for detecting consolidation breakout patterns with rigorous validation.
+
+**Core Algorithm:**
+
+1. **Consolidation Detection** (Multi-factor validation):
+   - **Price Range**: Maximum 2% of average close (tight sideways movement)
+   - **ATR Contraction**: Maximum 2.5% of average close (low volatility)
+   - **Touches Validation**: Minimum 2 touches of both high and low boundaries
+     - Touch epsilon: 10% of ATR (dynamic tolerance)
+     - Ensures price genuinely tests boundaries multiple times
+   - **Drift Check**: Maximum 0.8% drift from start to end
+     - Filters non-consolidation movement (prevents catching trends)
+   - **Consolidation Window**: 15 candles (configurable)
+
+2. **Wilder's ATR Calculation** (Correct implementation):
+   ```typescript
+   // Seed: simple average of first 'period' TRs
+   if (i === period - 1) {
+     const sum = tr.slice(0, period).reduce((a, b) => a + b, 0)
+     atr.push(sum / period)
+   } else {
+     // Wilder's smoothing: (prevATR * (period-1) + TR) / period
+     const prevATR = atr[i - 1]!
+     atr.push((prevATR * (period - 1) + tr[i]) / period)
+   }
+   ```
+   - 14-period ATR
+   - Proper seed value (simple average of first 14 TRs)
+   - Correct smoothing formula (not EMA)
+   - Returns null for insufficient data
+
+3. **Breakout Detection with Lookahead**:
+   - **Lookahead Window**: Checks up to 3 bars ahead (not locked to +1)
+   - **Dynamic Buffer**: `max(0.05% of price, 0.2 × ATR)`
+   - **Direction**: UP (close > high + buffer) or DOWN (close < low - buffer)
+   - **Volume Spike**: Minimum 1.3× average consolidation volume
+   - **Volume Safety**: Handles missing volume gracefully (defaults to 2.0× ratio)
+
+4. **Follow-Through Confirmation**:
+   - **Percentage Continuation**: Minimum 0.1% move in breakout direction
+   - **Stay Outside Range**: Follow-through close must remain beyond consolidation + buffer
+   - Prevents false breakouts that immediately fall back inside
+
+5. **Normalized Quality Scoring** (0-95 scale, stable across assets):
+   ```typescript
+   // Range component: tighter range = better (0-40 points)
+   const rangeComponent = Math.max(0, 40 * (1 - rangePct / maxRangePct))
+
+   // ATR component: lower ATR = better (0-30 points)
+   const atrComponent = Math.max(0, 30 * (1 - atrPct / maxAtrPct))
+
+   // Volume component: higher spike = better (0-30 points)
+   const volComponent = consol.avgVolume > 0
+     ? Math.min(30, (volumeRatio - 1) * 15)
+     : 20 // Default if no volume
+
+   const quality = Math.round(Math.min(95, rangeComponent + atrComponent + volComponent))
+   ```
+   - No mixing of absolute prices with percentages
+   - Consistent scoring across different assets/timeframes
+   - All components normalized to 0-1 range first
+
+6. **Pattern Visualization**:
+   - `startIndex`: Beginning of consolidation
+   - `endIndex`: End of consolidation (NOT including breakout candles)
+   - Yellow box shows only the 15-candle consolidation zone
+   - Breakout candle appears outside the box
+
+**Configuration** (`DEFAULT_CONFIG`):
+```typescript
+{
+  consolidationWindow: 15,    // Candles in consolidation
+  maxRangePct: 0.02,          // 2% max range
+  maxAtrPct: 0.025,           // 2.5% max ATR
+  atrPeriod: 14,              // ATR period
+  minTouches: 2,              // Min boundary touches
+  maxDriftPct: 0.008,         // 0.8% max drift
+  minBufferPct: 0.0005,       // 0.05% min buffer
+  bufferAtrMult: 0.2,         // ATR multiplier for buffer
+  minVolSpike: 1.3,           // Volume spike multiplier
+  breakoutLookahead: 3,       // Bars to look ahead
+  requireFollowThrough: true,
+  minFollowThroughPct: 0.001, // 0.1% continuation
+  requireStayOutside: true,   // Must stay outside range
+}
+```
+
+**Hebrew Hints**:
+- Detailed step-by-step pattern explanation
+- Shows consolidation window size and range percentage
+- Displays volume spike ratio
+- Includes entry and SL levels
+
+#### 2. Strict Retest Detector (`server/src/services/strictRetestDetector.ts`)
+
+Professional pivot-based algorithm for detecting authentic retest patterns.
 
 **Core Architecture:**
 - **Pivot Detection**: Identifies swing highs/lows with strict 5-bar structure (center bar + 2 bars on each side)
@@ -465,6 +563,7 @@ The system uses a professional pivot-based algorithm for detecting authentic ret
   - Retest tolerance: 0.20 × ATR
   - Confirmation buffer: 0.05 × ATR
   - Invalidation buffer: 0.25 × ATR
+- **Scans all candles**: No artificial limits (removed 400-candle debug limit)
 
 **Pattern Types Detected:**
 1. **LONG CONTINUATION**: Uptrend → breaks pivot high (resistance) → retest from above → continues up
@@ -484,13 +583,26 @@ The system uses a professional pivot-based algorithm for detecting authentic ret
 - Includes detailed Hebrew hints with step-by-step pattern explanation
 - Entry/SL levels calculated based on retest level with percentage offsets
 
+**Console Logging** (Minimal):
+- Only logs final successful patterns: `✅ Pattern complete at index X`
+- No intermediate CONFIRMATION logs
+- No POST-CONFIRMATION REVERSAL logs
+- No "No retest found" messages
+- Clean console output for production use
+
+#### 3. Pattern Integration & UI
+
 **Jump-to-Pattern Feature** (`client/src/stores/gameStore.ts`):
 - `jumpToCandle(targetIndex)` function navigates chart to pattern location
 - Calls `chartResetZoom()` then `chartFitContent()` with staggered timeouts to clear visual clutter
 - Integrated with PatternLegendPanel for one-click navigation
 - Toast notification confirms jump: "קפצת לתבנית #X"
 
-**PatternLegendPanel Improvements**:
+**PatternLegendPanel Improvements** (`client/src/components/Chart/PatternLegendPanel.tsx`):
+- **Reverse order display**: Newest patterns appear first (most recent at top)
+- **Index mapping fix**: Tracks `originalIdx` through map/filter/reverse chain
+  - Ensures clicking pattern in reversed list jumps to correct chart location
+  - Uses `originalIdx` for onClick handler and key prop
 - Always visible even when no patterns detected (shows "🔍 אין תבניות עדיין")
 - Auto-scroll to latest pattern when new ones appear
 - Click on pattern to jump to chart location
@@ -498,13 +610,15 @@ The system uses a professional pivot-based algorithm for detecting authentic ret
 - Pattern count badge in header
 
 **Integration** (`server/src/services/patternDetector.ts`):
-- `detectPatterns()` function uses Strict Retest Detector by default (`useStrictRetest: true`)
-- 50% of patterns allocated to retest detection, remainder to legacy breakout/flag detectors
+- Uses **Professional Consolidation Breakout Detector** for breakout patterns
+- Uses **Strict Retest Detector** for retest patterns (`useStrictRetest: true`)
+- Pattern allocation: 50% breakout, 50% retest (configurable)
 - Minimum 30-candle gap between patterns to prevent overlap
 - Console logging shows detection process with emoji indicators (🔵 LONG, 🔴 SHORT, ✅ success)
+- Reduced log spam: Only shows successful pattern detections
 
 **Legacy Pattern Generators**:
-Stub implementations remain in `patternGenerator.ts` for Breakout and Bull Flag:
+Stub implementations remain in `patternGenerator.ts` for Bull Flag:
 - Modify candles array in-place at startIndex
 - Return Pattern object with accurate expectedEntry/Exit based on generated candles
 - Set quality (0-100) based on pattern clarity
