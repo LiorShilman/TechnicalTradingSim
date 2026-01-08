@@ -810,9 +810,11 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
       quality: 85 + Math.floor(Math.random() * 10), // High quality for strict detection
       description,
       hint,
-      // Store retest index for marker placement (used by frontend)
-      retestIndex: signal.retestIndex,
-      breakoutIndex: signal.breakoutIndex,
+      // Store indices for visualization (used by frontend)
+      retestIndex: signal.retestIndex,      // Where retest touch occurred
+      breakoutIndex: signal.breakoutIndex,  // Where breakout occurred
+      pivotIndex: signal.pivotIndex,        // Where the original pivot high/low was (for line drawing)
+      pivotLevel: signal.level,             // The exact price level of the pivot
     },
   }
 }

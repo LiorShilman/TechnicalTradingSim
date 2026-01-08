@@ -35,6 +35,8 @@ export interface Pattern {
     hint?: string;            // רמז למשתמש (אופציונלי)
     retestIndex?: number;     // עבור retest: נר הבדיקה החוזרת
     breakoutIndex?: number;   // עבור retest: נר הפריצה
+    pivotIndex?: number;      // עבור retest: נר השיא/שפל המקורי
+    pivotLevel?: number;      // עבור retest: המחיר המדויק של הפיבוט
   };
 }
 

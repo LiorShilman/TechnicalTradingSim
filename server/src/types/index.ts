@@ -25,6 +25,8 @@ export interface Pattern {
     hint?: string
     retestIndex?: number     // For retest patterns: where the retest touch occurred
     breakoutIndex?: number   // For retest patterns: where the breakout occurred
+    pivotIndex?: number      // For retest patterns: where the pivot (swing high/low) was
+    pivotLevel?: number      // For retest patterns: the exact price level of the pivot
   }
 }
 

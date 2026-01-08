@@ -2175,25 +2175,21 @@ if (sl && tp) {
       const color = patternColors[pattern.type as keyof typeof patternColors] || '#FFFFFF'
 
       // ציור מיוחד לתבניות Retest - קו מהשיא/שפל שנפרץ עד לנר הבדיקה
-      if (pattern.type === 'retest' && pattern.metadata.breakoutIndex !== undefined && pattern.metadata.retestIndex !== undefined) {
-        const breakoutIdx = pattern.metadata.breakoutIndex
+      if (pattern.type === 'retest' && pattern.metadata.pivotIndex !== undefined && pattern.metadata.retestIndex !== undefined && pattern.metadata.pivotLevel !== undefined) {
+        const pivotIdx = pattern.metadata.pivotIndex
         const retestIdx = pattern.metadata.retestIndex
+        const pivotLevel = pattern.metadata.pivotLevel
 
         // בדוק שהנרות כבר נחשפו
-        if (retestIdx <= gameState.currentIndex && breakoutIdx < gameState.candles.length && retestIdx < gameState.candles.length) {
-          const breakoutCandle = gameState.candles[breakoutIdx]
+        if (retestIdx <= gameState.currentIndex && pivotIdx < gameState.candles.length && retestIdx < gameState.candles.length) {
+          const pivotCandle = gameState.candles[pivotIdx]
           const retestCandle = gameState.candles[retestIdx]
 
           // קבע כיוון (LONG = ירוק, SHORT = אדום) לפי התיאור
           const isLong = pattern.metadata.description?.includes('LONG')
           const lineColor = isLong ? '#00FF00' : '#FF0000' // ירוק או אדום
 
-          // רמת הפריצה (השיא/שפל שנפרץ) - זה המחיר של ה-pivot
-          // בLONG: הפריצה היא למעלה, אז השיא של נר הפריצה
-          // בSHORT: הפריצה היא למטה, אז השפל של נר הפריצה
-          const pivotLevel = isLong ? breakoutCandle.high : breakoutCandle.low
-
-          // צייר קו מהפריצה (breakout) עד הבדיקה (retest)
+          // צייר קו מהפיבוט (pivot) עד הבדיקה (retest)
           const retestLineSeries = chartRef.current!.addLineSeries({
             color: lineColor,
             lineWidth: 3, // קו עבה יותר
@@ -2202,11 +2198,12 @@ if (sl && tp) {
             lastValueVisible: false,
           })
 
-          // יצירת קו מהשיא/שפל שנפרץ עד לנר הבדיקה
+          // יצירת קו מנר הפיבוט עד לנר הבדיקה
+          // הקו מתחיל מהנר שבו היה השיא/שפל (pivot candle)
           const lineData = [
             {
-              time: breakoutCandle.time as Time,
-              value: pivotLevel,
+              time: pivotCandle.time as Time,
+              value: pivotLevel, // רמת הפיבוט המדויקת
             },
             {
               time: retestCandle.time as Time,
