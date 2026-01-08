@@ -340,20 +340,31 @@ function findStrictRetestLong(
     const confirmed = (c.close > level + confirmBuf) && (c.close > prev.close)
 
     if (confirmed) {
-      console.log(`      ✅ CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)} && > prev ${prev.close.toFixed(2)}`)
-
       // Determine which retest type we accept (strict ordering: must have had a touch before confirm)
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
 
+      // Only log FIRST confirmation (reduces spam)
       if (retestTypeMode === 'WICK') {
-        if (hadWick) return { kind: 'RETEST_LONG_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
+        if (hadWick) {
+          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)}`)
+          return { kind: 'RETEST_LONG_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
+        }
       } else if (retestTypeMode === 'CLOSE') {
-        if (hadClose) return { kind: 'RETEST_LONG_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
+        if (hadClose) {
+          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)}`)
+          return { kind: 'RETEST_LONG_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
+        }
       } else {
         // BOTH: prefer CLOSE if it happened; else WICK
-        if (hadClose) return { kind: 'RETEST_LONG_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
-        if (hadWick) return { kind: 'RETEST_LONG_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
+        if (hadClose) {
+          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)}`)
+          return { kind: 'RETEST_LONG_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
+        }
+        if (hadWick) {
+          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)}`)
+          return { kind: 'RETEST_LONG_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
+        }
       }
     }
   }
@@ -402,19 +413,30 @@ function findStrictRetestShort(
     const confirmed = (c.close < level - confirmBuf) && (c.close < prev.close)
 
     if (confirmed) {
-      console.log(`      ✅ CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)} && < prev ${prev.close.toFixed(2)}`)
-
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
 
+      // Only log FIRST confirmation (reduces spam)
       if (retestTypeMode === 'WICK') {
-        if (hadWick) return { kind: 'RETEST_SHORT_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
+        if (hadWick) {
+          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)}`)
+          return { kind: 'RETEST_SHORT_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
+        }
       } else if (retestTypeMode === 'CLOSE') {
-        if (hadClose) return { kind: 'RETEST_SHORT_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
+        if (hadClose) {
+          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)}`)
+          return { kind: 'RETEST_SHORT_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
+        }
       } else {
         // BOTH: prefer CLOSE if it happened; else WICK
-        if (hadClose) return { kind: 'RETEST_SHORT_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
-        if (hadWick) return { kind: 'RETEST_SHORT_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
+        if (hadClose) {
+          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)}`)
+          return { kind: 'RETEST_SHORT_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
+        }
+        if (hadWick) {
+          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)}`)
+          return { kind: 'RETEST_SHORT_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
+        }
       }
     }
   }
