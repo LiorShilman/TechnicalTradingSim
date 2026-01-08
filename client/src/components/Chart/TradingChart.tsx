@@ -2174,45 +2174,90 @@ if (sl && tp) {
 
       const color = patternColors[pattern.type as keyof typeof patternColors] || '#FFFFFF'
 
-      // יצירת קו עליון (סימון גבול התבנית)
-      const topLineSeries = chartRef.current!.addLineSeries({
-        color,
-        lineWidth: 2,
-        lineStyle: 2, // dashed
-        priceLineVisible: false,
-        lastValueVisible: false,
-      })
+      // ציור מיוחד לתבניות Retest - קו מהשיא/שפל שנפרץ עד לנר הבדיקה
+      if (pattern.type === 'retest' && pattern.metadata.breakoutIndex !== undefined && pattern.metadata.retestIndex !== undefined) {
+        const breakoutIdx = pattern.metadata.breakoutIndex
+        const retestIdx = pattern.metadata.retestIndex
 
-      // מציאת המחיר הגבוה ביותר בתבנית
-      const patternCandles = gameState.candles.slice(pattern.startIndex, Math.min(pattern.endIndex + 1, gameState.currentIndex + 1))
-      const maxPrice = Math.max(...patternCandles.map(c => c.high))
-      const minPrice = Math.min(...patternCandles.map(c => c.low))
+        // בדוק שהנרות כבר נחשפו
+        if (retestIdx <= gameState.currentIndex && breakoutIdx < gameState.candles.length && retestIdx < gameState.candles.length) {
+          const breakoutCandle = gameState.candles[breakoutIdx]
+          const retestCandle = gameState.candles[retestIdx]
 
-      // יצירת נקודות עבור הקו העליון
-      const topLineData = patternCandles.map(candle => ({
-        time: candle.time as Time,
-        value: maxPrice * 1.01, // קצת מעל המקסימום
-      }))
+          // קבע כיוון (LONG = ירוק, SHORT = אדום) לפי התיאור
+          const isLong = pattern.metadata.description?.includes('LONG')
+          const lineColor = isLong ? '#00FF00' : '#FF0000' // ירוק או אדום
 
-      topLineSeries.setData(topLineData)
-      patternLineSeriesRef.current.push(topLineSeries)
+          // רמת הפריצה (השיא/שפל שנפרץ) - זה המחיר של ה-pivot
+          // בLONG: הפריצה היא למעלה, אז השיא של נר הפריצה
+          // בSHORT: הפריצה היא למטה, אז השפל של נר הפריצה
+          const pivotLevel = isLong ? breakoutCandle.high : breakoutCandle.low
 
-      // יצירת קו תחתון
-      const bottomLineSeries = chartRef.current!.addLineSeries({
-        color,
-        lineWidth: 2,
-        lineStyle: 2,
-        priceLineVisible: false,
-        lastValueVisible: false,
-      })
+          // צייר קו מהפריצה (breakout) עד הבדיקה (retest)
+          const retestLineSeries = chartRef.current!.addLineSeries({
+            color: lineColor,
+            lineWidth: 3, // קו עבה יותר
+            lineStyle: 0, // solid (לא dashed)
+            priceLineVisible: false,
+            lastValueVisible: false,
+          })
 
-      const bottomLineData = patternCandles.map(candle => ({
-        time: candle.time as Time,
-        value: minPrice * 0.99, // קצת מתחת למינימום
-      }))
+          // יצירת קו מהשיא/שפל שנפרץ עד לנר הבדיקה
+          const lineData = [
+            {
+              time: breakoutCandle.time as Time,
+              value: pivotLevel,
+            },
+            {
+              time: retestCandle.time as Time,
+              value: pivotLevel, // אותה רמה (קו אופקי)
+            },
+          ]
 
-      bottomLineSeries.setData(bottomLineData)
-      patternLineSeriesRef.current.push(bottomLineSeries)
+          retestLineSeries.setData(lineData)
+          patternLineSeriesRef.current.push(retestLineSeries)
+        }
+      } else {
+        // ציור רגיל לתבניות אחרות (Breakout, Flag) - הקווים האופקיים הישנים
+        const topLineSeries = chartRef.current!.addLineSeries({
+          color,
+          lineWidth: 2,
+          lineStyle: 2, // dashed
+          priceLineVisible: false,
+          lastValueVisible: false,
+        })
+
+        // מציאת המחיר הגבוה ביותר בתבנית
+        const patternCandles = gameState.candles.slice(pattern.startIndex, Math.min(pattern.endIndex + 1, gameState.currentIndex + 1))
+        const maxPrice = Math.max(...patternCandles.map(c => c.high))
+        const minPrice = Math.min(...patternCandles.map(c => c.low))
+
+        // יצירת נקודות עבור הקו העליון
+        const topLineData = patternCandles.map(candle => ({
+          time: candle.time as Time,
+          value: maxPrice * 1.01, // קצת מעל המקסימום
+        }))
+
+        topLineSeries.setData(topLineData)
+        patternLineSeriesRef.current.push(topLineSeries)
+
+        // יצירת קו תחתון
+        const bottomLineSeries = chartRef.current!.addLineSeries({
+          color,
+          lineWidth: 2,
+          lineStyle: 2,
+          priceLineVisible: false,
+          lastValueVisible: false,
+        })
+
+        const bottomLineData = patternCandles.map(candle => ({
+          time: candle.time as Time,
+          value: minPrice * 0.99, // קצת מתחת למינימום
+        }))
+
+        bottomLineSeries.setData(bottomLineData)
+        patternLineSeriesRef.current.push(bottomLineSeries)
+      }
 
       // הוספת marker: for retest patterns, place marker at retestIndex (not startIndex)
       // Use Map to prevent duplicate markers at the same index
