@@ -460,7 +460,11 @@ export function detectRetests(
 
   const signals: RetestSignal[] = []
 
-  for (let i = 0; i < candles.length; i++) {
+  // DEBUG: Limit detection to first 400 candles to preserve console logs
+  const maxCandleForDetection = Math.min(candles.length, 400)
+  console.log(`🔍 Detection limited to first ${maxCandleForDetection} candles (for debugging)`)
+
+  for (let i = 0; i < maxCandleForDetection; i++) {
     const a = atr[i]
     if (a == null) continue
 
