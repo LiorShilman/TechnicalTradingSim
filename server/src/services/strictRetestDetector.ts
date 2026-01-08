@@ -801,7 +801,7 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
 
   return {
     type: 'retest',
-    startIndex: signal.retestIndex,  // Start from retest touch, not breakout
+    startIndex: signal.breakoutIndex + 1,  // Start AFTER breakout candle (not on breakout itself)
     endIndex: signal.confirmIndex,
     expectedEntry,
     expectedExit,
@@ -810,6 +810,9 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
       quality: 85 + Math.floor(Math.random() * 10), // High quality for strict detection
       description,
       hint,
+      // Store retest index for marker placement (used by frontend)
+      retestIndex: signal.retestIndex,
+      breakoutIndex: signal.breakoutIndex,
     },
   }
 }

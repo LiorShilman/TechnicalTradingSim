@@ -23,6 +23,8 @@ export interface Pattern {
     quality: number
     description: string
     hint?: string
+    retestIndex?: number     // For retest patterns: where the retest touch occurred
+    breakoutIndex?: number   // For retest patterns: where the breakout occurred
   }
 }
 

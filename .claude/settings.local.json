@@ -50,7 +50,8 @@
       "Bash(claude plugin marketplace --help:*)",
       "Bash(claude plugin marketplace list)",
       "Bash(claude plugin install --help:*)",
-      "Bash(claude plugin install vtsls@claude-code-lsps --scope project)"
+      "Bash(claude plugin install vtsls@claude-code-lsps --scope project)",
+      "Bash(npx tsc:*)"
     ]
   }
 }

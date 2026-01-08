@@ -2214,11 +2214,15 @@ if (sl && tp) {
       bottomLineSeries.setData(bottomLineData)
       patternLineSeriesRef.current.push(bottomLineSeries)
 
-      // הוספת marker לתחילת התבנית (short icon + name only for readability)
+      // הוספת marker: for retest patterns, place marker at retestIndex (not startIndex)
       // Use Map to prevent duplicate markers at the same index
-      if (pattern.startIndex <= gameState.currentIndex) {
-        const startCandle = gameState.candles[pattern.startIndex]
-        const markerKey = `pattern-${pattern.startIndex}`
+      const markerIndex = (pattern.type === 'retest' && pattern.metadata.retestIndex !== undefined)
+        ? pattern.metadata.retestIndex
+        : pattern.startIndex
+
+      if (markerIndex <= gameState.currentIndex) {
+        const markerCandle = gameState.candles[markerIndex]
+        const markerKey = `pattern-${markerIndex}`
 
         // Skip if we already have a marker at this index
         if (!markerMap.has(markerKey)) {
@@ -2231,7 +2235,7 @@ if (sl && tp) {
           const markerText = defaultNames[pattern.type] || pattern.type
 
           const marker = {
-            time: startCandle.time as Time,
+            time: markerCandle.time as Time,
             position: 'aboveBar' as const,
             color,
             shape: 'arrowDown' as const,

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 # ===============================================
-# LSP Setup Script for Trading Simulator Project
+# LSP Setup Script
 # ===============================================
 # This script automatically installs and configures
 # the TypeScript LSP plugin for Claude Code
@@ -9,7 +9,7 @@
 
 set -e  # Exit on any error
 
-echo "🚀 Starting LSP Setup for Trading Simulator..."
+echo "🚀 Starting LSP Setup..."
 echo ""
 
 # Colors for output

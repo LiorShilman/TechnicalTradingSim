@@ -33,6 +33,8 @@ export interface Pattern {
     quality: number;          // 0-100 איכות התבנית
     description: string;      // תיאור התבנית
     hint?: string;            // רמז למשתמש (אופציונלי)
+    retestIndex?: number;     // עבור retest: נר הבדיקה החוזרת
+    breakoutIndex?: number;   // עבור retest: נר הפריצה
   };
 }
 
