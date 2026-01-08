@@ -252,9 +252,10 @@ function lastPivotBeforeIndex(pivots: Pivot[], index: number): Pivot | null {
  * Check if candle is a LONG wick touch:
  * - Low touches level (within tolerance)
  * - But close stays above level (doesn't invalidate)
+ * - Low doesn't go too far below level (max 2x tolerance)
  */
 function isLongWickTouch(c: Candle, level: number, tol: number): boolean {
-  return (c.low <= level + tol) && (c.close >= level - tol)
+  return (c.low <= level + tol) && (c.low >= level - 2 * tol) && (c.close >= level - tol)
 }
 
 /**
@@ -269,9 +270,10 @@ function isLongCloseTouch(c: Candle, level: number, tol: number): boolean {
  * Check if candle is a SHORT wick touch:
  * - High touches level (within tolerance)
  * - But close stays below level (doesn't invalidate)
+ * - High doesn't go too far above level (max 2x tolerance)
  */
 function isShortWickTouch(c: Candle, level: number, tol: number): boolean {
-  return (c.high >= level - tol) && (c.close <= level + tol)
+  return (c.high >= level - tol) && (c.high <= level + 2 * tol) && (c.close <= level + tol)
 }
 
 /**
@@ -344,25 +346,40 @@ function findStrictRetestLong(
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
 
-      // Only log FIRST confirmation (reduces spam)
+      // Post-confirmation validation: Check next 5 candles to ensure price continues UP
+      // LONG pattern should see price movement UP, not DOWN
+      const postConfirmWindow = 5
+      const postConfirmEnd = Math.min(candles.length - 1, i + postConfirmWindow)
+      let priceReversedDown = false
+
+      for (let j = i + 1; j <= postConfirmEnd; j++) {
+        // If price closes BELOW the level - invalidation buffer, pattern failed
+        if (candles[j].close < level - invalidBuf) {
+          priceReversedDown = true
+          break
+        }
+      }
+
+      // If pattern reversed, reject it
+      if (priceReversedDown) {
+        return { kind: 'REJECT_LONG_POST_CONFIRM_REVERSAL', rejectIndex: i }
+      }
+
+      // Return successful pattern
       if (retestTypeMode === 'WICK') {
         if (hadWick) {
-          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)}`)
           return { kind: 'RETEST_LONG_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
         }
       } else if (retestTypeMode === 'CLOSE') {
         if (hadClose) {
-          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)}`)
           return { kind: 'RETEST_LONG_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
         }
       } else {
         // BOTH: prefer CLOSE if it happened; else WICK
         if (hadClose) {
-          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)}`)
           return { kind: 'RETEST_LONG_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
         }
         if (hadWick) {
-          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} > ${(level + confirmBuf).toFixed(2)}`)
           return { kind: 'RETEST_LONG_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
         }
       }
@@ -416,25 +433,40 @@ function findStrictRetestShort(
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
 
-      // Only log FIRST confirmation (reduces spam)
+      // Post-confirmation validation: Check next 5 candles to ensure price continues DOWN
+      // SHORT pattern should see price movement DOWN, not UP
+      const postConfirmWindow = 5
+      const postConfirmEnd = Math.min(candles.length - 1, i + postConfirmWindow)
+      let priceReversedUp = false
+
+      for (let j = i + 1; j <= postConfirmEnd; j++) {
+        // If price closes ABOVE the level + invalidation buffer, pattern failed
+        if (candles[j].close > level + invalidBuf) {
+          priceReversedUp = true
+          break
+        }
+      }
+
+      // If pattern reversed, reject it
+      if (priceReversedUp) {
+        return { kind: 'REJECT_SHORT_POST_CONFIRM_REVERSAL', rejectIndex: i }
+      }
+
+      // Return successful pattern
       if (retestTypeMode === 'WICK') {
         if (hadWick) {
-          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)}`)
           return { kind: 'RETEST_SHORT_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
         }
       } else if (retestTypeMode === 'CLOSE') {
         if (hadClose) {
-          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)}`)
           return { kind: 'RETEST_SHORT_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
         }
       } else {
         // BOTH: prefer CLOSE if it happened; else WICK
         if (hadClose) {
-          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)}`)
           return { kind: 'RETEST_SHORT_CLOSE', retestIndex: touchedIndexClose, confirmIndex: i }
         }
         if (hadWick) {
-          console.log(`      ✅ FIRST CONFIRMATION at index ${i}: close ${c.close.toFixed(2)} < ${(level - confirmBuf).toFixed(2)}`)
           return { kind: 'RETEST_SHORT_WICK', retestIndex: touchedIndexWick, confirmIndex: i }
         }
       }
@@ -482,11 +514,8 @@ export function detectRetests(
 
   const signals: RetestSignal[] = []
 
-  // DEBUG: Limit detection to first 400 candles to preserve console logs
-  const maxCandleForDetection = Math.min(candles.length, 400)
-  console.log(`🔍 Detection limited to first ${maxCandleForDetection} candles (for debugging)`)
-
-  for (let i = 0; i < maxCandleForDetection; i++) {
+  // Scan all candles for patterns (no limit)
+  for (let i = 0; i < candles.length; i++) {
     const a = atr[i]
     if (a == null) continue
 
@@ -523,17 +552,9 @@ export function detectRetests(
       if (candles[i].close > level + breakoutBuf) {
         const breakoutIndex = i
 
-        console.log(`🔵 LONG CONTINUATION - Breakout detected at index ${breakoutIndex}:`)
-        console.log(`   Local Trend: ${localTrend} (UP trend required for continuation)`)
-        console.log(`   Pivot High: ${level.toFixed(2)} at index ${ph.index}`)
-        console.log(`   Breakout: ${candles[i].close.toFixed(2)} > ${(level + breakoutBuf).toFixed(2)}`)
-        console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
-
         // Search retest window
         const start = breakoutIndex + minBarsAfterBreakout
         const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
-
-        console.log(`   Retest search window: ${start} to ${end} (${end - start + 1} candles)`)
 
         const res = findStrictRetestLong(candles, {
           level,
@@ -545,16 +566,10 @@ export function detectRetests(
           retestTypeMode,
         })
 
-        if (res) {
-          console.log(`   ✅ Result: ${res.kind}`)
-          if (res.retestIndex !== undefined) {
-            console.log(`      Retest at index ${res.retestIndex} (${res.retestIndex - breakoutIndex} bars after breakout)`)
-            console.log(`      Retest price: low=${candles[res.retestIndex].low.toFixed(2)}, close=${candles[res.retestIndex].close.toFixed(2)}`)
-          }
-          if (res.confirmIndex !== undefined) {
-            console.log(`      Confirm at index ${res.confirmIndex}`)
-            console.log(`      Confirm price: close=${candles[res.confirmIndex].close.toFixed(2)}`)
-          }
+        if (res && res.confirmIndex !== undefined) {
+          // Only log successful patterns
+          console.log(`✅ Pattern complete at index ${res.confirmIndex}:`)
+          console.log(`   Pivot: ${level.toFixed(2)}, Breakout: ${breakoutIndex}, Retest: ${res.retestIndex}, Confirm: ${res.confirmIndex}`)
 
           signals.push({
             kind: res.kind,
@@ -569,8 +584,6 @@ export function detectRetests(
             isReversal: false, // Continuation: uptrend breaking pivot high
             pivotType: 'high',
           })
-        } else {
-          console.log(`   ❌ No retest found`)
         }
       }
     }
@@ -579,6 +592,14 @@ export function detectRetests(
     const pl = lastPivotBeforeIndex(pivotLows, i)
     if (pl && trendDown) {
       const level = pl.price
+
+      // ✅ תנאי חדש: הפיבוט חייב להיות רחוק מספיק מהפריצה (לפחות 10 נרות)
+      const minPivotDistance = 10
+      const pivotDistance = i - pl.index
+
+      if (pivotDistance < minPivotDistance) {
+        continue // דלג על הפיבוט הזה - הוא יותר מדי קרוב
+      }
 
       // Breakout condition (strict): close below level - buffer
       if (candles[i].close < level - breakoutBuf) {
@@ -629,8 +650,6 @@ export function detectRetests(
             isReversal: false, // Continuation: downtrend breaking pivot low
             pivotType: 'low',
           })
-        } else {
-          console.log(`   ❌ No retest found`)
         }
       }
     }
@@ -666,16 +685,10 @@ export function detectRetests(
           retestTypeMode,
         })
 
-        if (res) {
-          console.log(`   ✅ Result: ${res.kind}`)
-          if (res.retestIndex !== undefined) {
-            console.log(`      Retest at index ${res.retestIndex} (${res.retestIndex - breakoutIndex} bars after breakout)`)
-            console.log(`      Retest price: low=${candles[res.retestIndex].low.toFixed(2)}, close=${candles[res.retestIndex].close.toFixed(2)}`)
-          }
-          if (res.confirmIndex !== undefined) {
-            console.log(`      Confirm at index ${res.confirmIndex}`)
-            console.log(`      Confirm price: close=${candles[res.confirmIndex].close.toFixed(2)}`)
-          }
+        if (res && res.confirmIndex !== undefined) {
+          // Only log successful patterns
+          console.log(`✅ Pattern complete at index ${res.confirmIndex}:`)
+          console.log(`   Pivot: ${level.toFixed(2)}, Breakout: ${breakoutIndex}, Retest: ${res.retestIndex}, Confirm: ${res.confirmIndex}`)
 
           signals.push({
             kind: res.kind,
@@ -690,8 +703,6 @@ export function detectRetests(
             isReversal: true, // REVERSAL: downtrend breaking resistance
             pivotType: 'high',
           })
-        } else {
-          console.log(`   ❌ No retest found`)
         }
       }
     }
@@ -751,8 +762,6 @@ export function detectRetests(
             isReversal: true, // REVERSAL: uptrend breaking support
             pivotType: 'low',
           })
-        } else {
-          console.log(`   ❌ No retest found`)
         }
       }
     }
@@ -827,8 +836,8 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
 
   return {
     type: 'retest',
-    startIndex: signal.breakoutIndex + 1,  // Start AFTER breakout candle (not on breakout itself)
-    endIndex: signal.confirmIndex,
+    startIndex: signal.breakoutIndex,    // Pattern range: from breakout...
+    endIndex: signal.retestIndex,         // ...to retest (shows full pattern development)
     expectedEntry,
     expectedExit,
     stopLoss,

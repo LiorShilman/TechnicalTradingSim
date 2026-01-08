@@ -12,8 +12,8 @@ export default function PatternLegendPanel({ onJumpToPattern }: PatternLegendPan
   // Auto-scroll to latest pattern
   useEffect(() => {
     if (containerRef.current && gameState?.patterns) {
-      const visiblePatterns = gameState.patterns.filter(p => p.startIndex <= gameState.currentIndex)
-      if (visiblePatterns.length > 0) {
+      const visibleCount = gameState.patterns.filter(p => p.startIndex <= gameState.currentIndex).length
+      if (visibleCount > 0) {
         // Scroll to top to show latest pattern
         containerRef.current.scrollTop = 0
       }
@@ -21,9 +21,12 @@ export default function PatternLegendPanel({ onJumpToPattern }: PatternLegendPan
   }, [gameState?.patterns, gameState?.currentIndex])
 
   // Always show panel, even if no patterns yet
-  const visiblePatterns = gameState?.patterns
-    ? gameState.patterns.filter(p => p.startIndex <= gameState.currentIndex)
-    : []
+  // Get visible patterns and keep track of original indices
+  const allPatterns = gameState?.patterns || []
+  const visiblePatternsWithIndex = allPatterns
+    .map((p, originalIdx) => ({ pattern: p, originalIdx }))
+    .filter(({ pattern }) => pattern.startIndex <= (gameState?.currentIndex ?? 0))
+    .reverse() // Newest first
 
   return (
     <div className="bg-dark-bg/95 backdrop-blur-md rounded-xl p-4 text-xs border-2 border-cyan-500/30 shadow-lg h-full flex flex-col">
@@ -34,7 +37,7 @@ export default function PatternLegendPanel({ onJumpToPattern }: PatternLegendPan
           <span>תבניות מזוהות</span>
         </div>
         <div className="text-[10px] text-text-secondary">
-          {visiblePatterns.length} תבניות
+          {visiblePatternsWithIndex.length} תבניות
         </div>
       </div>
 
@@ -44,13 +47,13 @@ export default function PatternLegendPanel({ onJumpToPattern }: PatternLegendPan
         className="flex-1 overflow-y-auto space-y-2 pr-2"
         style={{ maxHeight: 'calc(100% - 60px)' }}
       >
-        {visiblePatterns.length === 0 ? (
+        {visiblePatternsWithIndex.length === 0 ? (
           <div className="flex flex-col items-center justify-center h-full text-text-secondary">
             <span className="text-4xl mb-2">🔍</span>
             <span className="text-center">אין תבניות עדיין</span>
           </div>
         ) : (
-          visiblePatterns.map((pattern, idx) => {
+          visiblePatternsWithIndex.map(({ pattern, originalIdx }, idx) => {
           const patternInfo = {
             breakout: { icon: '⚡', name: 'Breakout', color: '#FFD700' },
             retest: { icon: '🔄', name: 'Retest', color: '#00CED1' },
@@ -60,8 +63,8 @@ export default function PatternLegendPanel({ onJumpToPattern }: PatternLegendPan
 
           return (
             <div
-              key={idx}
-              onClick={() => onJumpToPattern?.(idx)}
+              key={originalIdx}
+              onClick={() => onJumpToPattern?.(originalIdx)}
               className="group relative rounded-lg p-2 border bg-dark-card/50 hover:bg-dark-card/80 border-dark-border hover:border-cyan-500/50 transition-all cursor-pointer"
               title="לחץ כדי לקפוץ לתבנית זו בגרף"
             >

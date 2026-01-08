@@ -16,6 +16,7 @@
 
 import type { Candle, Pattern } from '../types/index.js'
 import { detectRetestPatterns } from './strictRetestDetector.js'
+import { detectConsolidationBreakouts } from './consolidationBreakoutDetector.js'
 
 /**
  * מציאת pivot high - נקודה שהיא הגבוהה ביותר בטווח
@@ -396,24 +397,45 @@ export function detectPatterns(
       const breakoutQuota = Math.ceil(remainingQuota * 0.6)
       const flagQuota = remainingQuota - breakoutQuota
 
-      // Breakout patterns
-      let breakoutFound = 0
-      for (let i = 50; i < candles.length - 50 && breakoutFound < breakoutQuota; i++) {
-        const hasOverlap = patterns.some(p => Math.abs(p.startIndex - i) < minGap)
-        if (hasOverlap) continue
+      // Breakout patterns - using professional consolidation breakout detector (FIXED VERSION)
+      const breakoutPatterns = detectConsolidationBreakouts(candles, breakoutQuota, {
+        consolidationWindow: 15,
+        maxRangePct: 0.02,          // 2% max range
+        maxAtrPct: 0.025,           // 2.5% max ATR
+        atrPeriod: 14,
+        minTouches: 2,              // At least 2 touches of high/low
+        maxDriftPct: 0.008,         // 0.8% max drift
+        minBufferPct: 0.0005,       // 0.05% buffer
+        bufferAtrMult: 0.2,
+        minVolSpike: 1.3,           // Volume must be 1.3x average
+        breakoutLookahead: 3,       // Check up to 3 bars ahead
+        requireFollowThrough: true,
+        minFollowThroughPct: 0.001, // 0.1% follow-through
+        requireStayOutside: true,   // Must stay outside consolidation range
+      })
 
-        const pattern = detectBreakoutPattern(candles, i)
-        if (pattern && pattern.metadata.quality >= 70) {
-          patterns.push(pattern)
-          breakoutFound++
-          i += minGap
-        }
-      }
+      // Filter out overlapping patterns
+      const breakoutFound = breakoutPatterns.filter(bp => {
+        const hasOverlap = patterns.some(p => {
+          const rangeStart = Math.min(p.startIndex, p.endIndex) - minGap
+          const rangeEnd = Math.max(p.startIndex, p.endIndex) + minGap
+          const bpRange = Math.min(bp.startIndex, bp.endIndex)
+          return bpRange >= rangeStart && bpRange <= rangeEnd
+        })
+        return !hasOverlap
+      })
+
+      patterns.push(...breakoutFound)
 
       // Bull Flag patterns
       let flagFound = 0
       for (let i = 50; i < candles.length - 50 && flagFound < flagQuota; i++) {
-        const hasOverlap = patterns.some(p => Math.abs(p.startIndex - i) < minGap)
+        // בדיקת חפיפה משופרת - בדוק אם i נמצא בטווח של תבנית קיימת
+        const hasOverlap = patterns.some(p => {
+          const rangeStart = Math.min(p.startIndex, p.endIndex) - minGap
+          const rangeEnd = Math.max(p.startIndex, p.endIndex) + minGap
+          return i >= rangeStart && i <= rangeEnd
+        })
         if (hasOverlap) continue
 
         const pattern = detectBullFlagPattern(candles, i)
@@ -424,7 +446,7 @@ export function detectPatterns(
         }
       }
 
-      console.log(`   ✅ Found ${breakoutFound} breakout, ${flagFound} flag patterns`)
+      console.log(`   ✅ Found ${breakoutFound.length} breakout, ${flagFound} flag patterns`)
     }
   } else {
     // LEGACY mode - השתמש בדטקטורים הישנים
