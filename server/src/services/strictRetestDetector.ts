@@ -89,9 +89,28 @@ function calculateSMA(candles: Candle[], period: number): (number | null)[] {
  *
  * Logic (strict pivot-based):
  * - Pivot = swing point with 2 bars on each side (5 bars total)
- * - UP trend: Need 2 higher pivot highs AND 2 higher pivot lows
- * - DOWN trend: Need 2 lower pivot highs AND 2 lower pivot lows
- * - NEUTRAL: Less than 2 pivots or mixed signals
+ * - **CRITICAL**: Must have EXACTLY 2 pivot highs AND 2 pivot lows to define trend
+ *
+ * - **UP trend**: Need 2 consecutive higher pivot highs AND 2 consecutive higher pivot lows
+ *   - Example: PH1 (5000) < PH2 (5100) = higher highs ✓
+ *   -          PL1 (4800) < PL2 (4900) = higher lows ✓
+ *   - Result: UPTREND confirmed (both structure elements rising)
+ *
+ * - **DOWN trend**: Need 2 consecutive lower pivot highs AND 2 consecutive lower pivot lows
+ *   - Example: PH1 (5100) > PH2 (5000) = lower highs ✓
+ *   -          PL1 (4900) > PL2 (4800) = lower lows ✓
+ *   - Result: DOWNTREND confirmed (both structure elements falling)
+ *
+ * - **NEUTRAL**: Less than 2 pivots of each type OR mixed signals
+ *   - Example 1: Only 1 pivot high, 1 pivot low → NEUTRAL (not enough data)
+ *   - Example 2: Higher highs but lower lows → NEUTRAL (choppy/ranging)
+ *   - Example 3: Lower highs but higher lows → NEUTRAL (consolidation)
+ *   - Result: No patterns created (prevents false signals in ranging markets)
+ *
+ * This strict requirement ensures:
+ * - Clear trend structure before pattern detection
+ * - Accurate CONTINUATION vs REVERSAL classification
+ * - Fewer false signals in ranging/choppy markets
  */
 function detectLocalTrend(candles: Candle[], index: number, lookback: number = 30): 'UP' | 'DOWN' | 'NEUTRAL' {
   if (index < lookback) return 'NEUTRAL'
@@ -117,9 +136,10 @@ function detectLocalTrend(candles: Candle[], index: number, lookback: number = 3
     if (isPivotLow) pivotLows.push(c.low)
   }
 
-  // Need EXACTLY 2 or more pivots of each type to determine trend
+  // ✅ NEW: Require EXACTLY 2 pivot highs AND 2 pivot lows to define trend
+  // This ensures we have a clear structure: 2 consecutive higher/lower highs + 2 consecutive higher/lower lows
   if (pivotHighs.length < 2 || pivotLows.length < 2) {
-    // console.log(`   🔍 Trend detection at index ${index}: NEUTRAL (found ${pivotHighs.length} pivot highs, ${pivotLows.length} pivot lows)`)
+    // console.log(`   🔍 Trend detection at index ${index}: NEUTRAL (found ${pivotHighs.length} pivot highs, ${pivotLows.length} pivot lows - need 2 of each)`)
     return 'NEUTRAL'
   }
 
@@ -130,19 +150,22 @@ function detectLocalTrend(candles: Candle[], index: number, lookback: number = 3
   const higherHighs = recentHighs[1] > recentHighs[0]
   const higherLows = recentLows[1] > recentLows[0]
 
-  // UP trend: both higher highs AND higher lows
+  // ✅ UP trend: BOTH 2 higher highs AND 2 higher lows
+  // This confirms uptrend structure with both swing highs and swing lows making higher levels
   if (higherHighs && higherLows) {
-    // console.log(`   📈 Trend: UP (HH: ${recentHighs[0].toFixed(2)} → ${recentHighs[1].toFixed(2)}, HL: ${recentLows[0].toFixed(2)} → ${recentLows[1].toFixed(2)})`)
+    // console.log(`   📈 Trend: UP (2 HH: ${recentHighs[0].toFixed(2)} → ${recentHighs[1].toFixed(2)}, 2 HL: ${recentLows[0].toFixed(2)} → ${recentLows[1].toFixed(2)})`)
     return 'UP'
   }
 
-  // DOWN trend: both lower highs AND lower lows
+  // ✅ DOWN trend: BOTH 2 lower highs AND 2 lower lows
+  // This confirms downtrend structure with both swing highs and swing lows making lower levels
   if (!higherHighs && !higherLows) {
-    // console.log(`   📉 Trend: DOWN (LH: ${recentHighs[0].toFixed(2)} → ${recentHighs[1].toFixed(2)}, LL: ${recentLows[0].toFixed(2)} → ${recentLows[1].toFixed(2)})`)
+    // console.log(`   📉 Trend: DOWN (2 LH: ${recentHighs[0].toFixed(2)} → ${recentHighs[1].toFixed(2)}, 2 LL: ${recentLows[0].toFixed(2)} → ${recentLows[1].toFixed(2)})`)
     return 'DOWN'
   }
 
-  // Mixed signals (choppy/ranging)
+  // Mixed signals (choppy/ranging) - when highs and lows move in opposite directions
+  // Example: higher highs but lower lows, or lower highs but higher lows
   // console.log(`   ⚡ Trend: NEUTRAL (mixed signals - HH:${higherHighs}, HL:${higherLows})`)
   return 'NEUTRAL'
 }

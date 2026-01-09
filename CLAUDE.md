@@ -555,21 +555,31 @@ Professional pivot-based algorithm for detecting authentic retest patterns.
 **Core Architecture:**
 - **Pivot Detection**: Identifies swing highs/lows with strict 5-bar structure (center bar + 2 bars on each side)
 - **Local Trend Analysis**: Uses swing structure to determine UP/DOWN/NEUTRAL trend (30-candle lookback)
-  - **UP Trend**: Requires 2+ higher pivot highs AND 2+ higher pivot lows
-  - **DOWN Trend**: Requires 2+ lower pivot highs AND 2+ lower pivot lows
-  - **NEUTRAL**: Less than 2 pivots of each type or mixed signals (rejected, no pattern created)
+  - **Critical Requirement**: Must have EXACTLY 2 pivot highs AND 2 pivot lows to define trend
+  - **UP Trend**: Requires 2 consecutive higher pivot highs AND 2 consecutive higher pivot lows
+    - Example: PH1 < PH2 (higher highs) AND PL1 < PL2 (higher lows)
+  - **DOWN Trend**: Requires 2 consecutive lower pivot highs AND 2 consecutive lower pivot lows
+    - Example: PH1 > PH2 (lower highs) AND PL1 > PL2 (lower lows)
+  - **NEUTRAL**: Less than 2 pivots of each type OR mixed signals (e.g., higher highs but lower lows)
+    - No patterns created in NEUTRAL trend (prevents false signals)
 - **ATR-based Buffers**: Dynamic tolerance levels based on Average True Range (14-period)
   - Breakout buffer: 0.10 × ATR
-  - Retest tolerance: 0.20 × ATR
-  - Confirmation buffer: 0.05 × ATR
-  - Invalidation buffer: 0.25 × ATR
+  - Retest tolerance: 0.35 × ATR (increased for better detection)
+  - Confirmation buffer: 0.02 × ATR (softer requirement)
+  - Invalidation buffer: 0.30 × ATR (higher tolerance)
 - **Scans all candles**: No artificial limits (removed 400-candle debug limit)
 
 **Pattern Types Detected:**
-1. **LONG CONTINUATION**: Uptrend → breaks pivot high (resistance) → retest from above → continues up
-2. **SHORT CONTINUATION**: Downtrend → breaks pivot low (support) → retest from below → continues down
-3. **LONG REVERSAL**: Downtrend → breaks pivot high (resistance) → retest from above → reverses up
-4. **SHORT REVERSAL**: Uptrend → breaks pivot low (support) → retest from below → reverses down
+Patterns are classified as CONTINUATION or REVERSAL based on trend direction vs breakout direction:
+
+1. **LONG CONTINUATION**: Uptrend (2 HH + 2 HL) → breaks pivot high (resistance) → retest from above → continues up
+   - Trend and breakout in SAME direction (both UP)
+2. **SHORT CONTINUATION**: Downtrend (2 LH + 2 LL) → breaks pivot low (support) → retest from below → continues down
+   - Trend and breakout in SAME direction (both DOWN)
+3. **LONG REVERSAL**: Downtrend (2 LH + 2 LL) → breaks pivot high (resistance) → retest from above → reverses up
+   - Trend and breakout in OPPOSITE directions (DOWN trend, UP breakout)
+4. **SHORT REVERSAL**: Uptrend (2 HH + 2 HL) → breaks pivot low (support) → retest from below → reverses down
+   - Trend and breakout in OPPOSITE directions (UP trend, DOWN breakout)
 
 **Retest Validation Logic:**
 - **Touch Detection**: Supports both "Wick Touch" (low/high reaches level ± tolerance) and "Close Touch" (close reaches level)

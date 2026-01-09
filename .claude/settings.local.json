@@ -51,7 +51,10 @@
       "Bash(claude plugin marketplace list)",
       "Bash(claude plugin install --help:*)",
       "Bash(claude plugin install vtsls@claude-code-lsps --scope project)",
-      "Bash(npx tsc:*)"
+      "Bash(npx tsc:*)",
+      "Bash(Wick Touch\"\\)\n   - Full description with touch type remains in PatternLegendPanel\n   - Cleaner, more readable chart display\n\n2. **Dynamic marker positioning**:\n   - LONG patterns: marker below bar with arrow up ↑ \\(bullish\\)\n   - SHORT patterns: marker above bar with arrow down ↓ \\(bearish\\)\n   - Prevents text from blocking price movement direction\n\n## Validation Enhancements\n3. **Post-retest validation** \\(strictRetestDetector.ts\\):\n   - Added validation: 2 candles after retest must not close back through level\n   - LONG: Next 2 candles must not close below level \\(validates bounce\\)\n   - SHORT: Next 2 candles must not close above level \\(validates bounce\\)\n   - Ensures retest is authentic, not a false touch\n\n## Pattern Description Format\n4. **Updated description structure** \\(strictRetestDetector.ts line 864-869\\):\n   - Changed from: \"המשך מגמה)",
+      "Bash(Wick Touch\"\n   - Changed to: \"Retest LONG המשך)",
+      "Bash(Wick Touch\"\n   - More intuitive: direction \\(LONG/SHORT\\) + type \\(המשך/היפוך\\)\n\n## Technical Changes\n- TradingChart.tsx lines 2279-2296: Dynamic marker position/shape based on pattern direction\n- TradingChart.tsx line 2281: Strip touch type from chart display \\(keep first part before |\\)\n- strictRetestDetector.ts lines 349-368: Post-retest validation for LONG patterns\n- strictRetestDetector.ts lines 438-457: Post-retest validation for SHORT patterns\n- strictRetestDetector.ts lines 864-869: Updated pattern description format\n- CLAUDE.md: Comprehensive documentation of all validation logic, bug fixes, and display improvements\n\n🤖 Generated with [Claude Code]\\(https://claude.com/claude-code\\)\n\nCo-Authored-By: Claude Sonnet 4.5 <noreply@anthropic.com>\nEOF\n\\)\")"
     ]
   }
 }
