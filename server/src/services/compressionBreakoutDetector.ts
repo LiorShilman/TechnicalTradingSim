@@ -259,11 +259,17 @@ function detectExplosiveBreakout(
     const breakoutCandle = candles[breakoutIndex]
     const breakoutRange = breakoutCandle.high - breakoutCandle.low
 
-    // דרישה 1: נר גדול
-    if (breakoutRange < avgATR * minRangeMultiplier) continue
+    // דרישה 1: נר גדול (מרוכך - רק 1.2x ATR במקום 1.5x)
+    if (breakoutRange < avgATR * minRangeMultiplier) {
+      console.log(`         ⚠️ Candle too small: ${breakoutRange.toFixed(2)} < ${(avgATR * minRangeMultiplier).toFixed(2)} (${minRangeMultiplier}x ATR)`)
+      continue
+    }
 
-    // דרישה 2: נפח גבוה
-    if (avgVolume > 0 && breakoutCandle.volume < avgVolume * minVolSpike) continue
+    // דרישה 2: נפח גבוה (מרוכך - 1.3x במקום 1.5x, או בכלל דילוג אם אין נפח)
+    if (avgVolume > 0 && breakoutCandle.volume < avgVolume * minVolSpike) {
+      console.log(`         ⚠️ Volume too low: ${breakoutCandle.volume.toFixed(0)} < ${(avgVolume * minVolSpike).toFixed(0)} (${minVolSpike}x avg)`)
+      continue
+    }
 
     // בדיקת כיוון פריצה
     let direction: 'UP' | 'DOWN' | null = null

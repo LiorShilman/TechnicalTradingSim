@@ -598,11 +598,12 @@ A true consolidation is like a **compressed spring** - the more price compresses
   minWindow: 15,              // Min consolidation bars
   maxWindow: 25,              // Max consolidation bars
   maxRangePct: 0.03,          // 3% max range
-  minVolSpike: 1.5,           // 1.5x volume spike required
-  minRangeMultiplier: 1.5,    // Breakout candle must be 1.5x ATR
-  minPressureScore: 60,       // Minimum compression quality (0-100)
+  minVolSpike: 1.3,           // 1.3x volume spike required
+  minRangeMultiplier: 1.2,    // Breakout candle must be 1.2x ATR
+  minPressureScore: 50,       // Minimum compression quality (0-100)
 }
 ```
+**Note**: Original values (1.5x volume, 1.5x ATR, 60 score) were too strict for real market data. Relaxed to 1.3x/1.2x/50 for better detection while maintaining quality.
 
 **Integration:**
 - Enabled by default in STRICT mode (works alongside Retest detector)

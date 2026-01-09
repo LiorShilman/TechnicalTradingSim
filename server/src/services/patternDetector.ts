@@ -403,9 +403,9 @@ export function detectPatterns(
         minWindow: 15,
         maxWindow: 25,
         maxRangePct: 0.03,          // 3% max range
-        minVolSpike: 1.5,           // 1.5x volume spike required
-        minRangeMultiplier: 1.5,    // Breakout candle must be 1.5x ATR
-        minPressureScore: 60,       // Minimum compression quality score
+        minVolSpike: 1.3,           // 1.3x volume spike required (reduced from 1.5x)
+        minRangeMultiplier: 1.2,    // Breakout candle must be 1.2x ATR (reduced from 1.5x)
+        minPressureScore: 50,       // Minimum compression quality score (reduced from 60)
       })
 
       // Filter out overlapping patterns with existing retest patterns
