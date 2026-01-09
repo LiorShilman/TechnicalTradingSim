@@ -346,24 +346,10 @@ function findStrictRetestLong(
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
 
-      // Post-confirmation validation: Check next 5 candles to ensure price continues UP
-      // LONG pattern should see price movement UP, not DOWN
-      const postConfirmWindow = 5
-      const postConfirmEnd = Math.min(candles.length - 1, i + postConfirmWindow)
-      let priceReversedDown = false
-
-      for (let j = i + 1; j <= postConfirmEnd; j++) {
-        // If price closes BELOW the level - invalidation buffer, pattern failed
-        if (candles[j].close < level - invalidBuf) {
-          priceReversedDown = true
-          break
-        }
-      }
-
-      // If pattern reversed, reject it
-      if (priceReversedDown) {
-        return { kind: 'REJECT_LONG_POST_CONFIRM_REVERSAL', rejectIndex: i }
-      }
+      // ❌ DISABLED: Post-confirmation validation was too strict
+      // Original logic: required 5 candles after confirmation to continue UP without reversal
+      // Problem: This is unrealistic for real market data - price can bounce after retest
+      // Solution: Removed this validation - pattern is valid once confirmation happens
 
       // Return successful pattern
       if (retestTypeMode === 'WICK') {
@@ -433,24 +419,10 @@ function findStrictRetestShort(
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
 
-      // Post-confirmation validation: Check next 5 candles to ensure price continues DOWN
-      // SHORT pattern should see price movement DOWN, not UP
-      const postConfirmWindow = 5
-      const postConfirmEnd = Math.min(candles.length - 1, i + postConfirmWindow)
-      let priceReversedUp = false
-
-      for (let j = i + 1; j <= postConfirmEnd; j++) {
-        // If price closes ABOVE the level + invalidation buffer, pattern failed
-        if (candles[j].close > level + invalidBuf) {
-          priceReversedUp = true
-          break
-        }
-      }
-
-      // If pattern reversed, reject it
-      if (priceReversedUp) {
-        return { kind: 'REJECT_SHORT_POST_CONFIRM_REVERSAL', rejectIndex: i }
-      }
+      // ❌ DISABLED: Post-confirmation validation was too strict
+      // Original logic: required 5 candles after confirmation to continue DOWN without reversal
+      // Problem: This is unrealistic for real market data - price can bounce after retest
+      // Solution: Removed this validation - pattern is valid once confirmation happens
 
       // Return successful pattern
       if (retestTypeMode === 'WICK') {
@@ -552,6 +524,29 @@ export function detectRetests(
       if (candles[i].close > level + breakoutBuf) {
         const breakoutIndex = i
 
+        // ✅ NEW: Validate that continuation candles actually move away from level
+        // Goal: Ensure the minBarsAfterBreakout candles don't all touch the pivot level
+        // For LONG: candles should stay above level (not return to it immediately)
+        let validContinuation = true
+        for (let j = 1; j <= minBarsAfterBreakout; j++) {
+          if (breakoutIndex + j >= candles.length) {
+            validContinuation = false
+            break
+          }
+          const continuationCandle = candles[breakoutIndex + j]
+          // Require close to stay away from level (above level + tolerance)
+          // This prevents patterns where all 5 candles touch the breakout line
+          if (continuationCandle.close < level + tol) {
+            validContinuation = false
+            break
+          }
+        }
+
+        if (!validContinuation) {
+          // Skip this breakout - continuation candles didn't move away from level
+          continue
+        }
+
         // Search retest window
         const start = breakoutIndex + minBarsAfterBreakout
         const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
@@ -610,6 +605,31 @@ export function detectRetests(
         console.log(`   Pivot Low: ${level.toFixed(2)} at index ${pl.index}`)
         console.log(`   Breakout: ${candles[i].close.toFixed(2)} < ${(level - breakoutBuf).toFixed(2)}`)
         console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
+
+        // ✅ NEW: Validate that continuation candles actually move away from level
+        // Goal: Ensure the minBarsAfterBreakout candles don't all touch the pivot level
+        // For SHORT CONTINUATION: broke DOWN through pivot LOW, so candles should stay BELOW
+        // The level is pivot LOW, so continuation candles should NOT return ABOVE it
+        let validContinuation = true
+        for (let j = 1; j <= minBarsAfterBreakout; j++) {
+          if (breakoutIndex + j >= candles.length) {
+            validContinuation = false
+            break
+          }
+          const continuationCandle = candles[breakoutIndex + j]
+          // Require close to stay BELOW level (not return above it)
+          // If candle closes ABOVE level + tolerance, it returned to the breakout level
+          if (continuationCandle.close > level + tol) {
+            validContinuation = false
+            break
+          }
+        }
+
+        if (!validContinuation) {
+          // Skip this breakout - continuation candles didn't move away from level
+          console.log(`   ❌ Rejected: continuation candles returned above breakout level`)
+          continue
+        }
 
         const start = breakoutIndex + minBarsAfterBreakout
         const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
@@ -670,6 +690,30 @@ export function detectRetests(
         console.log(`   (Downtrend breaking resistance)`)
         console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
 
+        // ✅ NEW: Validate that continuation candles actually move away from level
+        // Goal: Ensure the minBarsAfterBreakout candles don't all touch the pivot level
+        // For LONG REVERSAL: candles should stay above level (not return to it immediately)
+        let validContinuation = true
+        for (let j = 1; j <= minBarsAfterBreakout; j++) {
+          if (breakoutIndex + j >= candles.length) {
+            validContinuation = false
+            break
+          }
+          const continuationCandle = candles[breakoutIndex + j]
+          // Require close to stay away from level (above level + tolerance)
+          // This prevents patterns where all 5 candles touch the breakout line
+          if (continuationCandle.close < level + tol) {
+            validContinuation = false
+            break
+          }
+        }
+
+        if (!validContinuation) {
+          // Skip this breakout - continuation candles didn't move away from level
+          console.log(`   ❌ Rejected: continuation candles touch the breakout level`)
+          continue
+        }
+
         const start = breakoutIndex + minBarsAfterBreakout
         const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
 
@@ -722,6 +766,31 @@ export function detectRetests(
         console.log(`   Breakout DOWN: ${candles[i].close.toFixed(2)} < ${(level - breakoutBuf).toFixed(2)}`)
         console.log(`   (Uptrend breaking support)`)
         console.log(`   minBarsAfterBreakout: ${minBarsAfterBreakout}`)
+
+        // ✅ NEW: Validate that continuation candles actually move away from level
+        // Goal: Ensure the minBarsAfterBreakout candles don't all touch the pivot level
+        // For SHORT REVERSAL: broke DOWN through pivot LOW (support), so candles should stay BELOW
+        // The level is pivot LOW, so continuation candles should NOT return ABOVE it
+        let validContinuation = true
+        for (let j = 1; j <= minBarsAfterBreakout; j++) {
+          if (breakoutIndex + j >= candles.length) {
+            validContinuation = false
+            break
+          }
+          const continuationCandle = candles[breakoutIndex + j]
+          // Require close to stay BELOW level (not return above it)
+          // If candle closes ABOVE level + tolerance, it returned to the breakout level
+          if (continuationCandle.close > level + tol) {
+            validContinuation = false
+            break
+          }
+        }
+
+        if (!validContinuation) {
+          // Skip this breakout - continuation candles didn't move away from level
+          console.log(`   ❌ Rejected: continuation candles returned above breakout level`)
+          continue
+        }
 
         const start = breakoutIndex + minBarsAfterBreakout
         const end = Math.min(candles.length - 1, breakoutIndex + maxBarsToWaitRetest)
