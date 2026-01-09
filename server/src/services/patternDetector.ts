@@ -17,6 +17,7 @@
 import type { Candle, Pattern } from '../types/index.js'
 import { detectRetestPatterns } from './strictRetestDetector.js'
 import { detectConsolidationBreakouts } from './consolidationBreakoutDetector.js'
+import { detectCompressionBreakouts } from './compressionBreakoutDetector.js'
 
 /**
  * מציאת pivot high - נקודה שהיא הגבוהה ביותר בטווח
@@ -390,32 +391,64 @@ export function detectPatterns(
     patterns.push(...retestPatterns)
     console.log(`   ✅ Found ${retestPatterns.length} strict retest patterns`)
 
-    // 🚫 DISABLED: Breakout and Bull Flag detectors (keeping code for future use)
-    // To re-enable: change ENABLE_BREAKOUT_DETECTION to true
-    const ENABLE_BREAKOUT_DETECTION = false
-    if (ENABLE_BREAKOUT_DETECTION) {  // DISABLED - focusing only on Retest patterns
+    // ✅ NEW: Compression Spring Breakout Detector (works alongside Retest)
+    // Enable this to add compression breakout patterns in addition to retest patterns
+    const ENABLE_COMPRESSION_BREAKOUT = true
+    if (ENABLE_COMPRESSION_BREAKOUT) {
+      const remainingQuota = Math.max(5, Math.floor(targetCount * 0.3))  // 30% of total or minimum 5
+      console.log(`   🔧 Scanning for ${remainingQuota} compression breakout patterns...`)
+
+      const minGap = 30
+      const compressionPatterns = detectCompressionBreakouts(candles, remainingQuota, {
+        minWindow: 15,
+        maxWindow: 25,
+        maxRangePct: 0.03,          // 3% max range
+        minVolSpike: 1.5,           // 1.5x volume spike required
+        minRangeMultiplier: 1.5,    // Breakout candle must be 1.5x ATR
+        minPressureScore: 60,       // Minimum compression quality score
+      })
+
+      // Filter out overlapping patterns with existing retest patterns
+      const compressionFound = compressionPatterns.filter(cp => {
+        const hasOverlap = patterns.some(p => {
+          const rangeStart = Math.min(p.startIndex, p.endIndex) - minGap
+          const rangeEnd = Math.max(p.startIndex, p.endIndex) + minGap
+          const cpRange = Math.min(cp.startIndex, cp.endIndex)
+          return cpRange >= rangeStart && cpRange <= rangeEnd
+        })
+        return !hasOverlap
+      })
+
+      patterns.push(...compressionFound)
+      console.log(`   ✅ Added ${compressionFound.length} compression breakout patterns`)
+    }
+
+    // 🚫 DISABLED: Old Breakout and Bull Flag detectors (keeping code for future use)
+    // The new Compression Breakout detector replaces these
+    const ENABLE_OLD_BREAKOUT_DETECTION = false
+    if (ENABLE_OLD_BREAKOUT_DETECTION) {
       const remainingQuota = targetCount - patterns.length
       if (remainingQuota > 0) {
-        console.log(`   🔍 Scanning for ${remainingQuota} additional patterns (Breakout/Flag)...`)
+        console.log(`   🔍 Scanning for ${remainingQuota} additional patterns (Old Breakout/Flag)...`)
 
         const minGap = 30
         const breakoutQuota = Math.ceil(remainingQuota * 0.6)
         const flagQuota = remainingQuota - breakoutQuota
 
-        // Breakout patterns - using professional consolidation breakout detector (FIXED VERSION)
+        // Old consolidation breakout detector (DEPRECATED - use Compression Breakout instead)
         const breakoutPatterns = detectConsolidationBreakouts(candles, breakoutQuota, {
           consolidationWindow: 15,
-          maxRangePct: 0.02,          // 2% max range
-          maxAtrPct: 0.025,           // 2.5% max ATR
+          maxRangePct: 0.02,
+          maxAtrPct: 0.025,
           atrPeriod: 14,
-          minTouches: 2,              // At least 2 touches of high/low
-          maxDriftPct: 0.008,         // 0.8% max drift
-          minBufferPct: 0.0005,       // 0.05% buffer
+          minTouches: 2,
+          maxDriftPct: 0.008,
+          minBufferPct: 0.0005,
           bufferAtrMult: 0.2,
-          minVolSpike: 1.3,           // Volume must be 1.3x average
+          minVolSpike: 1.3,
           requireFollowThrough: true,
-          minFollowThroughPct: 0.001, // 0.1% follow-through
-          requireStayOutside: true,   // Must stay outside consolidation range
+          minFollowThroughPct: 0.001,
+          requireStayOutside: true,
         })
 
         // Filter out overlapping patterns

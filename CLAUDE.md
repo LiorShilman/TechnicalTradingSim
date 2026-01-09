@@ -548,7 +548,83 @@ Production-ready algorithm for detecting consolidation breakout patterns with ri
 - Displays volume spike ratio
 - Includes entry and SL levels
 
-#### 2. Strict Retest Detector (`server/src/services/strictRetestDetector.ts`)
+#### 2. Compression Spring Breakout Detector (`server/src/services/compressionBreakoutDetector.ts`) 🔧
+
+**NEW**: Creative detector based on "compressed spring" concept - finds consolidations with building pressure that lead to explosive breakouts.
+
+**Concept:**
+A true consolidation is like a **compressed spring** - the more price compresses (tighter range, declining volume), the more potential energy for a strong breakout.
+
+**Algorithm (3 Stages):**
+
+1. **Identify "Squeeze Zone"** (15-25 candle window):
+   - Contracting ATR (declining volatility = compression)
+   - Declining volume (exhaustion before explosion)
+   - Tight range (< 3% of average price)
+   - Minimum 3 touches of ceiling AND 3 touches of floor
+   - Symmetry check (similar touches on both sides)
+
+2. **Measure "Pressure" Build-up** (0-100 score):
+   ```typescript
+   Components:
+   - Tight range (0-40 pts): Tighter = more points
+   - Optimal duration (0-20 pts): 15-20 bars = optimal
+   - ATR contraction (0-20 pts): Negative slope = more points
+   - Volume decline (0-10 pts): Negative slope = more points
+   - Symmetry (0-10 pts): Equal touches = more points
+   ```
+
+3. **Detect "Explosive" Breakout**:
+   - Large breakout candle (range > 1.5x ATR average)
+   - High volume (> 1.5x consolidation average)
+   - Close beyond level (not just wick)
+   - Next 2 candles don't return into consolidation (< 50% retracement)
+
+**Key Features:**
+- **ATR Contraction Detection**: Finds consolidations where ATR is **declining** (sign of compression)
+- **Volume Profile**: Validates volume declines during consolidation and spikes on breakout
+- **Symmetry Score**: Checks for similar touches on both sides (not sideways drift)
+- **Breakout Quality**: Requires "strong" breakout (large candle + volume), not just level crossing
+
+**Advantages over existing detectors:**
+- Fewer false breakouts (volume requirement filters weak breaks)
+- More explosive moves (finds consolidations with real energy)
+- Works on any asset (based on ATR and %, not absolute prices)
+- No overlap with Retest patterns (works alongside, not instead)
+
+**Configuration:**
+```typescript
+{
+  minWindow: 15,              // Min consolidation bars
+  maxWindow: 25,              // Max consolidation bars
+  maxRangePct: 0.03,          // 3% max range
+  minVolSpike: 1.5,           // 1.5x volume spike required
+  minRangeMultiplier: 1.5,    // Breakout candle must be 1.5x ATR
+  minPressureScore: 60,       // Minimum compression quality (0-100)
+}
+```
+
+**Integration:**
+- Enabled by default in STRICT mode (works alongside Retest detector)
+- Allocates 30% of pattern quota (minimum 5 patterns)
+- Filters out overlaps with existing retest patterns (30-bar gap)
+- Can be disabled by setting `ENABLE_COMPRESSION_BREAKOUT = false`
+
+**Pattern Description:**
+- UP: "פריצה נפיצה למעלה (Compression X נרות)"
+- DOWN: "פריצה נפיצה למטה (Compression X נרות)"
+
+**Hebrew Hints:**
+```
+🔧 קפיץ דחוס:
+1️⃣ דשדוש 18 נרות בטווח 1.85%
+2️⃣ ATR התכווץ (-0.0023), נפח ירד
+3️⃣ 5 נגיעות בתקרה, 4 ברצפה
+4️⃣ פריצה נפיצה למעלה (1.5x ATR, 1.5x נפח)
+💡 כניסה: 5123.45 | SL: 5042.10 | ציון לחץ: 78
+```
+
+#### 3. Strict Retest Detector (`server/src/services/strictRetestDetector.ts`)
 
 Professional pivot-based algorithm for detecting authentic retest patterns.
 
@@ -637,7 +713,7 @@ Patterns are classified as CONTINUATION or REVERSAL based on trend direction vs 
 - No "No retest found" messages
 - Clean console output for production use
 
-#### 3. Pattern Integration & UI
+#### 4. Pattern Integration & UI
 
 **Jump-to-Pattern Feature** (`client/src/stores/gameStore.ts`):
 - `jumpToCandle(targetIndex)` function navigates chart to pattern location
