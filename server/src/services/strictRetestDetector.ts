@@ -593,8 +593,8 @@ export function detectRetests(
     if (pl && trendDown) {
       const level = pl.price
 
-      // ✅ תנאי חדש: הפיבוט חייב להיות רחוק מספיק מהפריצה (לפחות 10 נרות)
-      const minPivotDistance = 10
+      // ✅ תנאי חדש: הפיבוט חייב להיות רחוק מספיק מהפריצה (לפחות 5 נרות)
+      const minPivotDistance = 5  // הקטנה מ-10 ל-5 לאפשר יותר SHORT patterns
       const pivotDistance = i - pl.index
 
       if (pivotDistance < minPivotDistance) {
@@ -860,7 +860,7 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
  */
 export function detectRetestPatterns(
   candles: Candle[],
-  targetCount: number = 8,
+  _targetCount: number = 8,  // Not used - we return all patterns now
   options: RetestDetectorOptions = {}
 ): Pattern[] {
   const signals = detectRetests(candles, options)
@@ -870,9 +870,10 @@ export function detectRetestPatterns(
 
   console.log(`🎯 ${successfulRetests.length} successful retests out of ${signals.length} total signals`)
 
-  // Convert to Pattern format with minimum gap to prevent overlaps
+  // Strategy: Use ALL successful retests (with minGap filtering to prevent tight overlaps)
+  // No artificial limit - let the trader practice on all detected patterns!
   const patterns: Pattern[] = []
-  const minGap = 30 // Minimum candles between patterns to prevent overlap
+  const minGap = 15 // Minimum candles between patterns to prevent overlap
 
   for (const signal of successfulRetests) {
     const pattern = convertRetestSignalToPattern(signal)
@@ -884,11 +885,9 @@ export function detectRetestPatterns(
 
     patterns.push(pattern)
     console.log(`   ✓ Added ${signal.isReversal ? 'Reversal' : 'Continuation'} ${signal.side} Retest at index ${pattern.startIndex}`)
-
-    // Stop when we have enough patterns
-    if (patterns.length >= targetCount) break
   }
 
   console.log(`📊 Selected ${patterns.length} non-overlapping retest patterns from ${successfulRetests.length} candidates`)
+  console.log(`   Distribution: patterns spread across indices ${patterns.length > 0 ? `${patterns[0].startIndex} to ${patterns[patterns.length - 1].endIndex}` : 'N/A'}`)
   return patterns
 }

@@ -109,7 +109,7 @@ function isPriceNearLevel(price: number, level: number, tolerancePercent: number
 }
 
 /**
- * זיהוי תבנית Breakout
+ * זיהוי תבנית Breakout (פריצה מדשדוש)
  *
  * חיפוש:
  * 1. consolidation - טווח צר של 10-20 נרות (ATR קטן)
@@ -354,11 +354,13 @@ function detectBullFlagPattern(candles: Candle[], startIdx: number): Pattern | n
  * @param candles - מערך נרות
  * @param targetCount - מספר תבניות מבוקש
  * @param useStrictRetest - השתמש ב-Strict Retest Detector המקצועי (default: true)
+ * @param asset - שם הנכס (לזיהוי אוטומטי של STRICT vs RELAXED config)
  */
 export function detectPatterns(
   candles: Candle[],
   targetCount: number = 8,
-  useStrictRetest: boolean = true
+  useStrictRetest: boolean = true,
+  _asset: string = 'UNKNOWN'  // Not used - simple detector works for all assets
 ): Pattern[] {
   console.log(`🔍 Starting pattern detection on ${candles.length} candles...`)
   console.log(`   Mode: ${useStrictRetest ? 'STRICT' : 'LEGACY'} Retest Detection`)
@@ -370,86 +372,92 @@ export function detectPatterns(
     console.log('📊 Using Strict Retest Detector (pivot-based, ATR buffers)...')
 
     // זיהוי Retest עם הדטקטור המקצועי
-    const retestQuota = Math.ceil(targetCount * 0.5) // 50% retest patterns
+    const retestQuota = targetCount // 100% retest patterns (Breakout/Flag disabled)
     const retestPatterns = detectRetestPatterns(candles, retestQuota, {
       pivotLeft: 2,
       pivotRight: 2,
       useTrendFilter: false, // כיבוי trend filter לעכשיו
       atrPeriod: 14,
       breakoutAtrMult: 0.10,
-      retestAtrMult: 0.20,
-      confirmAtrMult: 0.05,
-      invalidAtrMult: 0.25,
-      minBarsAfterBreakout: 5,
-      maxBarsToWaitRetest: 60,
+      retestAtrMult: 0.35,    // הגדלה מ-0.20 ל-0.35 - סובלנות גבוהה יותר לנגיעה בפיבוט
+      confirmAtrMult: 0.02,   // הקטנה מ-0.05 ל-0.02 - דרישת אישור רכה יותר
+      invalidAtrMult: 0.30,   // הגדלה מ-0.25 ל-0.30 - סובלנות גבוהה יותר לפני ביטול
+      minBarsAfterBreakout: 5,   // מינימום 5 נרות אחרי פריצה לפני retest
+      maxBarsToWaitRetest: 80,   // הגדלה מ-60 ל-80 - אפשר retest איטי יותר
       retestTypeMode: 'BOTH', // WICK or CLOSE
     })
 
     patterns.push(...retestPatterns)
     console.log(`   ✅ Found ${retestPatterns.length} strict retest patterns`)
 
-    // השאר מקום ל-Breakout ו-Bull Flag (legacy detectors)
-    const remainingQuota = targetCount - patterns.length
-    if (remainingQuota > 0) {
-      console.log(`   🔍 Scanning for ${remainingQuota} additional patterns (Breakout/Flag)...`)
+    // 🚫 DISABLED: Breakout and Bull Flag detectors (keeping code for future use)
+    // To re-enable: change ENABLE_BREAKOUT_DETECTION to true
+    const ENABLE_BREAKOUT_DETECTION = false
+    if (ENABLE_BREAKOUT_DETECTION) {  // DISABLED - focusing only on Retest patterns
+      const remainingQuota = targetCount - patterns.length
+      if (remainingQuota > 0) {
+        console.log(`   🔍 Scanning for ${remainingQuota} additional patterns (Breakout/Flag)...`)
 
-      const minGap = 30
-      const breakoutQuota = Math.ceil(remainingQuota * 0.6)
-      const flagQuota = remainingQuota - breakoutQuota
+        const minGap = 30
+        const breakoutQuota = Math.ceil(remainingQuota * 0.6)
+        const flagQuota = remainingQuota - breakoutQuota
 
-      // Breakout patterns - using professional consolidation breakout detector (FIXED VERSION)
-      const breakoutPatterns = detectConsolidationBreakouts(candles, breakoutQuota, {
-        consolidationWindow: 15,
-        maxRangePct: 0.02,          // 2% max range
-        maxAtrPct: 0.025,           // 2.5% max ATR
-        atrPeriod: 14,
-        minTouches: 2,              // At least 2 touches of high/low
-        maxDriftPct: 0.008,         // 0.8% max drift
-        minBufferPct: 0.0005,       // 0.05% buffer
-        bufferAtrMult: 0.2,
-        minVolSpike: 1.3,           // Volume must be 1.3x average
-        breakoutLookahead: 3,       // Check up to 3 bars ahead
-        requireFollowThrough: true,
-        minFollowThroughPct: 0.001, // 0.1% follow-through
-        requireStayOutside: true,   // Must stay outside consolidation range
-      })
-
-      // Filter out overlapping patterns
-      const breakoutFound = breakoutPatterns.filter(bp => {
-        const hasOverlap = patterns.some(p => {
-          const rangeStart = Math.min(p.startIndex, p.endIndex) - minGap
-          const rangeEnd = Math.max(p.startIndex, p.endIndex) + minGap
-          const bpRange = Math.min(bp.startIndex, bp.endIndex)
-          return bpRange >= rangeStart && bpRange <= rangeEnd
+        // Breakout patterns - using professional consolidation breakout detector (FIXED VERSION)
+        const breakoutPatterns = detectConsolidationBreakouts(candles, breakoutQuota, {
+          consolidationWindow: 15,
+          maxRangePct: 0.02,          // 2% max range
+          maxAtrPct: 0.025,           // 2.5% max ATR
+          atrPeriod: 14,
+          minTouches: 2,              // At least 2 touches of high/low
+          maxDriftPct: 0.008,         // 0.8% max drift
+          minBufferPct: 0.0005,       // 0.05% buffer
+          bufferAtrMult: 0.2,
+          minVolSpike: 1.3,           // Volume must be 1.3x average
+          requireFollowThrough: true,
+          minFollowThroughPct: 0.001, // 0.1% follow-through
+          requireStayOutside: true,   // Must stay outside consolidation range
         })
-        return !hasOverlap
-      })
 
-      patterns.push(...breakoutFound)
-
-      // Bull Flag patterns
-      let flagFound = 0
-      for (let i = 50; i < candles.length - 50 && flagFound < flagQuota; i++) {
-        // בדיקת חפיפה משופרת - בדוק אם i נמצא בטווח של תבנית קיימת
-        const hasOverlap = patterns.some(p => {
-          const rangeStart = Math.min(p.startIndex, p.endIndex) - minGap
-          const rangeEnd = Math.max(p.startIndex, p.endIndex) + minGap
-          return i >= rangeStart && i <= rangeEnd
+        // Filter out overlapping patterns
+        const breakoutFound = breakoutPatterns.filter(bp => {
+          const hasOverlap = patterns.some(p => {
+            const rangeStart = Math.min(p.startIndex, p.endIndex) - minGap
+            const rangeEnd = Math.max(p.startIndex, p.endIndex) + minGap
+            const bpRange = Math.min(bp.startIndex, bp.endIndex)
+            return bpRange >= rangeStart && bpRange <= rangeEnd
+          })
+          return !hasOverlap
         })
-        if (hasOverlap) continue
 
-        const pattern = detectBullFlagPattern(candles, i)
-        if (pattern && pattern.metadata.quality >= 65) {
-          patterns.push(pattern)
-          flagFound++
-          i += minGap
+        patterns.push(...breakoutFound)
+
+        // Bull Flag patterns
+        let flagFound = 0
+        for (let i = 50; i < candles.length - 50 && flagFound < flagQuota; i++) {
+          // בדיקת חפיפה משופרת - בדוק אם i נמצא בטווח של תבנית קיימת
+          const hasOverlap = patterns.some(p => {
+            const rangeStart = Math.min(p.startIndex, p.endIndex) - minGap
+            const rangeEnd = Math.max(p.startIndex, p.endIndex) + minGap
+            return i >= rangeStart && i <= rangeEnd
+          })
+          if (hasOverlap) continue
+
+          const pattern = detectBullFlagPattern(candles, i)
+          if (!pattern) continue
+
+          // Pattern is guaranteed non-null here after continue check
+          if (pattern!.metadata.quality >= 65) {
+            patterns.push(pattern!)
+            flagFound++
+            i += minGap
+          }
         }
-      }
 
-      console.log(`   ✅ Found ${breakoutFound.length} breakout, ${flagFound} flag patterns`)
+        console.log(`   ✅ Found ${breakoutFound.length} breakout, ${flagFound} flag patterns`)
+      }
     }
   } else {
-    // LEGACY mode - השתמש בדטקטורים הישנים
+    // LEGACY mode - השתמש בדטקטורים הישנים המקוריים
     console.log('📊 Using Legacy Pattern Detection...')
 
     const minGap = 30

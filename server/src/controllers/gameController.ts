@@ -226,7 +226,7 @@ export const createGameFromCSV = async (req: Request, res: Response) => {
     // 2. זיהוי דפוסים בדאטה הריאלי
     const patternCount = 8
     console.log(`🔍 Detecting patterns in real data...`)
-    const patterns = detectPatterns(candles, patternCount)
+    const patterns = detectPatterns(candles, patternCount, true, assetName)
     console.log(`✅ Detected ${patterns.length} patterns`)
 
     // 3. חישוב רזולוציית מחיר (price step) מהדאטה
