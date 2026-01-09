@@ -346,10 +346,26 @@ function findStrictRetestLong(
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
 
-      // ❌ DISABLED: Post-confirmation validation was too strict
-      // Original logic: required 5 candles after confirmation to continue UP without reversal
-      // Problem: This is unrealistic for real market data - price can bounce after retest
-      // Solution: Removed this validation - pattern is valid once confirmation happens
+      // ✅ NEW: Validate 2 candles after retest don't return back below level
+      // For LONG: after touching level from above, next 2 candles shouldn't close below level
+      const retestIdx = hadClose ? touchedIndexClose : touchedIndexWick
+      if (retestIdx !== undefined) {
+        let validPostRetest = true
+        for (let j = 1; j <= 2; j++) {
+          if (retestIdx + j >= candles.length) break
+          const postCandle = candles[retestIdx + j]
+          // If candle closes below level, pattern invalidated
+          if (postCandle.close < level) {
+            validPostRetest = false
+            break
+          }
+        }
+
+        if (!validPostRetest) {
+          console.log(`      ❌ Post-retest validation failed: candles after retest returned below level`)
+          continue // Skip to next candle
+        }
+      }
 
       // Return successful pattern
       if (retestTypeMode === 'WICK') {
@@ -419,10 +435,26 @@ function findStrictRetestShort(
       const hadWick = touchedIndexWick !== undefined && touchedIndexWick < i
       const hadClose = touchedIndexClose !== undefined && touchedIndexClose < i
 
-      // ❌ DISABLED: Post-confirmation validation was too strict
-      // Original logic: required 5 candles after confirmation to continue DOWN without reversal
-      // Problem: This is unrealistic for real market data - price can bounce after retest
-      // Solution: Removed this validation - pattern is valid once confirmation happens
+      // ✅ NEW: Validate 2 candles after retest don't return back above level
+      // For SHORT: after touching level from below, next 2 candles shouldn't close above level
+      const retestIdx = hadClose ? touchedIndexClose : touchedIndexWick
+      if (retestIdx !== undefined) {
+        let validPostRetest = true
+        for (let j = 1; j <= 2; j++) {
+          if (retestIdx + j >= candles.length) break
+          const postCandle = candles[retestIdx + j]
+          // If candle closes above level, pattern invalidated
+          if (postCandle.close > level) {
+            validPostRetest = false
+            break
+          }
+        }
+
+        if (!validPostRetest) {
+          console.log(`      ❌ Post-retest validation failed: candles after retest returned above level`)
+          continue // Skip to next candle
+        }
+      }
 
       // Return successful pattern
       if (retestTypeMode === 'WICK') {
@@ -861,11 +893,12 @@ export function convertRetestSignalToPattern(signal: RetestSignal): Pattern | nu
   // Stop loss: 1.5% beyond level
   const stopLoss = isLong ? level * 0.985 : level * 1.015
 
-  // Build detailed description
-  const patternTypeText = signal.isReversal ? 'היפוך מגמה' : 'המשך מגמה'
+  // Build detailed description with pattern type
+  const patternTypeText = signal.isReversal ? 'היפוך' : 'המשך'
+  const directionText = isLong ? 'LONG' : 'SHORT'
   const retestType = signal.kind.includes('WICK') ? 'Wick Touch' : 'Close Touch'
 
-  const description = `${patternTypeText} | ${isLong ? 'LONG' : 'SHORT'} Retest | ${retestType}`
+  const description = `Retest ${directionText} ${patternTypeText} | ${retestType}`
 
   // Build detailed hint with correct logic for LONG/SHORT
   let hint = ''

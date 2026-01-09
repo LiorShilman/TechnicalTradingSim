@@ -2268,19 +2268,30 @@ if (sl && tp) {
 
         // Skip if we already have a marker at this index
         if (!markerMap.has(markerKey)) {
-          // Use short icon + name for markers (full description is in the pattern panel)
+          // Use description from pattern metadata (includes pattern type and direction)
+          // For retest patterns, this includes: "Retest LONG המשך | Wick Touch"
+          // But we strip the touch type (after |) for cleaner chart display
           const defaultNames: Record<string, string> = {
             breakout: '⚡ Breakout',
             retest: '🔄 Retest',
             flag: '🚩 Bull Flag',
           }
-          const markerText = defaultNames[pattern.type] || pattern.type
+          const fullDescription = pattern.metadata.description || defaultNames[pattern.type] || pattern.type
+          // Remove "| Wick Touch" or "| Close Touch" from chart display (keep only first part)
+          const markerText = fullDescription.split('|')[0].trim()
+
+          // Determine marker position based on pattern direction:
+          // - LONG Retest: marker below bar (bullish pattern, text won't block upward movement)
+          // - SHORT Retest: marker above bar (bearish pattern, text won't block downward movement)
+          const isLongPattern = markerText.includes('LONG')
+          const markerPosition = isLongPattern ? 'belowBar' : 'aboveBar'
+          const markerShape = isLongPattern ? 'arrowUp' : 'arrowDown'
 
           const marker = {
             time: markerCandle.time as Time,
-            position: 'aboveBar' as const,
+            position: markerPosition as 'aboveBar' | 'belowBar',
             color,
-            shape: 'arrowDown' as const,
+            shape: markerShape as 'arrowUp' | 'arrowDown',
             text: markerText,
           }
 

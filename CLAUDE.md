@@ -574,14 +574,51 @@ Professional pivot-based algorithm for detecting authentic retest patterns.
 **Retest Validation Logic:**
 - **Touch Detection**: Supports both "Wick Touch" (low/high reaches level ± tolerance) and "Close Touch" (close reaches level)
 - **Wait Period**: Minimum 5 bars after breakout before accepting retest
-- **Timeout**: Maximum 60 bars to find retest after breakout
+- **Timeout**: Maximum 80 bars to find retest after breakout (increased for slower retests)
+- **Post-Retest Validation**: Next 2 candles after retest must not close back through the level
+  - LONG: 2 candles after retest must not close below level (validates bounce)
+  - SHORT: 2 candles after retest must not close above level (validates bounce)
+- **Continuation Validation**: 5 candles after breakout must move away from level
+  - LONG CONTINUATION: Candles must stay above pivot high (not return below)
+  - SHORT CONTINUATION: Candles must stay below pivot low (not return above)
+  - LONG REVERSAL: Candles must stay above pivot high after breaking resistance
+  - SHORT REVERSAL: Candles must stay below pivot low after breaking support
 - **Confirmation**: Close must be beyond level + confirmation buffer AND higher/lower than previous close
 - **Invalidation**: Pattern rejected if close moves decisively beyond invalidation buffer in wrong direction
+- **Post-confirmation validation**: Disabled (was too strict for real market data)
 
 **Pattern Quality:**
 - All detected patterns assigned 85-95% quality (high confidence from strict algorithm)
 - Includes detailed Hebrew hints with step-by-step pattern explanation
 - Entry/SL levels calculated based on retest level with percentage offsets
+
+**Pattern Description Format:**
+- **Full description** (in PatternLegendPanel): "Retest LONG המשך | Wick Touch"
+- **Chart marker text**: "Retest LONG המשך" (without touch type for cleaner display)
+- Includes pattern direction (LONG/SHORT) and type (המשך/היפוך)
+
+**Chart Marker Positioning:**
+- **LONG patterns**: Marker positioned **below bar** with arrow up ↑ (bullish, won't block upward movement)
+- **SHORT patterns**: Marker positioned **above bar** with arrow down ↓ (bearish, won't block downward movement)
+
+**ATR Configuration** (optimized for better detection):
+- `breakoutAtrMult: 0.10` - Breakout buffer (unchanged)
+- `retestAtrMult: 0.35` - Increased from 0.20 to 0.35 (higher tolerance for pivot touch)
+- `confirmAtrMult: 0.02` - Decreased from 0.05 to 0.02 (softer confirmation requirement)
+- `invalidAtrMult: 0.30` - Increased from 0.25 to 0.30 (higher tolerance before invalidation)
+- `maxBarsToWaitRetest: 80` - Increased from 60 (allows slower retests)
+
+**Bug Fixes:**
+1. **SHORT Continuation Validation** (Fixed incorrect logic):
+   - **WRONG**: `if (close > level - tol)` → reject (forced candles below `level - tol`)
+   - **CORRECT**: `if (close > level + tol)` → reject (allows candles near level, rejects if returning above)
+   - For SHORT: level = pivot LOW, breakout = DOWN through pivot
+   - Continuation candles should stay BELOW level (not return ABOVE)
+
+2. **Post-Confirmation Validation**: Disabled entirely
+   - Was too strict: required 5 candles to continue without reversal
+   - Unrealistic for real market data - price can bounce after retest
+   - Pattern now valid once confirmation happens
 
 **Console Logging** (Minimal):
 - Only logs final successful patterns: `✅ Pattern complete at index X`
