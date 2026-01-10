@@ -16,6 +16,7 @@ import { RuleCompliancePanel } from './components/Stats/RuleCompliancePanel'
 import ProfitTrail from './components/Effects/ProfitTrail'
 import TargetZoneGlow from './components/Effects/TargetZoneGlow'
 import EquityColorShift from './components/Effects/EquityColorShift'
+import AIDemoPanel from './components/AI/AIDemoPanel'
 import SaveSlotSelector from './components/SaveSlotSelector'
 import { useGameStore } from './stores/gameStore'
 import { priceAlertsService } from './services/priceAlertsService'
@@ -690,6 +691,9 @@ function App() {
         equity={gameState.account.equity}
         initialBalance={initialBalance}
       />
+
+      {/* AI Demo Panel */}
+      <AIDemoPanel />
 
       {/* Profit Trail Animation */}
       {profitTrail && (

@@ -4,6 +4,7 @@ import { api } from '@/services/api'
 import { customToast } from '@/utils/toast'
 import { telegramService } from '@/services/telegramNotifications'
 import { priceAlertsService } from '@/services/priceAlertsService'
+import { makeAIDecision } from '@/services/aiTrader'
 
 // שם המפתח ב-localStorage
 const SAVED_GAME_KEY = 'savedGameState' // LEGACY - kept for backwards compatibility
@@ -34,6 +35,17 @@ interface GameStore {
   showHelp: boolean // הצגת מסך עזרה
   pricePrecision: number // מספר ספרות עשרוניות למחירים (מחושב אוטומטית מהנתונים)
   currentSaveSlotId: string | null // מזהה משבצת השמירה הנוכחית (לשמירה חוזרת)
+
+  // AI Demo Mode
+  isDemoMode: boolean // האם במצב הדגמת AI
+  demoSpeed: number // מהירות הדגמה (0.5, 1, 2, 5)
+  showDemoExplanations: boolean // האם להציג הסברי AI
+  demoStats: {
+    tradesExecuted: number
+    winsCount: number
+    lossesCount: number
+    totalPnL: number
+  }
 
   // Rule Violation Tracking
   tradingRules: TradingRules
@@ -88,6 +100,12 @@ interface GameStore {
   toggleTradeHistory: () => void
   toggleHelp: () => void
 
+  // AI Demo Mode Actions
+  toggleDemoMode: () => void
+  setDemoSpeed: (speed: number) => void
+  toggleDemoExplanations: () => void
+  resetDemoStats: () => void
+
   // Rule Violation Actions
   updateTradingRules: (rules: Partial<TradingRules>) => void
   clearViolations: () => void
@@ -123,6 +141,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showHelp: false,
   currentSaveSlotId: null,
   pricePrecision: 2, // ברירת מחדל 2 ספרות, יתעדכן אוטומטית מהנתונים
+
+  // AI Demo Mode State
+  isDemoMode: false,
+  demoSpeed: 1, // ברירת מחדל מהירות רגילה
+  showDemoExplanations: true, // ברירת מחדל להציג הסברים
+  demoStats: {
+    tradesExecuted: 0,
+    winsCount: 0,
+    lossesCount: 0,
+    totalPnL: 0,
+  },
 
   // Rule Violation State
   tradingRules: loadTradingRules(),
@@ -344,6 +373,69 @@ export const useGameStore = create<GameStore>((set, get) => ({
             asset: newGame.asset,
             pricePrecision: get().pricePrecision,
           })
+        }
+      }
+
+      // 🤖 AI Demo Mode: קבלת החלטת AI ביחס לעסקאות
+      const { isDemoMode, showDemoExplanations } = get()
+      if (isDemoMode && newGame) {
+        const aiDecision = makeAIDecision(newGame)
+
+        if (aiDecision && aiDecision.action !== 'hold') {
+          // הצגת הסבר אם מופעל
+          if (showDemoExplanations) {
+            customToast.info(`🤖 AI: ${aiDecision.reason}`, '🎯')
+          }
+
+          // ביצוע הפעולה שה-AI החליט עליה
+          // נעביר את זה לשרת בפעם הבאה שנקרא ל-nextCandle
+          // כרגע נשמור את ההחלטה ב-state כדי לבצע אותה אחרי ה-set
+          setTimeout(async () => {
+            const store = get()
+            if (!store.isDemoMode || !store.gameState) return
+
+            try {
+              if (aiDecision.action === 'close_position' && aiDecision.positionId) {
+                // סגירת פוזיציה
+                await store.executeTrade('sell', 0, aiDecision.positionId)
+
+                // עדכון סטטיסטיקות AI
+                const closedPos = store.gameState.closedPositions[store.gameState.closedPositions.length - 1]
+                if (closedPos) {
+                  const isWin = (closedPos.exitPnL || 0) > 0
+                  set(state => ({
+                    demoStats: {
+                      tradesExecuted: state.demoStats.tradesExecuted,
+                      winsCount: state.demoStats.winsCount + (isWin ? 1 : 0),
+                      lossesCount: state.demoStats.lossesCount + (isWin ? 0 : 1),
+                      totalPnL: state.demoStats.totalPnL + (closedPos.exitPnL || 0)
+                    }
+                  }))
+                }
+              } else if (aiDecision.action === 'open_long' || aiDecision.action === 'open_short') {
+                // פתיחת פוזיציה
+                const positionType = aiDecision.action === 'open_long' ? 'long' : 'short'
+                await store.executeTrade(
+                  'buy',
+                  aiDecision.quantity || 0.01,
+                  undefined,
+                  positionType,
+                  aiDecision.stopLoss,
+                  aiDecision.takeProfit
+                )
+
+                // עדכון מספר עסקאות
+                set(state => ({
+                  demoStats: {
+                    ...state.demoStats,
+                    tradesExecuted: state.demoStats.tradesExecuted + 1
+                  }
+                }))
+              }
+            } catch (error) {
+              console.error('AI Demo Mode: Error executing trade:', error)
+            }
+          }, 100) // המתנה קצרה כדי שה-state יתעדכן
         }
       }
 
@@ -688,6 +780,43 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   setAutoPlaySpeed: (speed: number) => {
     set({ autoPlaySpeed: speed })
+  },
+
+  // AI Demo Mode Actions
+  toggleDemoMode: () => {
+    const { isDemoMode } = get()
+    set({
+      isDemoMode: !isDemoMode,
+      // כשמפעילים AI Demo, מפעילים גם Auto-Play
+      isAutoPlaying: !isDemoMode ? true : get().isAutoPlaying
+    })
+  },
+
+  setDemoSpeed: (speed: number) => {
+    set({ demoSpeed: speed })
+    // עדכון מהירות Auto-Play בהתאם
+    const speedMap: Record<number, number> = {
+      0.5: 2000,  // איטי
+      1: 1000,    // רגיל
+      2: 500,     // מהיר
+      5: 200,     // מהיר מאוד
+    }
+    set({ autoPlaySpeed: speedMap[speed] || 1000 })
+  },
+
+  toggleDemoExplanations: () => {
+    set({ showDemoExplanations: !get().showDemoExplanations })
+  },
+
+  resetDemoStats: () => {
+    set({
+      demoStats: {
+        tradesExecuted: 0,
+        winsCount: 0,
+        lossesCount: 0,
+        totalPnL: 0,
+      }
+    })
   },
 
   setChartControls: (fitContent: () => void, resetZoom: () => void, scrollToTime: (time: number) => void) => {
