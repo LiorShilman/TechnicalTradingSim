@@ -111,9 +111,9 @@ function App() {
       console.log(`✅ Loaded from slot: ${slotId}`)
       setShowSlotSelector(false)
       setIsStartScreen(false)
-      customToast.load('משחק נטען בהצלחה!')
+      // Toast will be shown by loadFromSlot() with slot name - no need to show it here too
     } else {
-      customToast.error('שגיאה בטעינת המשחק')
+      // Error toast is already shown by loadFromSlot()
     }
   }
 
@@ -135,7 +135,7 @@ function App() {
       console.log(`✅ Created new game and saved to slot: ${slotId}`)
       setShowSlotSelector(false)
       setIsStartScreen(false)
-      customToast.load('משחק חדש נוצר!')
+      // Toast will be shown by saveToSlot() with slot name - no need to show it here too
     }
   }
 

@@ -719,7 +719,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         equity: gameState.account.equity,
       })
 
-      customToast.success('משחק נשמר בהצלחה! 💾', '✅')
+      // Toast will be shown by saveToSlot() - no need to show it here too
     } else {
       customToast.error('שגיאה בשמירת המשחק')
     }
