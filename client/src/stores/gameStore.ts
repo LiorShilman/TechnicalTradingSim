@@ -399,18 +399,23 @@ export const useGameStore = create<GameStore>((set, get) => ({
                 // סגירת פוזיציה
                 await store.executeTrade('sell', 0, aiDecision.positionId)
 
-                // עדכון סטטיסטיקות AI
-                const closedPos = store.gameState.closedPositions[store.gameState.closedPositions.length - 1]
-                if (closedPos) {
-                  const isWin = (closedPos.exitPnL || 0) > 0
+                // עדכון סטטיסטיקות AI (כשסוגרים פוזיציה)
+                const closedPos = store.gameState?.closedPositions[store.gameState.closedPositions.length - 1]
+                if (closedPos && closedPos.exitPnL !== undefined) {
+                  const isWin = closedPos.exitPnL > 0
                   set(state => ({
                     demoStats: {
                       tradesExecuted: state.demoStats.tradesExecuted,
                       winsCount: state.demoStats.winsCount + (isWin ? 1 : 0),
                       lossesCount: state.demoStats.lossesCount + (isWin ? 0 : 1),
-                      totalPnL: state.demoStats.totalPnL + (closedPos.exitPnL || 0)
+                      totalPnL: state.demoStats.totalPnL + closedPos.exitPnL!
                     }
                   }))
+                  console.log('🤖 AI Stats Updated (Close):', {
+                    isWin,
+                    exitPnL: closedPos.exitPnL,
+                    newStats: get().demoStats
+                  })
                 }
               } else if (aiDecision.action === 'open_long' || aiDecision.action === 'open_short') {
                 // פתיחת פוזיציה
@@ -424,13 +429,17 @@ export const useGameStore = create<GameStore>((set, get) => ({
                   aiDecision.takeProfit
                 )
 
-                // עדכון מספר עסקאות
+                // עדכון מספר עסקאות (כשפותחים פוזיציה)
                 set(state => ({
                   demoStats: {
                     ...state.demoStats,
                     tradesExecuted: state.demoStats.tradesExecuted + 1
                   }
                 }))
+                console.log('🤖 AI Stats Updated (Open):', {
+                  action: aiDecision.action,
+                  newTradesCount: get().demoStats.tradesExecuted
+                })
               }
             } catch (error) {
               console.error('AI Demo Mode: Error executing trade:', error)

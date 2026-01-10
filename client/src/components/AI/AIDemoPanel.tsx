@@ -29,7 +29,7 @@ export default function AIDemoPanel() {
   ]
 
   return (
-    <div className="fixed top-20 left-4 z-40 w-80 bg-gradient-to-br from-purple-900/95 to-blue-900/95 backdrop-blur-xl border-2 border-purple-500/50 rounded-xl shadow-2xl">
+    <div className="fixed bottom-4 right-4 z-40 w-72 bg-gradient-to-br from-purple-900/95 to-blue-900/95 backdrop-blur-xl border-2 border-purple-500/50 rounded-xl shadow-2xl">
       {/* Header */}
       <div className="bg-gradient-to-r from-purple-600 to-blue-600 px-4 py-3 rounded-t-xl border-b border-purple-400/30">
         <div className="flex items-center justify-between">
