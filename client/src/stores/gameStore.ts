@@ -392,31 +392,34 @@ export const useGameStore = create<GameStore>((set, get) => ({
           // כרגע נשמור את ההחלטה ב-state כדי לבצע אותה אחרי ה-set
           setTimeout(async () => {
             const store = get()
-            if (!store.isDemoMode || !store.gameState) return
+            if (!store.isDemoMode) return
 
             try {
               if (aiDecision.action === 'close_position' && aiDecision.positionId) {
                 // סגירת פוזיציה
                 await store.executeTrade('sell', 0, aiDecision.positionId)
 
-                // עדכון סטטיסטיקות AI (כשסוגרים פוזיציה)
-                const closedPos = store.gameState?.closedPositions[store.gameState.closedPositions.length - 1]
-                if (closedPos && closedPos.exitPnL !== undefined) {
-                  const isWin = closedPos.exitPnL > 0
-                  set(state => ({
-                    demoStats: {
-                      tradesExecuted: state.demoStats.tradesExecuted,
-                      winsCount: state.demoStats.winsCount + (isWin ? 1 : 0),
-                      lossesCount: state.demoStats.lossesCount + (isWin ? 0 : 1),
-                      totalPnL: state.demoStats.totalPnL + closedPos.exitPnL!
-                    }
-                  }))
-                  console.log('🤖 AI Stats Updated (Close):', {
-                    isWin,
-                    exitPnL: closedPos.exitPnL,
-                    newStats: get().demoStats
-                  })
-                }
+                // המתן לעדכון ה-state ואז עדכן סטטיסטיקות
+                setTimeout(() => {
+                  const updatedStore = get()
+                  const closedPos = updatedStore.gameState?.closedPositions[updatedStore.gameState.closedPositions.length - 1]
+                  if (closedPos && closedPos.exitPnL !== undefined) {
+                    const isWin = closedPos.exitPnL > 0
+                    set(state => ({
+                      demoStats: {
+                        tradesExecuted: state.demoStats.tradesExecuted,
+                        winsCount: state.demoStats.winsCount + (isWin ? 1 : 0),
+                        lossesCount: state.demoStats.lossesCount + (isWin ? 0 : 1),
+                        totalPnL: state.demoStats.totalPnL + closedPos.exitPnL!
+                      }
+                    }))
+                    console.log('🤖 AI Stats Updated (Close):', {
+                      isWin,
+                      exitPnL: closedPos.exitPnL,
+                      newStats: get().demoStats
+                    })
+                  }
+                }, 50)
               } else if (aiDecision.action === 'open_long' || aiDecision.action === 'open_short') {
                 // פתיחת פוזיציה
                 const positionType = aiDecision.action === 'open_long' ? 'long' : 'short'
@@ -429,22 +432,24 @@ export const useGameStore = create<GameStore>((set, get) => ({
                   aiDecision.takeProfit
                 )
 
-                // עדכון מספר עסקאות (כשפותחים פוזיציה)
-                set(state => ({
-                  demoStats: {
-                    ...state.demoStats,
-                    tradesExecuted: state.demoStats.tradesExecuted + 1
-                  }
-                }))
-                console.log('🤖 AI Stats Updated (Open):', {
-                  action: aiDecision.action,
-                  newTradesCount: get().demoStats.tradesExecuted
-                })
+                // עדכון מספר עסקאות מיד אחרי פתיחה
+                setTimeout(() => {
+                  set(state => ({
+                    demoStats: {
+                      ...state.demoStats,
+                      tradesExecuted: state.demoStats.tradesExecuted + 1
+                    }
+                  }))
+                  console.log('🤖 AI Stats Updated (Open):', {
+                    action: aiDecision.action,
+                    newTradesCount: get().demoStats.tradesExecuted + 1
+                  })
+                }, 50)
               }
             } catch (error) {
               console.error('AI Demo Mode: Error executing trade:', error)
             }
-          }, 100) // המתנה קצרה כדי שה-state יתעדכן
+          }, 150) // המתנה קצרה כדי שה-state יתעדכן
         }
       }
 
