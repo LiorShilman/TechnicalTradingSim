@@ -30,6 +30,7 @@ interface CompressionZone {
   atrSlope: number      // שיפוע ATR (שלילי = התכווצות)
   volumeSlope: number   // שיפוע נפח (שלילי = ירידה)
   symmetryScore: number // ציון סימטריה (0-1)
+  priceDriftPct: number // תנועת מחיר % per candle (קרוב ל-0 = אופקי)
 }
 
 /**
@@ -132,15 +133,16 @@ function findCompressionZones(
 
       const atrSlope = calculateSlope(windowATR)
 
-      // רוצים ATR יורד (שיפוע שלילי)
-      if (atrSlope > 0) continue
+      // דרישה מרוככת: ATR יורד או יציב (לא עולה חזק)
+      // אפשר גם ATR שטוח (slope ≈ 0) - עדיין דשדוש
+      if (atrSlope > 0.0001) continue // מאפשר slope קטן חיובי
 
       // 3. בדיקת נפח יורד (אופציונלי)
       const windowVolumes = window.map(c => c.volume).filter(v => v > 0)
       const volumeSlope = windowVolumes.length >= 5 ? calculateSlope(windowVolumes) : 0
 
       // 4. ספירת נגיעות בתקרה וברצפה
-      const touchTolerance = range * 0.05 // 5% מהטווח
+      const touchTolerance = range * 0.08 // 8% מהטווח (הרחבה מ-5%)
       let highTouches = 0
       let lowTouches = 0
 
@@ -149,8 +151,9 @@ function findCompressionZones(
         if (Math.abs(candle.low - low) <= touchTolerance) lowTouches++
       }
 
-      // דרישה: לפחות 3 נגיעות בכל צד
-      if (highTouches < 3 || lowTouches < 3) continue
+      // דרישה מרוככת: לפחות 2 נגיעות בכל צד (במקום 3)
+      // דשדוש יכול להיות תקף גם עם פחות נגיעות אם הוא הומוגני
+      if (highTouches < 2 || lowTouches < 2) continue
 
       // 5. חישוב ציון סימטריה (0-1)
       // ציון גבוה = נגיעות דומות בשני הצדדים
@@ -158,8 +161,23 @@ function findCompressionZones(
       const touchTotal = highTouches + lowTouches
       const symmetryScore = 1 - (touchDiff / touchTotal)
 
-      // דרישה: סימטריה סבירה (> 0.6)
-      if (symmetryScore < 0.6) continue
+      // דרישה מרוככת: סימטריה סבירה (> 0.4)
+      // 0.6 היה קפדני מדי - דשדושים יכולים להיות אסימטריים מעט
+      if (symmetryScore < 0.4) continue
+
+      // 6. בדיקת drift (תנועה אופקית)
+      // דשדוש אמיתי = תנועה צידית/אופקית ללא מגמה
+      const closePrices = window.map(c => c.close)
+      const priceSlope = calculateSlope(closePrices)
+      const priceDriftPct = Math.abs(priceSlope) / avgPrice
+
+      // דרישה מרוככת: תנועה אופקית (drift < 1.2% per candle)
+      // 0.5% היה קפדני מדי - דחה דשדושים לגיטימיים עם עליה/ירידה מתונה
+      const maxDriftPct = 0.012 // 1.2% per candle = ~24% over 20 bars (reasonable)
+      if (priceDriftPct > maxDriftPct) {
+        console.log(`      ❌ Rejected zone ${start}-${end}: Price drift too high (${(priceDriftPct * 100).toFixed(3)}% > ${(maxDriftPct * 100).toFixed(1)}%)`)
+        continue
+      }
 
       zones.push({
         startIndex: start,
@@ -174,6 +192,7 @@ function findCompressionZones(
         atrSlope,
         volumeSlope,
         symmetryScore,
+        priceDriftPct,
       })
     }
   }
@@ -202,14 +221,16 @@ function calculatePressureScore(zone: CompressionZone): number {
   const rangeScore = Math.max(0, 40 * (1 - zone.rangePct / 0.03))
 
   // 2. משך אופטימלי (0-20 נקודות)
-  // 15-20 נרות = 20 נקודות, פחות/יותר = פחות נקודות
+  // 20-30 נרות = 20 נקודות (עדכון לטווח החדש)
   let durationScore = 0
-  if (windowSize >= 15 && windowSize <= 20) {
-    durationScore = 20
-  } else if (windowSize >= 12 && windowSize <= 25) {
-    durationScore = 15
+  if (windowSize >= 20 && windowSize <= 30) {
+    durationScore = 20  // אופטימלי
+  } else if (windowSize >= 17 && windowSize <= 35) {
+    durationScore = 15  // טוב
+  } else if (windowSize >= 12) {
+    durationScore = 10  // סביר
   } else {
-    durationScore = 10
+    durationScore = 5   // קצר מדי
   }
 
   // 3. התכווצות ATR (0-20 נקודות)
@@ -382,6 +403,7 @@ export function detectCompressionBreakouts(
     console.log(`      Touches: ${zone.highTouches}H / ${zone.lowTouches}L`)
     console.log(`      ATR Slope: ${zone.atrSlope.toFixed(6)} (${zone.atrSlope < 0 ? 'contracting ✓' : 'expanding ✗'})`)
     console.log(`      Symmetry: ${(zone.symmetryScore * 100).toFixed(0)}%`)
+    console.log(`      Price Drift: ${(zone.priceDriftPct * 100).toFixed(3)}% per candle (${Math.abs(zone.priceDriftPct) < 0.005 ? 'horizontal ✓' : 'trending ✗'})`)
     console.log(`      Pressure Score: ${pressureScore}`)
 
     if (pressureScore < minPressureScore) {
@@ -418,7 +440,7 @@ export function detectCompressionBreakouts(
     patterns.push({
       type: 'breakout',
       startIndex: zone.startIndex,
-      endIndex: breakout.breakoutIndex,
+      endIndex: zone.endIndex,  // קופסה מסתיימת בסוף הדשדוש, לא בנר הפריצה
       expectedEntry,
       expectedExit,
       stopLoss,
@@ -430,6 +452,7 @@ export function detectCompressionBreakouts(
         hint: direction === 'UP'
           ? `🔧 קפיץ דחוס:\n1️⃣ דשדוש ${windowSize} נרות בטווח ${(zone.rangePct * 100).toFixed(2)}%\n2️⃣ ATR התכווץ (${zone.atrSlope.toFixed(4)}), נפח ירד\n3️⃣ ${zone.highTouches} נגיעות בתקרה, ${zone.lowTouches} ברצפה\n4️⃣ פריצה נפיצה למעלה (${minRangeMultiplier}x ATR, ${minVolSpike}x נפח)\n💡 כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)} | ציון לחץ: ${pressureScore}`
           : `🔧 קפיץ דחוס:\n1️⃣ דשדוש ${windowSize} נרות בטווח ${(zone.rangePct * 100).toFixed(2)}%\n2️⃣ ATR התכווץ (${zone.atrSlope.toFixed(4)}), נפח ירד\n3️⃣ ${zone.highTouches} נגיעות בתקרה, ${zone.lowTouches} ברצפה\n4️⃣ פריצה נפיצה למטה (${minRangeMultiplier}x ATR, ${minVolSpike}x נפח)\n💡 כניסה: ${expectedEntry.toFixed(2)} | SL: ${stopLoss.toFixed(2)} | ציון לחץ: ${pressureScore}`,
+        breakoutIndex: breakout.breakoutIndex,  // נר הפריצה נשמר כאן במקום
       },
     })
 

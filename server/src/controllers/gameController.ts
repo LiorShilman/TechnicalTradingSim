@@ -229,6 +229,35 @@ export const createGameFromCSV = async (req: Request, res: Response) => {
     const patterns = detectPatterns(candles, patternCount, true, assetName)
     console.log(`✅ Detected ${patterns.length} patterns`)
 
+    // הדפסת סיכום מפורט של התבניות שזוהו
+    if (patterns.length > 0) {
+      console.log(`\n📊 Pattern Summary (${patterns.length} patterns):`)
+      console.log('┌─────┬──────────────┬────────────┬──────────┬─────────┐')
+      console.log('│ No. │ Type         │ Start-End  │ Quality  │ Details │')
+      console.log('├─────┼──────────────┼────────────┼──────────┼─────────┤')
+      patterns.forEach((p, idx) => {
+        const typeEmoji = p.type === 'breakout' ? '⚡' : p.type === 'retest' ? '🔄' : '🚩'
+        const typeStr = `${typeEmoji} ${p.type.padEnd(8)}`
+        const rangeStr = `${p.startIndex}-${p.endIndex}`.padEnd(10)
+        const qualityStr = `${p.metadata.quality}%`.padEnd(8)
+        const descStr = (p.metadata.description || '').substring(0, 30)
+        console.log(`│ ${(idx + 1).toString().padStart(3)} │ ${typeStr} │ ${rangeStr} │ ${qualityStr} │ ${descStr} │`)
+      })
+      console.log('└─────┴──────────────┴────────────┴──────────┴─────────┘')
+
+      // פילוח לפי סוג תבנית
+      const breakoutCount = patterns.filter(p => p.type === 'breakout').length
+      const retestCount = patterns.filter(p => p.type === 'retest').length
+      const flagCount = patterns.filter(p => p.type === 'flag').length
+      console.log(`\n📈 Pattern Breakdown:`)
+      if (breakoutCount > 0) console.log(`   ⚡ Breakout: ${breakoutCount}`)
+      if (retestCount > 0) console.log(`   🔄 Retest: ${retestCount}`)
+      if (flagCount > 0) console.log(`   🚩 Bull Flag: ${flagCount}`)
+      console.log('')
+    } else {
+      console.log(`⚠️ No patterns detected in this dataset`)
+    }
+
     // 3. חישוב רזולוציית מחיר (price step) מהדאטה
     let priceStep = 0.01 // ברירת מחדל
     if (candles.length > 0) {

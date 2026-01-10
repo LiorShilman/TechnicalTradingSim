@@ -1,12 +1,13 @@
 import { create } from 'zustand'
 import type { GameState, SavedGameState, TradingRules, RuleViolation } from '@/types/game.types'
 import { api } from '@/services/api'
-import toast from 'react-hot-toast'
+import { customToast } from '@/utils/toast'
 import { telegramService } from '@/services/telegramNotifications'
 import { priceAlertsService } from '@/services/priceAlertsService'
 
 // שם המפתח ב-localStorage
-const SAVED_GAME_KEY = 'savedGameState'
+const SAVED_GAME_KEY = 'savedGameState' // LEGACY - kept for backwards compatibility
+const MULTI_SAVE_KEY = 'multiSaveGames' // NEW: multi-slot saves
 const TRADING_RULES_KEY = 'tradingRules'
 
 // כללי מסחר ברירת מחדל
@@ -32,6 +33,7 @@ interface GameStore {
   showTradeHistory: boolean // הצגת מסך היסטוריית עסקאות
   showHelp: boolean // הצגת מסך עזרה
   pricePrecision: number // מספר ספרות עשרוניות למחירים (מחושב אוטומטית מהנתונים)
+  currentSaveSlotId: string | null // מזהה משבצת השמירה הנוכחית (לשמירה חוזרת)
 
   // Rule Violation Tracking
   tradingRules: TradingRules
@@ -74,6 +76,14 @@ interface GameStore {
   getSavedGameInfo: () => SavedGameState | null
   clearSavedGame: () => void
 
+  // Multi-Save System
+  _getFileKey: (fileName: string, dateRange?: { start: string; end: string } | null) => string
+  getAllSaveSlots: (fileName: string, dateRange?: { start: string; end: string } | null) => import('@/types/game.types').SaveSlot[]
+  saveToSlot: (slotId?: string, slotName?: string) => string | null
+  loadFromSlot: (file: File, slotId: string, dateRange?: { start: string; end: string } | null) => Promise<boolean>
+  deleteSlot: (fileName: string, slotId: string, dateRange?: { start: string; end: string } | null) => void
+  renameSlot: (fileName: string, slotId: string, newName: string, dateRange?: { start: string; end: string } | null) => void
+
   // UI State
   toggleTradeHistory: () => void
   toggleHelp: () => void
@@ -111,6 +121,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
   showStats: false,
   showTradeHistory: false,
   showHelp: false,
+  currentSaveSlotId: null,
   pricePrecision: 2, // ברירת מחדל 2 ספרות, יתעדכן אוטומטית מהנתונים
 
   // Rule Violation State
@@ -141,9 +152,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     console.log('initializeGameWithCSV: Starting with file', file.name, { assetName, timeframe, initialBalance, dateRange })
     set({ isLoading: true, error: null })
     try {
-      toast.loading(`מעלה קובץ ${file.name}...`, { id: 'upload' })
+      customToast.info(`מעלה קובץ ${file.name}...`)
       const response = await api.createGameWithCSV(file, assetName, timeframe, initialBalance, dateRange)
-      toast.success(`✅ קובץ נטען בהצלחה! ${response.game.candles.length} נרות`, { id: 'upload' })
+      customToast.success(`✅ קובץ נטען בהצלחה! ${response.game.candles.length} נרות`)
       console.log('initializeGameWithCSV: Got response', {
         hasGame: !!response.game,
         candleCount: response.game?.candles?.length,
@@ -189,7 +200,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     } catch (error) {
       console.error('initializeGameWithCSV: Error', error)
       const errorMessage = error instanceof Error ? error.message : 'Failed to upload CSV'
-      toast.error(`❌ שגיאה: ${errorMessage}`, { id: 'upload' })
+      customToast.error(`❌ שגיאה: ${errorMessage}`)
       set({
         error: errorMessage,
         isLoading: false
@@ -213,7 +224,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const response = await api.nextCandle(gameState.id)
       const newGame = (response as any).game || response
 
-      /* console.log('🔍 nextCandle response debug:', {
+      /* console.log('🔍 nextCandle response debug:'
         currentIndex: newGame.currentIndex,
         totalCandles: newGame.candles?.length,
         gameId: newGame.id,
@@ -279,10 +290,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         for (const closedPos of newlyClosedPositions) {
           if (closedPos.exitReason === 'stop_loss') {
             const pnl = closedPos.exitPnL || 0
-            toast.error(`🛑 Stop Loss הופעל! ${pnl.toFixed(2)}$ (${closedPos.exitPnLPercent?.toFixed(2)}%)`, {
-              icon: '🛑',
-              duration: 4000,
-            })
+            customToast.error(`🛑 Stop Loss הופעל! ${pnl.toFixed(2)}$ (${closedPos.exitPnLPercent?.toFixed(2)}%)`, '🛑')
             // שליחת התראה ל-Telegram
             telegramService.notifyStopLoss({
               type: closedPos.type === 'long' ? 'LONG' : 'SHORT',
@@ -296,10 +304,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
             })
           } else if (closedPos.exitReason === 'take_profit') {
             const pnl = closedPos.exitPnL || 0
-            toast.success(`🎯 Take Profit הופעל! +${pnl.toFixed(2)}$ (+${closedPos.exitPnLPercent?.toFixed(2)}%)`, {
-              icon: '🎯',
-              duration: 4000,
-            })
+            customToast.success(`🎯 Take Profit הופעל! +${pnl.toFixed(2)}$ (+${closedPos.exitPnLPercent?.toFixed(2)}%)`, '🎯')
             // שליחת התראה ל-Telegram
             telegramService.notifyTakeProfit({
               type: closedPos.type === 'long' ? 'LONG' : 'SHORT',
@@ -329,10 +334,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
         for (const alert of triggeredAlerts) {
           const directionText = alert.direction === 'above' ? 'עלה מעל' : 'ירד מתחת'
-          toast.success(`🔔 התראת מחיר! המחיר ${directionText} $${alert.targetPrice.toFixed(2)}`, {
-            icon: '🔔',
-            duration: 5000,
-          })
+          customToast.alert(`התראת מחיר! המחיר ${directionText} $${alert.targetPrice.toFixed(2)}`)
 
           // שליחת התראה ל-Telegram
           telegramService.notifyPriceAlert({
@@ -351,9 +353,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isLoading: false
       })
     } catch (error) {
-      toast.error(`שגיאה: ${error instanceof Error ? error.message : 'Failed to get next candle'}`, {
-        icon: '❌',
-      })
+      customToast.error(`שגיאה: ${error instanceof Error ? error.message : 'Failed to get next candle'}`)
       // ⚠️ CRITICAL: לא מאפסים את gameState בשגיאה
       set({
         error: error instanceof Error ? error.message : 'Failed to get next candle',
@@ -368,7 +368,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
     // Validate target index
     if (targetIndex < 0 || targetIndex >= gameState.candles.length) {
-      toast.error('אינדקס נר לא חוקי')
+      customToast.error('אינדקס נר לא חוקי')
       return
     }
 
@@ -485,9 +485,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
       if (newViolations.length > 0) {
         newViolations.forEach(v => {
           if (v.severity === 'critical') {
-            toast.error(v.message, { icon: '🚫', duration: 5000 })
+            customToast.error(v.message, '🚫')
           } else {
-            toast(v.message, { icon: '⚠️', duration: 4000 })
+            customToast.warning(v.message, '⚠️')
           }
         })
       }
@@ -511,20 +511,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
       // Toast notifications
       if (type === 'buy' && response.position) {
         const posTypeText = positionType === 'long' ? 'LONG 📈' : 'SHORT 📉'
-        toast.success(`פוזיציית ${posTypeText} נפתחה בהצלחה!`, {
-          icon: '✅',
-        })
+        customToast.success(`פוזיציית ${posTypeText} נפתחה בהצלחה!`, '✅')
       } else if (type === 'sell' && response.closedPosition) {
         const pnl = response.closedPosition.exitPnL || 0
         const isProfitable = pnl >= 0
         if (isProfitable) {
-          toast.success(`פוזיציה נסגרה ברווח! 💰 +$${pnl.toFixed(2)}`, {
-            icon: '🎉',
-          })
+          customToast.success(`פוזיציה נסגרה ברווח! 💰 +$${pnl.toFixed(2)}`, '🎉')
         } else {
-          toast.error(`פוזיציה נסגרה בהפסד 📉 $${pnl.toFixed(2)}`, {
-            icon: '😞',
-          })
+          customToast.error(`פוזיציה נסגרה בהפסד 📉 $${pnl.toFixed(2)}`, '😞')
         }
 
         // שליחת התראה ל-Telegram על סגירת פוזיציה ידנית
@@ -556,10 +550,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
           // אם העסקה הייתה רווחית למרות הפרות - התראה מיוחדת
           if (isProfitable && newViolations.some(v => v.severity === 'critical')) {
-            toast('💰 רווחת למרות הפרת כללים - זה לא מצדיק את ההפרה!', {
-              icon: '⚠️',
-              duration: 6000,
-            })
+            customToast.warning('💰 רווחת למרות הפרת כללים - זה לא מצדיק את ההפרה!', '⚠️')
           }
         }
       }
@@ -584,14 +575,12 @@ export const useGameStore = create<GameStore>((set, get) => ({
       })
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to execute trade'
-      toast.error(`שגיאה: ${errorMessage}`, {
-        icon: '❌',
-      })
+      customToast.error(`שגיאה: ${errorMessage}`, '❌')
       // ⚠️ CRITICAL: אסור לאפס את gameState בשגיאה!
       // זה גורם ל-useEffect ב-App.tsx לחשוב שהמשחק אופס ולחזור למסך ההתחלה
       set({
         error: errorMessage,
-        isLoading: false
+        isLoading: false,
         // ✅ gameState נשאר כפי שהיה - לא מאפסים אותו!
       })
     }
@@ -627,18 +616,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isLoading: false
       })
 
-      toast.success(`פקודה עתידית ${type === 'long' ? 'LONG' : 'SHORT'} נוצרה! 📌`, {
-        icon: '✅',
-      })
+      customToast.success(`פקודה עתידית ${type === 'long' ? 'LONG' : 'SHORT'} נוצרה! 📌`, '✅')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to create pending order'
-      toast.error(`שגיאה: ${errorMessage}`, {
-        icon: '❌',
-      })
+      customToast.error(`שגיאה: ${errorMessage}`, '❌')
       // ⚠️ CRITICAL: לא מאפסים את gameState בשגיאה
       set({
         error: errorMessage,
-        isLoading: false
+        isLoading: false,
       })
     }
   },
@@ -665,18 +650,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isLoading: false
       })
 
-      toast.success('פקודה עתידית בוטלה! 🗑️', {
-        icon: '✅',
-      })
+      customToast.success('פקודה עתידית בוטלה! 🗑️', '✅')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to cancel pending order'
-      toast.error(`שגיאה: ${errorMessage}`, {
-        icon: '❌',
-      })
+      customToast.error(`שגיאה: ${errorMessage}`, '❌')
       // ⚠️ CRITICAL: לא מאפסים את gameState בשגיאה
       set({
         error: errorMessage,
-        isLoading: false
+        isLoading: false,
       })
     }
   },
@@ -691,7 +672,14 @@ export const useGameStore = create<GameStore>((set, get) => ({
     }
 
     // איפוס מצב המשחק בלבד - לא יוצר משחק חדש
-    set({ gameState: null, isLoading: false, error: null, isAutoPlaying: false, showStats: false })
+    set({
+      gameState: null,
+      isLoading: false,
+      error: null,
+      isAutoPlaying: false,
+      showStats: false,
+      currentSaveSlotId: null  // איפוס מזהה ה-slot
+    })
   },
 
   toggleAutoPlay: () => {
@@ -708,44 +696,33 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
   // שמירת מצב משחק נוכחי ל-localStorage
   saveGameState: () => {
-    const { gameState } = get()
+    const { gameState, saveToSlot, currentSaveSlotId } = get()
     if (!gameState) {
       console.warn('saveGameState: No game state to save')
       return
     }
 
-    const savedState: SavedGameState = {
-      gameId: gameState.id,
-      savedAt: Date.now(),
-      sourceFileName: gameState.sourceFileName || '',
-      sourceDateRange: gameState.sourceDateRange || { start: '', end: '' },
-      asset: gameState.asset,
-      timeframe: gameState.timeframe,
-      currentIndex: gameState.currentIndex,
-      account: gameState.account,
-      positions: gameState.positions,
-      closedPositions: gameState.closedPositions,
-      stats: gameState.stats,
-      feedbackHistory: gameState.feedbackHistory,
-      isComplete: gameState.isComplete,
-      priceStep: gameState.priceStep,
-      pendingOrders: gameState.pendingOrders,
+    // שמירה למשבצת הנוכחית או למשבצת חדשה
+    const slotId = saveToSlot(currentSaveSlotId || undefined, undefined)
+
+    if (slotId) {
+      // עדכון currentSaveSlotId כדי שנשמור לאותה משבצת בפעם הבאה
+      set({ currentSaveSlotId: slotId })
+
+      console.log('✅ Game state saved to slot:', {
+        slotId,
+        file: gameState.sourceFileName,
+        index: gameState.currentIndex,
+        positions: gameState.positions.length,
+        pendingOrders: gameState.pendingOrders?.length || 0,
+        balance: gameState.account.balance,
+        equity: gameState.account.equity,
+      })
+
+      customToast.success('משחק נשמר בהצלחה! 💾', '✅')
+    } else {
+      customToast.error('שגיאה בשמירת המשחק')
     }
-
-    localStorage.setItem(SAVED_GAME_KEY, JSON.stringify(savedState))
-    console.log('✅ Game state saved:', {
-      file: savedState.sourceFileName,
-      index: savedState.currentIndex,
-      positions: savedState.positions.length,
-      pendingOrders: savedState.pendingOrders?.length || 0,
-      balance: savedState.account.balance,
-      equity: savedState.account.equity,
-    })
-
-    toast.success('משחק נשמר בהצלחה! 💾', {
-      duration: 3000,
-      icon: '✅',
-    })
   },
 
   // שמירה ויציאה - שומר את המשחק ומציג סטטיסטיקות
@@ -867,10 +844,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
         }
       }, 1500)
 
-      toast.success(`משחק שוחזר מ-${new Date(savedState.savedAt).toLocaleString('he-IL')} 🎮`, {
-        duration: 5000,
-        icon: '📂',
-      })
+      customToast.success(`משחק שוחזר מ-${new Date(savedState.savedAt).toLocaleString('he-IL')} 🎮`, '📂')
 
       return true
     } catch (error) {
@@ -906,7 +880,7 @@ export const useGameStore = create<GameStore>((set, get) => ({
     })
 
     console.log('Saved game and all drawings cleared')
-    toast.success('משחק שמור נמחק', { icon: '🗑️' })
+    customToast.success('משחק שמור נמחק')
   },
 
   // עדכון פוזיציה קיימת
@@ -934,11 +908,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isLoading: false
       })
 
-      toast.success('פוזיציה עודכנה בהצלחה! ✏️', { icon: '✅' })
+      customToast.success('פוזיציה עודכנה בהצלחה! ✏️')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update position'
       set({ error: errorMessage, isLoading: false })
-      toast.error(`שגיאה: ${errorMessage}`, { icon: '❌' })
+      customToast.error(`שגיאה: ${errorMessage}`)
     }
   },
 
@@ -970,11 +944,11 @@ export const useGameStore = create<GameStore>((set, get) => ({
         isLoading: false
       })
 
-      toast.success('פקודה עתידית עודכנה בהצלחה! ✏️', { icon: '✅' })
+      customToast.success('פקודה עתידית עודכנה בהצלחה! ✏️')
     } catch (error) {
       const errorMessage = error instanceof Error ? error.message : 'Failed to update pending order'
       set({ error: errorMessage, isLoading: false })
-      toast.error(`שגיאה: ${errorMessage}`, { icon: '❌' })
+      customToast.error(`שגיאה: ${errorMessage}`)
     }
   },
 
@@ -993,6 +967,232 @@ export const useGameStore = create<GameStore>((set, get) => ({
   clearViolations: () => {
     set({ ruleViolations: [] })
     console.log('🧹 All violations cleared')
+  },
+
+  // ============ Multi-Save System ============
+
+  // יצירת file key ייחודי מקובץ ו-date range
+  _getFileKey: (fileName: string, dateRange?: { start: string; end: string } | null): string => {
+    const cleanName = fileName.replace(/\.[^.]+$/, '') // הסרת סיומת
+    if (dateRange) {
+      return `${cleanName}_${dateRange.start}_${dateRange.end}`
+    }
+    return cleanName
+  },
+
+  // טעינת כל ה-save slots לקובץ מסוים
+  getAllSaveSlots: (fileName: string, dateRange?: { start: string; end: string } | null) => {
+    const fileKey = get()._getFileKey(fileName, dateRange)
+    const containerStr = localStorage.getItem(MULTI_SAVE_KEY)
+
+    if (!containerStr) {
+      console.log(`No multi-saves found for key: ${fileKey}`)
+      return []
+    }
+
+    try {
+      const container = JSON.parse(containerStr) as import('@/types/game.types').SavedGamesContainer
+      return container[fileKey] || []
+    } catch (error) {
+      console.error('getAllSaveSlots error:', error)
+      return []
+    }
+  },
+
+  // שמירת משחק ל-slot חדש או קיים
+  saveToSlot: (slotId?: string, slotName?: string) => {
+    const { gameState } = get()
+    if (!gameState) {
+      console.warn('saveToSlot: No game state to save')
+      return null
+    }
+
+    const fileKey = get()._getFileKey(
+      gameState.sourceFileName || '',
+      gameState.sourceDateRange
+    )
+
+    // יצירת saved state
+    const savedState: import('@/types/game.types').SavedGameState = {
+      gameId: gameState.id,
+      savedAt: Date.now(),
+      sourceFileName: gameState.sourceFileName || '',
+      sourceDateRange: gameState.sourceDateRange || { start: '', end: '' },
+      asset: gameState.asset,
+      timeframe: gameState.timeframe,
+      currentIndex: gameState.currentIndex,
+      account: gameState.account,
+      positions: gameState.positions,
+      closedPositions: gameState.closedPositions,
+      stats: gameState.stats,
+      feedbackHistory: gameState.feedbackHistory,
+      isComplete: gameState.isComplete,
+      priceStep: gameState.priceStep,
+      pendingOrders: gameState.pendingOrders,
+    }
+
+    // טעינת container קיים או יצירת חדש
+    const containerStr = localStorage.getItem(MULTI_SAVE_KEY)
+    const container: import('@/types/game.types').SavedGamesContainer = containerStr
+      ? JSON.parse(containerStr)
+      : {}
+
+    // קבלת slots קיימים לקובץ זה
+    const existingSlots = container[fileKey] || []
+
+    // אם slotId לא סופק, צור חדש
+    const finalSlotId = slotId || `slot-${Date.now()}`
+    const finalSlotName = slotName || `משחק ${existingSlots.length + 1}`
+
+    // בדוק אם זה עדכון של slot קיים או חדש
+    const existingSlotIndex = existingSlots.findIndex(s => s.slotId === finalSlotId)
+
+    const newSlot: import('@/types/game.types').SaveSlot = {
+      slotId: finalSlotId,
+      slotName: finalSlotName,
+      savedAt: Date.now(),
+      gameState: savedState,
+    }
+
+    if (existingSlotIndex >= 0) {
+      // עדכון slot קיים
+      existingSlots[existingSlotIndex] = newSlot
+      console.log(`✏️ Updated existing slot: ${finalSlotName}`)
+    } else {
+      // הוספת slot חדש
+      existingSlots.push(newSlot)
+      console.log(`➕ Created new slot: ${finalSlotName}`)
+    }
+
+    // שמירה חזרה ל-localStorage
+    container[fileKey] = existingSlots
+    localStorage.setItem(MULTI_SAVE_KEY, JSON.stringify(container))
+
+    customToast.success(`נשמר בהצלחה: ${finalSlotName} 💾`, '✅')
+
+    return finalSlotId
+  },
+
+  // טעינת משחק מ-slot מסוים
+  loadFromSlot: async (file: File, slotId: string, dateRange?: { start: string; end: string } | null) => {
+    const slots = get().getAllSaveSlots(file.name, dateRange)
+
+    const slot = slots.find((s: import('@/types/game.types').SaveSlot) => s.slotId === slotId)
+    if (!slot) {
+      customToast.error('משחק שמור לא נמצא')
+      return false
+    }
+
+    set({ isLoading: true })
+
+    try {
+      const savedState = slot.gameState
+
+      // קריאה לשרת ליצירת משחק עם המצב השמור
+      const response = await api.createGameWithCSV(
+        file,
+        savedState.asset,
+        savedState.timeframe,
+        savedState.account.initialBalance,
+        dateRange,
+        savedState.currentIndex,
+        {
+          positions: savedState.positions,
+          closedPositions: savedState.closedPositions,
+          pendingOrders: savedState.pendingOrders || [],
+          account: savedState.account,
+          stats: savedState.stats,
+          feedbackHistory: savedState.feedbackHistory,
+        }
+      )
+
+      const restoredGame: import('@/types/game.types').GameState = {
+        ...response.game,
+      }
+
+      set({
+        gameState: restoredGame,
+        isLoading: false,
+        error: null,
+        currentSaveSlotId: slotId // שמירת מזהה ה-slot כדי שנשמור לאותו slot בפעם הבאה
+      })
+
+      // Auto-fit chart
+      setTimeout(() => {
+        const { chartFitContent } = get()
+        chartFitContent?.()
+      }, 500)
+
+      setTimeout(() => {
+        const { chartFitContent } = get()
+        chartFitContent?.()
+      }, 1500)
+
+      customToast.success(`משחק "${slot.slotName}" נטען בהצלחה! 🎮`, '📂')
+
+      return true
+    } catch (error) {
+      console.error('loadFromSlot error:', error)
+      set({ isLoading: false })
+      customToast.error('שגיאה בטעינת משחק')
+      return false
+    }
+  },
+
+  // מחיקת slot
+  deleteSlot: (fileName: string, slotId: string, dateRange?: { start: string; end: string } | null) => {
+    const fileKey = get()._getFileKey(fileName, dateRange)
+    const containerStr = localStorage.getItem(MULTI_SAVE_KEY)
+
+    if (!containerStr) return
+
+    try {
+      const container: import('@/types/game.types').SavedGamesContainer = JSON.parse(containerStr)
+      const slots = container[fileKey] || []
+
+      const updatedSlots = slots.filter(s => s.slotId !== slotId)
+
+      if (updatedSlots.length === 0) {
+        // אם אין יותר slots, מחק את ה-fileKey
+        delete container[fileKey]
+      } else {
+        container[fileKey] = updatedSlots
+      }
+
+      localStorage.setItem(MULTI_SAVE_KEY, JSON.stringify(container))
+      customToast.success('משחק שמור נמחק')
+
+      console.log(`🗑️ Deleted slot ${slotId} from ${fileKey}`)
+    } catch (error) {
+      console.error('deleteSlot error:', error)
+      customToast.error('שגיאה במחיקת משחק')
+    }
+  },
+
+  // שינוי שם של slot
+  renameSlot: (fileName: string, slotId: string, newName: string, dateRange?: { start: string; end: string } | null) => {
+    const fileKey = get()._getFileKey(fileName, dateRange)
+    const containerStr = localStorage.getItem(MULTI_SAVE_KEY)
+
+    if (!containerStr) return
+
+    try {
+      const container: import('@/types/game.types').SavedGamesContainer = JSON.parse(containerStr)
+      const slots = container[fileKey] || []
+
+      const slotIndex = slots.findIndex(s => s.slotId === slotId)
+      if (slotIndex >= 0) {
+        slots[slotIndex].slotName = newName
+        container[fileKey] = slots
+        localStorage.setItem(MULTI_SAVE_KEY, JSON.stringify(container))
+
+        customToast.success('שם שונה בהצלחה')
+        console.log(`✏️ Renamed slot ${slotId} to "${newName}"`)
+      }
+    } catch (error) {
+      console.error('renameSlot error:', error)
+      customToast.error('שגיאה בשינוי שם')
+    }
   },
 
   clearError: () => set({ error: null }),

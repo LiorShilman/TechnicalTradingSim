@@ -398,14 +398,14 @@ export function detectPatterns(
       const remainingQuota = Math.max(5, Math.floor(targetCount * 0.3))  // 30% of total or minimum 5
       console.log(`   🔧 Scanning for ${remainingQuota} compression breakout patterns...`)
 
-      const minGap = 30
+      const minGap = 15  // הקטנה מ-30 ל-15 - אפשר compression patterns קרובים יותר ל-retest
       const compressionPatterns = detectCompressionBreakouts(candles, remainingQuota, {
-        minWindow: 15,
-        maxWindow: 25,
-        maxRangePct: 0.03,          // 3% max range
-        minVolSpike: 1.3,           // 1.3x volume spike required (reduced from 1.5x)
-        minRangeMultiplier: 1.2,    // Breakout candle must be 1.2x ATR (reduced from 1.5x)
-        minPressureScore: 50,       // Minimum compression quality score (reduced from 60)
+        minWindow: 17,              // פשרה: 17 נרות (לא 15 קצר מדי, לא 20 ארוך מדי)
+        maxWindow: 35,              // הרחבה ל-35 - אפשר דשדושים ארוכים יותר
+        maxRangePct: 0.04,          // 4% max range (הרחבה מ-3%)
+        minVolSpike: 1.15,          // 1.15x volume spike (רגיל מדי)
+        minRangeMultiplier: 0.9,    // 0.9x ATR (מאוד רגיל)
+        minPressureScore: 35,       // הורדה ל-35 - פחות קפדני
       })
 
       // Filter out overlapping patterns with existing retest patterns

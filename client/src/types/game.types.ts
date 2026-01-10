@@ -203,6 +203,23 @@ export interface SavedGameState {
 }
 
 /**
+ * Save Slot - חריץ שמירה יחיד
+ */
+export interface SaveSlot {
+  slotId: string;                // מזהה ייחודי של החריץ (uuid)
+  slotName: string;              // שם שניתן ע"י המשתמש (ברירת מחדל: "משחק 1", "משחק 2")
+  savedAt: number;               // תאריך שמירה אחרון
+  gameState: SavedGameState;     // המצב השמור
+}
+
+/**
+ * Multi-Save Container - מכיל כל השמירות לקובץ מסוים
+ */
+export interface SavedGamesContainer {
+  [fileKey: string]: SaveSlot[]; // fileKey = "BTCUSD_1H_2024-01-01_2024-12-31"
+}
+
+/**
  * סוג הפקודה העתידית
  * - buyStop: קנייה מעל המחיר הנוכחי (breakout long)
  * - buyLimit: קנייה מתחת למחיר הנוכחי (pullback long)

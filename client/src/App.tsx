@@ -1,4 +1,4 @@
-import { useEffect, useState, useRef, useMemo } from 'react'
+import { useEffect, useState, useRef } from 'react'
 import TradingChart from './components/Chart/TradingChart'
 import OrderPanel from './components/Trading/OrderPanel'
 import AccountInfo from './components/Trading/AccountInfo'
@@ -16,12 +16,13 @@ import { RuleCompliancePanel } from './components/Stats/RuleCompliancePanel'
 import ProfitTrail from './components/Effects/ProfitTrail'
 import TargetZoneGlow from './components/Effects/TargetZoneGlow'
 import EquityColorShift from './components/Effects/EquityColorShift'
+import SaveSlotSelector from './components/SaveSlotSelector'
 import { useGameStore } from './stores/gameStore'
 import { priceAlertsService } from './services/priceAlertsService'
 import { useVisualEffects } from './hooks/useVisualEffects'
-import { Play, Loader2, Upload, Trash2, HelpCircle } from 'lucide-react'
+import { Play, Loader2, Upload, HelpCircle } from 'lucide-react'
 import { Toaster } from 'react-hot-toast'
-import toast from 'react-hot-toast'
+import { customToast } from './utils/toast'
 
 function App() {
   const [isStartScreen, setIsStartScreen] = useState(true)
@@ -35,22 +36,11 @@ function App() {
   })
   const [availableDateRange, setAvailableDateRange] = useState<{ start: string; end: string } | null>(null)
   const [selectedDateRange, setSelectedDateRange] = useState<{ start: string; end: string } | null>(null)
-  const [refreshSavedGame, setRefreshSavedGame] = useState(0) // מונה לרענון מצב משחק שמור
   const [priceAlerts, setPriceAlerts] = useState(() => priceAlertsService.getAlerts())
+  const [showSlotSelector, setShowSlotSelector] = useState(false) // האם להציג בורר משחקים שמורים
+  const [slotsRefreshKey, setSlotsRefreshKey] = useState(0) // מפתח לעדכון רשימת המשחקים השמורים
   const fileInputRef = useRef<HTMLInputElement>(null)
-  const { gameState, isLoading, showStats, showTradeHistory, showHelp, toggleTradeHistory, toggleHelp, initializeGameWithCSV, loadSavedGame, getSavedGameInfo, clearSavedGame } = useGameStore()
-
-  // בדיקה אם יש משחק שמור - מתעדכן כשמשנים את refreshSavedGame
-  const savedGameInfo = useMemo(() => {
-    const info = getSavedGameInfo()
-    console.log('🔍 SavedGameInfo check:', {
-      hasInfo: !!info,
-      uploadedFileName: uploadedFile?.name,
-      savedFileName: info?.sourceFileName,
-      matches: info && uploadedFile && info.sourceFileName === uploadedFile.name
-    })
-    return info
-  }, [refreshSavedGame, getSavedGameInfo, uploadedFile])
+  const { gameState, isLoading, showStats, showTradeHistory, showHelp, toggleTradeHistory, toggleHelp, initializeGameWithCSV, getAllSaveSlots, loadFromSlot, deleteSlot, renameSlot, saveToSlot } = useGameStore()
 
   // Visual effects hook
   const { profitTrail } = useVisualEffects(gameState)
@@ -58,9 +48,8 @@ function App() {
   // כאשר gameState הופך ל-null (לאחר resetGame), חזור למסך ההתחלה
   useEffect(() => {
     if (gameState === null && !isStartScreen) {
-      console.log('🔄 gameState is null, returning to start screen and refreshing saved game info')
+      console.log('🔄 gameState is null, returning to start screen')
       setIsStartScreen(true)
-      setRefreshSavedGame(prev => prev + 1) // רענון מצב משחק שמור
     }
   }, [gameState, isStartScreen])
 
@@ -89,38 +78,96 @@ function App() {
 
     // Jump to pattern location
     useGameStore.getState().jumpToCandle(targetIndex)
-    toast.success(`קפצת לתבנית #${patternIndex + 1}`)
+    customToast.pattern(`קפצת לתבנית #${patternIndex + 1}`)
   }
 
   const handleStartGame = async (forceNewGame = false) => {
-    // ⭐ CRITICAL: אל תעדכן את setIsStartScreen לפני שהמשחק נטען!
-    // זה גורם ל-re-render שמאפס את הגרף
-
-    // ניסיון לטעון משחק שמור (אם יש קובץ ותואם ולא נאלץ משחק חדש)
-    if (!forceNewGame && uploadedFile && savedGameInfo) {
-      const loaded = await loadSavedGame(uploadedFile, selectedDateRange)
-      if (loaded) {
-        console.log('✅ Resumed from saved game')
-        setIsStartScreen(false) // ✅ רק אחרי שהמשחק נטען בהצלחה
-        return
-      }
+    if (!uploadedFile) {
+      customToast.error('נא להעלות קובץ CSV לפני התחלת המשחק')
+      return
     }
 
-    // אחרת, יצירת משחק חדש (רק עם CSV!)
-    if (uploadedFile) {
-      await initializeGameWithCSV(uploadedFile, assetName, timeframe, initialBalance, selectedDateRange)
-      // ✅ עדכון מסך רק אחרי שהמשחק נטען
+    // בדיקה אם יש משחקים שמורים לקובץ הזה
+    const existingSlots = getAllSaveSlots(uploadedFile.name, selectedDateRange)
+
+    // אם יש משחקים שמורים ולא נאלץ משחק חדש, הצג בורר
+    if (!forceNewGame && existingSlots.length > 0) {
+      console.log(`📂 Found ${existingSlots.length} saved slots for ${uploadedFile.name}`)
+      setShowSlotSelector(true)
+      return
+    }
+
+    // אחרת, יצירת משחק חדש
+    await initializeGameWithCSV(uploadedFile, assetName, timeframe, initialBalance, selectedDateRange)
+    setIsStartScreen(false)
+  }
+
+  // טעינת משחק ממשבצת
+  const handleLoadSlot = async (slotId: string) => {
+    if (!uploadedFile) return
+
+    const loaded = await loadFromSlot(uploadedFile, slotId, selectedDateRange)
+    if (loaded) {
+      console.log(`✅ Loaded from slot: ${slotId}`)
+      setShowSlotSelector(false)
       setIsStartScreen(false)
+      customToast.load('משחק נטען בהצלחה!')
     } else {
-      toast.error('נא להעלות קובץ CSV לפני התחלת המשחק')
+      customToast.error('שגיאה בטעינת המשחק')
     }
+  }
+
+  // יצירת משחק חדש ושמירתו למשבצת
+  const handleSaveNewSlot = async () => {
+    if (!uploadedFile) return
+
+    // יצירת משחק חדש
+    await initializeGameWithCSV(uploadedFile, assetName, timeframe, initialBalance, selectedDateRange)
+
+    // שמירה למשבצת חדשה
+    const existingSlots = getAllSaveSlots(uploadedFile.name, selectedDateRange)
+    const slotId = saveToSlot(undefined, `משחק ${existingSlots.length + 1}`)
+
+    if (slotId) {
+      // עדכון currentSaveSlotId בstore כדי שהשמירות הבאות יהיו לאותה משבצת
+      useGameStore.setState({ currentSaveSlotId: slotId })
+
+      console.log(`✅ Created new game and saved to slot: ${slotId}`)
+      setShowSlotSelector(false)
+      setIsStartScreen(false)
+      customToast.load('משחק חדש נוצר!')
+    }
+  }
+
+  // מחיקת משבצת
+  const handleDeleteSlot = (slotId: string) => {
+    if (!uploadedFile) return
+
+    deleteSlot(uploadedFile.name, slotId, selectedDateRange)
+
+    // כפיית עדכון של רשימת המשחקים השמורים
+    setSlotsRefreshKey(prev => prev + 1)
+
+    customToast.delete('משחק נמחק!')
+  }
+
+  // שינוי שם משבצת
+  const handleRenameSlot = (slotId: string, newName: string) => {
+    if (!uploadedFile) return
+
+    renameSlot(uploadedFile.name, slotId, newName, selectedDateRange)
+
+    // כפיית עדכון של רשימת המשחקים השמורים
+    setSlotsRefreshKey(prev => prev + 1)
+
+    customToast.update('שם המשחק עודכן!')
   }
 
   const handleFileSelect = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (file) {
       if (!file.name.endsWith('.csv')) {
-        toast.error('נא להעלות קובץ CSV בלבד')
+        customToast.error('נא להעלות קובץ CSV בלבד')
         return
       }
 
@@ -141,7 +188,7 @@ function App() {
         // או מספר בלבד לפורמט FOREX (60, 240 וכו')
         const timeframeRegex = /^\d+[DHmW]$/
         const forexTimeframeRegex = /^\d+$/
-        let timeframeIndex = parts.findIndex(part => timeframeRegex.test(part) || forexTimeframeRegex.test(part))
+        const timeframeIndex = parts.findIndex(part => timeframeRegex.test(part) || forexTimeframeRegex.test(part))
 
         console.log(`🔍 Timeframe index: ${timeframeIndex}`)
 
@@ -212,7 +259,7 @@ function App() {
         const lines = text.split('\n').filter(line => line.trim())
 
         if (lines.length < 2) {
-          toast.error('קובץ CSV ריק או לא תקין')
+          customToast.error('קובץ CSV ריק או לא תקין')
           return
         }
 
@@ -223,7 +270,7 @@ function App() {
         )
 
         if (timeColumnIndex === -1) {
-          toast.error('לא נמצאה עמודת זמן בקובץ')
+          customToast.error('לא נמצאה עמודת זמן בקובץ')
           return
         }
 
@@ -235,7 +282,7 @@ function App() {
         const endTime = lastDataLine[timeColumnIndex]?.trim()
 
         if (!startTime || !endTime) {
-          toast.error('לא ניתן לחלץ טווח תאריכים')
+          customToast.error('לא ניתן לחלץ טווח תאריכים')
           return
         }
 
@@ -289,10 +336,10 @@ function App() {
         setUploadedFile(file)
 
         console.log(`✅ Asset name updated to: ${detectedAsset}`)
-        toast.success(`קובץ נטען: ${file.name}\nנכס: ${detectedAsset}\nטווח: ${startDate} - ${endDate}\nזמן: ${finalTimeframe}`)
+        customToast.success(`קובץ נטען: ${file.name}\nנכס: ${detectedAsset}\nטווח: ${startDate} - ${endDate}\nזמן: ${finalTimeframe}`)
       } catch (error) {
         console.error('Error parsing CSV:', error)
-        toast.error('שגיאה בקריאת הקובץ')
+        customToast.error('שגיאה בקריאת הקובץ')
       }
     }
   }
@@ -359,7 +406,7 @@ function App() {
                     onClick={() => {
                       localStorage.removeItem('carryOverBalance')
                       setInitialBalance(10000)
-                      toast.success('היתרה אופסה ל-$10,000', { icon: '🔄' })
+                      customToast.reset('היתרה אופסה ל-$10,000')
                     }}
                     className="text-[10px] bg-orange-500/20 hover:bg-orange-500/30 border border-orange-500/40 text-orange-400 px-2 py-0.5 rounded transition-colors"
                     title="אפס יתרה ל-$10,000"
@@ -397,67 +444,26 @@ function App() {
           {/* העלאת קובץ CSV */}
           <div className="mb-6">
             <div className="bg-gradient-to-br from-amber-900/30 to-orange-900/20 rounded-xl p-6 border border-amber-500/30 backdrop-blur-sm">
-              {/* אינדיקציה למשחק שמור */}
-              {savedGameInfo && uploadedFile && savedGameInfo.sourceFileName === uploadedFile.name && (
-                <div className="mb-4 p-3 bg-gradient-to-r from-green-900/40 to-emerald-900/40 border border-green-500/50 rounded-lg">
-                  <div className="flex items-center justify-between">
-                    <div className="flex-1">
-                      <div className="flex items-center gap-2 text-green-400 font-bold mb-1">
-                        <span className="text-xl">💾</span>
-                        <span>נמצא משחק שמור!</span>
-                      </div>
-                      <div className="text-xs text-gray-300 mr-7">
-                        נשמר ב-{new Date(savedGameInfo.savedAt).toLocaleString('he-IL')} •
-                        נר {savedGameInfo.currentIndex} •
-                        {savedGameInfo.positions.length} פוזיציות פתוחות
-                      </div>
-                      <div className="text-xs text-green-300 mt-1 mr-7 font-semibold">
-                        ⚡ המשחק ימשיך מהנקודה בה עצרת
-                      </div>
-                    </div>
-                    <div className="flex gap-2">
-                      <button
-                        onClick={() => handleStartGame(false)}
-                        disabled={isLoading}
-                        className="px-4 py-2 bg-green-600/80 hover:bg-green-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="המשך משחק שמור"
-                      >
-                        {isLoading ? (
-                          <>
-                            <Loader2 size={16} className="animate-spin" />
-                            <span>טוען...</span>
-                          </>
-                        ) : (
-                          <>
-                            <Play size={16} className="transform rotate-180" />
-                            <span>המשך משחק</span>
-                          </>
-                        )}
-                      </button>
-                      <button
-                        onClick={() => {
-                          clearSavedGame()
-                          setRefreshSavedGame(prev => prev + 1)
-                          toast.success('משחק שמור נמחק בהצלחה! 🗑️')
-                        }}
-                        disabled={isLoading}
-                        className="px-3 py-2 bg-red-600/80 hover:bg-red-700 text-white rounded-lg text-sm font-semibold transition-colors flex items-center gap-2 whitespace-nowrap disabled:opacity-50 disabled:cursor-not-allowed"
-                        title="מחק משחק שמור"
-                      >
-                        <Trash2 size={16} />
-                      </button>
-                    </div>
-                  </div>
-                </div>
-              )}
-
               <div className="flex items-center gap-4 mb-4">
                 <div className="text-4xl">📁</div>
                 <div className="flex-1">
                   <div className="text-sm text-gray-400 mb-2">העלה קובץ היסטוריה מ-TradingView (אופציונלי)</div>
                   {uploadedFile ? (
                     <div className="flex items-center gap-3">
-                      <div className="text-green-400 font-bold">✓ {uploadedFile.name}</div>
+                      <div className="flex items-center gap-2">
+                        <div className="text-green-400 font-bold">✓ {uploadedFile.name}</div>
+                        {(() => {
+                          // eslint-disable-next-line @typescript-eslint/no-unused-expressions
+                          slotsRefreshKey // כפיית תלות - גורם לעדכון כשמספר המשחקים משתנה
+                          const savedCount = getAllSaveSlots(uploadedFile.name, selectedDateRange).length
+                          return savedCount > 0 ? (
+                            <div className="px-2 py-0.5 bg-purple-600/30 border border-purple-500/50 rounded-full text-xs text-purple-300 font-semibold flex items-center gap-1">
+                              <span>💾</span>
+                              <span>{savedCount} {savedCount === 1 ? 'משחק שמור' : 'משחקים שמורים'}</span>
+                            </div>
+                          ) : null
+                        })()}
+                      </div>
                       <button
                         onClick={() => setUploadedFile(null)}
                         className="text-xs text-red-400 hover:text-red-300 underline"
@@ -578,14 +584,14 @@ function App() {
           <div className="text-center">
             <button
               onClick={() => {
-                // משחק חדש - לא מוחק משחק שמור אוטומטית
-                handleStartGame(true)
+                // בדוק אם יש משחקים שמורים ואז הצג בורר, אחרת התחל משחק חדש
+                handleStartGame(false)
               }}
               disabled={isLoading || !uploadedFile}
               className="group relative px-12 py-5 bg-gradient-to-r from-blue-500 to-purple-600 rounded-2xl font-bold text-2xl hover:from-blue-600 hover:to-purple-700 transition-all transform hover:scale-105 shadow-2xl shadow-blue-500/50 hover:shadow-purple-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
             >
               <div className="flex items-center gap-3 justify-center">
-                <span>התחל משחק חדש</span>
+                <span>התחל לשחק</span>
                 {isLoading ? (
                   <Loader2 size={32} className="animate-spin" />
                 ) : (
@@ -610,6 +616,25 @@ function App() {
 
         {/* Help modal - also available on start screen */}
         {showHelp && <HelpModal onClose={toggleHelp} />}
+
+        {/* Save Slot Selector Modal */}
+        {showSlotSelector && uploadedFile && (
+          <div className="fixed inset-0 bg-black/80 backdrop-blur-sm flex items-center justify-center z-50 p-4">
+            <div className="w-full max-w-2xl">
+              <SaveSlotSelector
+                key={`slots-${uploadedFile.name}-${slotsRefreshKey}`}
+                fileName={uploadedFile.name}
+                dateRange={selectedDateRange}
+                slots={getAllSaveSlots(uploadedFile.name, selectedDateRange)}
+                onLoadSlot={handleLoadSlot}
+                onSaveNewSlot={handleSaveNewSlot}
+                onDeleteSlot={handleDeleteSlot}
+                onRenameSlot={handleRenameSlot}
+                onClose={() => setShowSlotSelector(false)}
+              />
+            </div>
+          </div>
+        )}
 
         {/* Toast notifications */}
         <Toaster
