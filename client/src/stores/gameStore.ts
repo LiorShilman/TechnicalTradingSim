@@ -378,7 +378,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
 
       // 🤖 AI Demo Mode: קבלת החלטת AI ביחס לעסקאות
       const { isDemoMode, showDemoExplanations } = get()
+      console.log('🎮 Next Candle - isDemoMode:', isDemoMode, 'hasNewGame:', !!newGame)
+
       if (isDemoMode && newGame) {
+        console.log('✅ Entering AI Demo Mode logic')
         const aiDecision = makeAIDecision(newGame)
         console.log('🤖 AI Decision:', aiDecision)
 
