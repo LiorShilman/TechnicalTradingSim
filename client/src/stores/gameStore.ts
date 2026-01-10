@@ -380,8 +380,10 @@ export const useGameStore = create<GameStore>((set, get) => ({
       const { isDemoMode, showDemoExplanations } = get()
       if (isDemoMode && newGame) {
         const aiDecision = makeAIDecision(newGame)
+        console.log('🤖 AI Decision:', aiDecision)
 
         if (aiDecision && aiDecision.action !== 'hold') {
+          console.log('🤖 AI Taking Action:', aiDecision.action)
           // הצגת הסבר אם מופעל
           if (showDemoExplanations) {
             customToast.info(`🤖 AI: ${aiDecision.reason}`, '🎯')

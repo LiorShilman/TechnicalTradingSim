@@ -43,6 +43,8 @@ function findActivePattern(
   // מחפש תבנית שמסתיימת באינדקס הנוכחי (זמן לפתוח פוזיציה)
   const pattern = patterns.find(p => p.endIndex === currentIndex - 1)
 
+  console.log('🔎 Searching for pattern at index', currentIndex - 1, 'found:', pattern?.type, 'quality:', pattern?.metadata.quality)
+
   if (!pattern) return null
 
   // בודק שאין כבר פוזיציה פתוחה על אותה תבנית
@@ -52,11 +54,18 @@ function findActivePattern(
     pos.entryIndex <= pattern.endIndex + 5
   )
 
-  if (hasOpenPosition) return null
+  if (hasOpenPosition) {
+    console.log('⚠️ Already have position on this pattern')
+    return null
+  }
 
   // בודק איכות התבנית (רק תבניות מעל 70%)
-  if (pattern.metadata.quality < 70) return null
+  if (pattern.metadata.quality < 70) {
+    console.log('⚠️ Pattern quality too low:', pattern.metadata.quality)
+    return null
+  }
 
+  console.log('✅ Found valid pattern:', pattern.type, 'quality:', pattern.metadata.quality)
   return pattern
 }
 
@@ -114,6 +123,13 @@ export function makeAIDecision(gameState: GameState): AIDecision | null {
 
   const currentPrice = currentCandle.close
   const openPositions = positions.filter(p => !p.exitTime)
+
+  console.log('🔍 AI Analyzing:', {
+    currentIndex,
+    totalPatterns: patterns.length,
+    openPositions: openPositions.length,
+    currentPrice
+  })
 
   // קודם כל, בודק אם צריך לסגור פוזיציות קיימות
   for (const position of openPositions) {
