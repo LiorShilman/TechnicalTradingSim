@@ -730,6 +730,9 @@ export const useGameStore = create<GameStore>((set, get) => ({
     const { saveGameState } = get()
     saveGameState()
 
+    // עצירת Auto-Play אם פעיל
+    set({ isAutoPlaying: false })
+
     // המתנה קצרה כדי שה-toast יופיע ואז הצגת סטטיסטיקות
     setTimeout(() => {
       set({ showStats: true })
